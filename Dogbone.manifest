@@ -1,0 +1,12 @@
+{
+	"autodeskProduct":	"Fusion360",
+	"type":	"addin",
+	"id":	"28d98884-d5ec-40ab-b8f8-f5f9a76dfc4e",
+	"author":	"Casey Rogers",
+	"description":	{
+		"":	"Create a dogbone for milling"
+	},
+	"version":	"",
+	"runOnStartup":	false,
+	"supportedOS":	"windows|mac"
+}
