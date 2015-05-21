@@ -40,16 +40,12 @@ def run(context):
         
                 inputs = cmd.commandInputs
         
-                selInput0 = inputs.addSelectionInput('edgeSelect', 'Corner Edges', 'Select two adjacent edges')
-                selInput0.setSelectionLimits(2,2)
+                selInput0 = inputs.addSelectionInput('edgeSelect', 'Interior Edges', 'Select the edge interior to each corner')
                 selInput0.addSelectionFilter('LinearEdges')
-
-                selInput0 = inputs.addSelectionInput('faceSelect', 'Terminating Face', 'Select terminating face')
-                selInput0.setSelectionLimits(1,1)
-                selInput0.addSelectionFilter('PlanarFaces')
+                selInput0.setSelectionLimits(1,0)
         
                 initialVal = adsk.core.ValueInput.createByReal(0)
-                inputs.addValueInput('circDiameter', 'Diameter', 'cm', initialVal)
+                inputs.addValueInput('circDiameter', 'Tool Diameter', 'cm', initialVal)
         
                 # Connect up to command related events.
                 onExecute = CommandExecutedHandler()
@@ -79,12 +75,12 @@ def run(context):
                         if input.id == 'circDiameter':
                             circ = input.value
                         elif input.id == 'edgeSelect':
-                            lineA = input.selection(0).entity
-                            lineB = input.selection(1).entity
-                        elif input.id == 'faceSelect':
-                            direction = input.selection(0).entity
+                            edges = []
+                            for i in range(input.selectionCount):
+                                edges.append(input.selection(i).entity)
+                    for edge in edges:
+                        createDogbone(circ, edge)
                     # Do something with the results.
-                    createDogbone(circ, direction, lineA, lineB)
                 except:
                     if ui:
                         ui.messageBox('command executed failed:\n{}'.format(traceback.format_exc()))
@@ -101,12 +97,12 @@ def run(context):
                     # Check that two selections are satisfied.
                     for input in cmd.commandInputs:
                         if input.id == 'edgeSelect':
-                            if input.selectionCount != 2:
+                            if input.selectionCount < 1:
                                 # Set that the inputs are not valid and return.
                                 args.areInputsValid = False
                                 return
                         elif input.id == 'circDiameter':
-                            if input.value == 0:
+                            if input.value <= 0:
                                 # Set that the inputs are not valid and return.
                                 args.areInputsValid = False
                                 return
@@ -124,7 +120,7 @@ def run(context):
 
         createPanel = ui.toolbarPanels.itemById('SolidCreatePanel')
         
-        buttonControl = createPanel.controls.addCommand(buttonDogbone, 'dogboneCntrl')
+        buttonControl = createPanel.controls.addCommand(buttonDogbone, 'dogboneBtn')
         
         # Make the button available in the panel.
         buttonControl.isPromotedByDefault = True
@@ -145,14 +141,15 @@ def stop(context):
         if cmdDef:
             cmdDef.deleteMe()
         createPanel = ui.toolbarPanels.itemById('SolidCreatePanel')
-        cntrl = createPanel.controls.itemById('dogboneCntrl')
+        cntrl = createPanel.controls.itemById('dogboneBtn')
         if cntrl:
             cntrl.deleteMe()
 
     except:
         if ui:
             ui.messageBox('Failed:\n{}'.format(traceback.format_exc()))
-     
+
+# Returns points A, B, C where A is shared between the two input edges
 def findPoints(edge0, edge1):
     if edge0.classType() == 'adsk::fusion::SketchLine':
         point0_0 = edge0.startSketchPoint
@@ -181,7 +178,7 @@ def findPoints(edge0, edge1):
         pointB = point0_0
         pointC = point1_0
     else:
-        adsk.core.Application.get().userInterface.messageBox('non-adjacent edges')
+        return False
             
     return pointA, pointB, pointC
 
@@ -195,7 +192,24 @@ def findMidPoint(line):
     midPoint = adsk.core.Point3D.create((x0 + x1)/2, (y0 + y1)/2, 0)
     return midPoint
 
-def createDogbone(diameter, termination, edge1, edge2):
+# Identifies one corner given an edge and returns the edges defining that corner
+def findCorner(edge):
+    faces = edge.faces
+    edges0 = faces.item(0).edges
+    edges1 = faces.item(1).edges
+    for e0 in edges0:
+        if e0 == edge:
+            continue
+        for e1 in edges1:
+            if e1 == edge:
+                continue
+            a0, a1 = e0.startVertex, e0.endVertex
+            b0, b1 = e1.startVertex, e1.endVertex
+            if a0 == b0 or a0 == b1 or a1 == b0 or a1 == b1:
+                return e0, e1
+    return False
+
+def createDogbone(diameter, edge):
     try:
         #initialization
         app = adsk.core.Application.get()
@@ -211,22 +225,25 @@ def createDogbone(diameter, termination, edge1, edge2):
         planes = rootComp.constructionPlanes
         
         #Find three points
-        pointTuple = findPoints(edge1, edge2)
-        
+        edgeTuple = findCorner(edge)
+        if not edgeTuple:
+            adsk.core.Application.get().userInterface.messageBox('non-adjacent edges')
+            return
+        edge0, edge1 = edgeTuple[0], edgeTuple[1]
             
-        #create a plane through the three points
+        #create a plane on the interior edge
         inputPlane = planes.createInput() #add occurence handling
-        tf = inputPlane.setByThreePoints(pointTuple[0], pointTuple[1], pointTuple[2])
+        tf = inputPlane.setByDistanceOnPath(edge, adsk.core.ValueInput.createByReal(0))
         if not tf:
-            ui.messageBox('Colinear edges')
+            ui.messageBox('Failed to create sketchplane')
             return
         plane = planes.add(inputPlane)
         inputPlane = None
         
         #create a sketch
         sketch = sketches.add(plane)
-        line1 = sketch.project(edge1)
-        line2 = sketch.project(edge2)
+        line1 = sketch.project(edge0)
+        line2 = sketch.project(edge1)
         line1 = line1.item(0)
         line2 = line2.item(0)
         
@@ -236,6 +253,9 @@ def createDogbone(diameter, termination, edge1, edge2):
         
         #create dogbone sketch
         pointTuple = findPoints(line1, line2)
+        if not pointTuple:   
+            adsk.core.Application.get().userInterface.messageBox('non-adjacent edges')
+            return
         line0 = lines.addByTwoPoints(pointTuple[0], pointTuple[1].geometry)
         line0.isConstruction = True
         line1.isConstruction = True
@@ -248,15 +268,14 @@ def createDogbone(diameter, termination, edge1, edge2):
         circle = circles.addByCenterRadius(line0.endSketchPoint, diameter / 2)
         constraints.addCoincident(pointTuple[0], circle)
         
-        #extrude the dogbone
+        #sweep the dogbone
         prof =  sketch.profiles.item(0)
-        extrudes = rootComp.features.extrudeFeatures
-        extInput = extrudes.createInput(prof, adsk.fusion.FeatureOperations.CutFeatureOperation)
+        sweeps = rootComp.features.sweepFeatures
+        swInput = sweeps.createInput(prof, rootComp.features.createPath(edge, False), adsk.fusion.FeatureOperations.CutFeatureOperation)
+        swInput.distanceOne = adsk.core.ValueInput.createByReal(1.0)
+        swInput.distanceTwo = adsk.core.ValueInput.createByReal(0)
 
-        extInput.setOneSideToExtent(termination, False)
-
-        # Create the extrusion.
-        extrudes.add(extInput)
+        sweeps.add(swInput)
         
     
     except Exception as error:
