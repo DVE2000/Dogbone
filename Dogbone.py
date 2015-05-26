@@ -73,13 +73,14 @@ def run(context):
                 # Get the data and settings from the command inputs.
                     for input in command.commandInputs:
                         if input.id == 'circDiameter':
-                            circ = input.value
+                            circStr = input.expression
+                            circVal = input.value
                         elif input.id == 'edgeSelect':
                             edges = []
                             for i in range(input.selectionCount):
                                 edges.append(input.selection(i).entity)
                     for edge in edges:
-                        createDogbone(circ, edge)
+                        createDogbone(circStr, circVal, edge)
                     # Do something with the results.
                 except:
                     if ui:
@@ -209,7 +210,7 @@ def findCorner(edge):
                 return e0, e1
     return False
 
-def createDogbone(diameter, edge):
+def createDogbone(circStr, circVal, edge):
     try:
         #initialization
         app = adsk.core.Application.get()
@@ -264,8 +265,8 @@ def createDogbone(diameter, edge):
         length = sketch.sketchDimensions.addDistanceDimension(line0.startSketchPoint, line0.endSketchPoint,
                                                      adsk.fusion.DimensionOrientations.AlignedDimensionOrientation,
                                                      findMidPoint(line0));
-        length.parameter.value = diameter / 2
-        circle = circles.addByCenterRadius(line0.endSketchPoint, diameter / 2)
+        length.parameter.expression = circStr +  "/ 2"
+        circle = circles.addByCenterRadius(line0.endSketchPoint, circVal / 2)
         constraints.addCoincident(pointTuple[0], circle)
         
         #sweep the dogbone
