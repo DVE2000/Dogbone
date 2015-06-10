@@ -257,7 +257,9 @@ def createDogbone(circStr, circVal, edge):
         if not pointTuple:   
             adsk.core.Application.get().userInterface.messageBox('non-adjacent edges')
             return
-        line0 = lines.addByTwoPoints(pointTuple[0], pointTuple[1].geometry)
+        tempPoint = adsk.core.Point3D.create((pointTuple[1].geometry.x + pointTuple[2].geometry.x)/2,
+                                              (pointTuple[1].geometry.y + pointTuple[2].geometry.y)/2, 0)
+        line0 = lines.addByTwoPoints(pointTuple[0], tempPoint)
         line0.isConstruction = True
         line1.isConstruction = True
         line2.isConstruction = True
