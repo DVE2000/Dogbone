@@ -1,17 +1,19 @@
-#Author-Casey Rogers
-#Description-An Add-In for making dog-bone fillets.
+##Author-Casey Rogers
+##Description-An Add-In for making dog-bone fillets.
 #Select edges interior to 90 degree angles. Specify a tool diameter and a radial offset. The add-in will then create a dog-bone with diamater equal to the tool diameter plus
 #twice the offset (as the offset is applied to the radius) at each selected edge.
-'''
-Version 1
-Current Functionality:
-Select edges interior to 90 degree angles. Specify a tool diameter and a radial offset.
-The add-in will then create a dogbone with diamater equal to the tool diameter plus
-twice the offset (as the offset is applied to the radius) at each selected edge.
-
-Known Bugs:
-The add-in's custom icon is not displaying in the user interface.
-'''
+##Select edges interior to 90 degree angles. Specify a tool diameter and a radial offset. The add-in will then create a dog-bone with diamater equal to the tool diameter plus
+##twice the offset (as the offset is applied to the radius) at each selected edge.
+#'''
+#Version 1
+#Current Functionality:
+#Select edges interior to 90 degree angles. Specify a tool diameter and a radial offset.
+#The add-in will then create a dogbone with diamater equal to the tool diameter plus
+#twice the offset (as the offset is applied to the radius) at each selected edge.
+#
+#Known Bugs:
+#The add-in's custom icon is not displaying in the user interface.
+#'''
 
 import adsk.core, adsk.fusion, traceback
 
@@ -32,7 +34,7 @@ def run(context):
                 super().__init__()
             def notify(self, args):
                 cmd = args.command
-        
+                product = app.activeProduct
                 inputs = cmd.commandInputs
         
                 selInput0 = inputs.addSelectionInput('edgeSelect', 'Interior Edges', 'Select the edge interior to each corner')
@@ -40,10 +42,10 @@ def run(context):
                 selInput0.setSelectionLimits(1,0)
 
                 initialVal = adsk.core.ValueInput.createByReal(0)
-                inputs.addValueInput('circDiameter', 'Tool Diameter', 'mm', initialVal)
+                inputs.addValueInput('circDiameter', 'Tool Diameter', product.unitsManager.defaultLengthUnits, initialVal)
 
                 initialVal = adsk.core.ValueInput.createByReal(0)
-                inputs.addValueInput('offset', 'Radial Offset', 'mm', initialVal)
+                inputs.addValueInput('offset', 'Radial Offset', product.unitsManager.defaultLengthUnits, initialVal)
 
         
                 # Connect up to command related events.
