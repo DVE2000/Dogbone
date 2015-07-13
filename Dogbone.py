@@ -126,7 +126,7 @@ def run(context):
 
         #add add-in to UI
         cmdDefs = ui.commandDefinitions
-        buttonDogbone = cmdDefs.addButtonDefinition('dogboneBtn', 'Dogbone', 'Creates a dogbone at the corner of two lines/edges')
+        buttonDogbone = cmdDefs.addButtonDefinition('dogboneBtn', 'Dogbone', 'Creates a dogbone at the corner of two lines/edges', 'Resources')
 
         dogboneCommandCreated = dogboneCommandCreatedEventHandler()
         buttonDogbone.commandCreated.add(dogboneCommandCreated)
