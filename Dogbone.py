@@ -1,5 +1,9 @@
-# Author-Casey Rogers
-# Description-An Add-In for making dog-bone fillets.
+#Author-Casey Rogers
+#Description-An Add-In for making dog-bone fillets.
+#Select edges interior to 90 degree angles. Specify a tool diameter and a radial offset. The add-in will then create a dog-bone with diamater equal to the tool diameter plus
+#twice the offset (as the offset is applied to the radius) at each selected edge.
+#Select edges interior to 90 degree angles. Specify a tool diameter and a radial offset. The add-in will then create a dog-bone with diamater equal to the tool diameter plus
+#twice the offset (as the offset is applied to the radius) at each selected edge.
 
 # Version 1
 # Current Functionality:
@@ -11,11 +15,51 @@
 #The add-in's custom icon is not displaying in the user interface.
 
 import adsk.core, adsk.fusion, traceback
+import math
 
 handlers = []
 
-
-
+def getAngleBetweenFaces(edge):
+    # Verify that the two faces are planar.
+    face1 = edge.faces.item(0)
+    face2 = edge.faces.item(1)      
+    if face1 and face2:
+        if face1.geometry.objectType != adsk.core.Plane.classType() or face2.geometry.objectType != adsk.core.Plane.classType():
+            return 0
+    else:
+        return 0
+       
+    # Get the normal of each face.
+    ret = face1.evaluator.getNormalAtPoint(face1.pointOnFace)
+    normal1 = ret[1]
+    ret = face2.evaluator.getNormalAtPoint(face2.pointOnFace)
+    normal2 = ret[1]
+    # Get the angle between the normals.      
+    normalAngle = normal1.angleTo(normal2)
+   
+    # Get the co-edge of the selected edge for face1.
+    if edge.coEdges.item(0).loop.face == face1:
+        coEdge = edge.coEdges.item(0)
+    elif edge.coEdges.item(1).loop.face == face1:
+        coEdge = edge.coEdges.item(1)
+ 
+    # Create a vector that represents the direction of the co-edge.
+    if coEdge.isOpposedToEdge:
+        edgeDir = edge.startVertex.geometry.vectorTo(edge.endVertex.geometry)
+    else:
+        edgeDir = edge.endVertex.geometry.vectorTo(edge.startVertex.geometry)
+ 
+    # Get the cross product of the face normals.
+    cross = normal1.crossProduct(normal2)
+   
+    # Check to see if the cross product is in the same or opposite direction
+    # of the co-edge direction.  If it's opposed then it's a convex angle.
+    if edgeDir.angleTo(cross) > math.pi/2:
+        angle = (math.pi * 2) - (math.pi - normalAngle)
+    else:
+        angle = math.pi - normalAngle
+ 
+    return angle 
 
 def run(context):
     ui = None
@@ -32,8 +76,9 @@ def run(context):
                 product = app.activeProduct
                 inputs = cmd.commandInputs
         
-                selInput0 = inputs.addSelectionInput('edgeSelect', 'Interior Edges', 'Select the edge interior to each corner')
+                selInput0 = inputs.addSelectionInput('Select', 'Interior Edges or Solid Bodies', 'Select the edge interior to each corner, or a body to apply to all internal edges')
                 selInput0.addSelectionFilter('LinearEdges')
+                selInput0.addSelectionFilter('SolidBodies')
                 selInput0.setSelectionLimits(1,0)
 
                 initialVal = adsk.core.ValueInput.createByReal(0)
@@ -65,17 +110,43 @@ def run(context):
 
                     # Get the data and settings from the command inputs.
                     offStr = None
-                    offVal = None
                     for input in command.commandInputs:
                         if input.id == 'circDiameter': 
                             circStr = input.expression
                             circVal = input.value
                         elif input.id == 'offset':
                             offStr = input.expression
-                        elif input.id == 'edgeSelect':
+                        elif input.id == 'Select':                                                
                             edges = []
+                            bodies = []                            
                             for i in range(input.selectionCount):
-                                edges.append(input.selection(i).entity)
+                                if input.selection(i).entity.objectType == adsk.fusion.BRepBody.classType():                            
+                                    bodies.append(input.selection(i).entity)           
+                                elif input.selection(i).entity.objectType == adsk.fusion.BRepEdge.classType(): 
+                                    edges.append(input.selection(i).entity)
+                            
+                            # Get all edges in the selected bodies
+                            for body in bodies:
+                                
+                                # Get all Edges of the body
+                                bodyEdges = body.edges
+                            
+                                # loop Through Edges
+                                for bodyEdge in bodyEdges:
+                                
+                                    # Check if edge is linear
+                                    if bodyEdge.geometry.objectType == adsk.core.Line3D.classType():                        
+                                        
+                                        # Check if edge is vertical
+                                        if math.fabs(bodyEdge.geometry.startPoint.x - bodyEdge.geometry.endPoint.x) < .00001 \
+                                           and math.fabs(bodyEdge.geometry.startPoint.y - bodyEdge.geometry.endPoint.y) <.00001:
+
+                                            # Check if its an internal edge
+                                            if (getAngleBetweenFaces(bodyEdge) < math.pi ):
+                                                
+                                                # Add edge to the selection 
+                                                edges.append(bodyEdge)
+
                     startIndex, endIndex = None, None
                     # Create a dogbone for each edge specified
                     for edge in edges:
