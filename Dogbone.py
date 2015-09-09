@@ -4,6 +4,8 @@
 #twice the offset (as the offset is applied to the radius) at each selected edge.
 #Select edges interior to 90 degree angles. Specify a tool diameter and a radial offset. The add-in will then create a dog-bone with diamater equal to the tool diameter plus
 #twice the offset (as the offset is applied to the radius) at each selected edge.
+#Select edges interior to 90 degree angles. Specify a tool diameter and a radial offset. The add-in will then create a dog-bone with diamater equal to the tool diameter plus
+#twice the offset (as the offset is applied to the radius) at each selected edge.
 
 # Version 1
 # Current Functionality:
