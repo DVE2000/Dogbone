@@ -155,6 +155,8 @@ def run(context):
                         if not startStop:
                             ui.messageBox("Error in Dogbone creation")
                             return
+                        adsk.doEvents()
+                        app.activeViewport.refresh()
                         if startIndex == None:
                             startIndex = startStop[0]
                         endIndex =startStop[1]
@@ -316,6 +318,7 @@ def createDogbone(circStr, circVal, edge, offStr):
         rootComp = design.rootComponent
         sketches = rootComp.sketches
         planes = rootComp.constructionPlanes
+        timeline = design.timeline
 
         # Find two edges that form the corner to be filleted
         edgeTuple = findCorner(edge)
@@ -378,11 +381,14 @@ def createDogbone(circStr, circVal, edge, offStr):
         swInput.distanceOne = adsk.core.ValueInput.createByReal(1.0)
         swInput.distanceTwo = adsk.core.ValueInput.createByReal(0)
 
-        sw = sweeps.add(swInput)
-        if not sw:
-            return
+        try:
+            sw = sweeps.add(swInput)
+            if not sw:
+                return
+        except:
+            pass
         # Record the timeline index of the last feature createDogbone makes
-        endIndex = sw.timelineObject.index
+        endIndex = timeline.markerPosition - 1
         return startIndex, endIndex
 
 
