@@ -85,6 +85,8 @@ def run(context):
                 initialVal = adsk.core.ValueInput.createByReal(0)
                 inputs.addValueInput('offset', 'Radial Offset', product.unitsManager.defaultLengthUnits, initialVal)
 
+                boolInp = inputs.addBoolValueInput("yup", "Y-Up", True)
+                boolInp.initialValue = False
 
                 # Connect up to command related events.
                 onExecute = CommandExecutedHandler()
@@ -114,6 +116,8 @@ def run(context):
                             circVal = input.value
                         elif input.id == 'offset':
                             offStr = input.expression
+                        elif input.id == 'yup':
+                            yup = input.value
                         elif input.id == 'Select':                                                
                             edges = []
                             bodies = []                            
@@ -123,24 +127,23 @@ def run(context):
                                 elif input.selection(i).entity.objectType == adsk.fusion.BRepEdge.classType(): 
                                     edges.append(input.selection(i).entity)
                             
-                            # Get all edges in the selected bodies
-                            for body in bodies:
+                    # Get all edges in the selected bodies
+                    for body in bodies:
                                 
-                                # Get all Edges of the body
-                                bodyEdges = body.edges
+                        # Get all Edges of the body
+                        bodyEdges = body.edges
                             
-                                # loop Through Edges
-                                for bodyEdge in bodyEdges:
+                        # loop Through Edges
+                        for bodyEdge in bodyEdges:
                                 
-                                    # Check if edge is linear
-                                    if bodyEdge.geometry.objectType == adsk.core.Line3D.classType():                        
+                            # Check if edge is linear
+                            if bodyEdge.geometry.objectType == adsk.core.Line3D.classType():                        
                                         
-                                        # Check if edge is vertical
-                                        if math.fabs(bodyEdge.geometry.startPoint.x - bodyEdge.geometry.endPoint.x) < .00001 \
-                                           and math.fabs(bodyEdge.geometry.startPoint.y - bodyEdge.geometry.endPoint.y) <.00001:
+                                # Check if edge is vertical
+                                if isVertical(bodyEdge, yup):
 
-                                            # Check if its an internal edge
-                                            if (getAngleBetweenFaces(bodyEdge) < math.pi ):
+                                    # Check if its an internal edge
+                                    if (getAngleBetweenFaces(bodyEdge) < math.pi ):
                                                 
                                                 # Add edge to the selection 
                                                 edges.append(bodyEdge)
@@ -287,6 +290,15 @@ def findCorner(edge):
             if a0 == b0 or a0 == b1 or a1 == b0 or a1 == b1:
                 return e0, e1
     return False
+
+# Checks if an edge is verticle
+    # Check if edge is vertical
+def isVertical(e, yup):
+    if yup:
+        return math.fabs(e.geometry.startPoint.x - e.geometry.endPoint.x) < .00001 \
+            and math.fabs(e.geometry.startPoint.z - e.geometry.endPoint.z) <.00001
+    return math.fabs(e.geometry.startPoint.x - e.geometry.endPoint.x) < .00001 \
+        and math.fabs(e.geometry.startPoint.y - e.geometry.endPoint.y) <.00001
 
 # Creates a dogbone with the given offset and tool diamaeter parameters at the
 # specified EDGE.
