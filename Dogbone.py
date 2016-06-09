@@ -17,6 +17,8 @@ from . import utils
 
 
 class DogboneCommand(object):
+    COMMAND_ID = "dogboneBtn"
+
     def __init__(self):
         self.app = adsk.core.Application.get()
         self.ui = self.app.userInterface
@@ -30,9 +32,7 @@ class DogboneCommand(object):
         self.edges = []
         self.benchmark = False
 
-        # Note: we need to maintain a reference to each handler, otherwise the handlers will be GC'd and SWIG will be
-        # unable to call our callbacks. Learned this the hard way!
-        self.handlers = []  # needed to prevent GC of SWIG objects
+        self.handlers = utils.HandlerHelper()
 
     def addButton(self):
         # clean up any crashed instances of the button if existing
@@ -41,53 +41,12 @@ class DogboneCommand(object):
         except:
             pass
 
-        class CreateHandler(adsk.core.CommandCreatedEventHandler):
-            def __init__(handler):
-                super(CreateHandler, handler).__init__()
-                self.handlers.append(handler)  # needed to prevent GC of SWIG objects
-
-            def notify(handler, args):
-                try:
-                    self.onCreate(args)
-                    # Connect up to command related events.
-                    args.command.execute.add(ExecHandler())
-                    args.command.validateInputs.add(ValidateInputsHandler())
-                except:
-                    utils.messageBox(traceback.format_exc())
-
-        class ExecHandler(adsk.core.CommandEventHandler):
-            def __init__(handler):
-                super(ExecHandler, handler).__init__()
-                self.handlers.append(handler)  # needed to prevent GC of SWIG objects
-
-            def notify(handler, args):
-                try:
-                    start = time.time()
-
-                    self.onExecute(args)
-
-                    if self.benchmark:
-                        utils.messageBox("Benchmark: {:.02f} sec processing {} edges".format(
-                            time.time() - start, len(self.edges)))
-                except:
-                    utils.messageBox(traceback.format_exc())
-
-        class ValidateInputsHandler(adsk.core.ValidateInputsEventHandler):
-            def __init__(handler):
-                super(ValidateInputsHandler, handler).__init__()
-                self.handlers.append(handler)  # needed to prevent GC of SWIG objects
-
-            def notify(handler, args):
-                try:
-                    self.onValidate(args)
-                except:
-                    utils.messageBox(traceback.format_exc())
-
         # add add-in to UI
         buttonDogbone = self.ui.commandDefinitions.addButtonDefinition(
-            'dogboneBtn', 'Dogbone', 'Creates a dogbone at the corner of two lines/edges', 'Resources')
+            self.COMMAND_ID, 'Dogbone', 'Creates a dogbone at the corner of two lines/edges', 'Resources')
 
-        buttonDogbone.commandCreated.add(CreateHandler())
+        buttonDogbone.commandCreated.add(self.handlers.make_handler(adsk.core.CommandCreatedEventHandler,
+                                                                    self.onCreate))
 
         createPanel = self.ui.allToolbarPanels.itemById('SolidCreatePanel')
         buttonControl = createPanel.controls.addCommand(buttonDogbone, 'dogboneBtn')
@@ -95,6 +54,15 @@ class DogboneCommand(object):
         # Make the button available in the panel.
         buttonControl.isPromotedByDefault = True
         buttonControl.isPromoted = True
+
+    def removeButton(self):
+        cmdDef = self.ui.commandDefinitions.itemById(self.COMMAND_ID)
+        if cmdDef:
+            cmdDef.deleteMe()
+        createPanel = self.ui.allToolbarPanels.itemById('SolidCreatePanel')
+        cntrl = createPanel.controls.itemById(self.COMMAND_ID)
+        if cntrl:
+            cntrl.deleteMe()
 
     def onCreate(self, args):
         inputs = args.command.commandInputs
@@ -129,35 +97,30 @@ class DogboneCommand(object):
 
         inputs.addBoolValueInput("benchmark", "Benchmark running time", True, "", self.benchmark)
 
-    def onExecute(self, args):
-        command = args.firingEvent.sender
+        # Add handlers to this command.
+        args.command.execute.add(self.handlers.make_handler(adsk.core.CommandEventHandler, self.onExecute))
+        args.command.validateInputs.add(
+            self.handlers.make_handler(adsk.core.ValidateInputsEventHandler, self.onValidate))
 
-        # Get the data and settings from the command inputs.
+    def parseInputs(self, inputs):
+        inputs = {inp.id: inp for inp in inputs}
+
+        self.circStr = inputs['circDiameter'].expression
+        self.circVal = inputs['circDiameter'].value
+        self.offStr = inputs['offset'].expression
+        self.offVal = inputs['offset'].value
+        self.outputUnconstrainedGeometry = inputs['outputUnconstrainedGeometry'].value
+        self.yUp = inputs['yUp'].value
+        self.benchmark = inputs['benchmark'].value
+
         self.edges = []
         bodies = []
-        for input in command.commandInputs:
-            if input.id == 'circDiameter':
-                self.circStr = input.expression
-                self.circVal = input.value
-            elif input.id == 'offset':
-                self.offStr = input.expression
-                self.offVal = input.value
-            elif input.id == 'outputUnconstrainedGeometry':
-                self.outputUnconstrainedGeometry = input.value
-            elif input.id == 'yUp':
-                self.yUp = input.value
-            elif input.id == 'benchmark':
-                self.benchmark = input.value
-            elif input.id == 'select':
-                for i in range(input.selectionCount):
-                    selType = input.selection(i).entity.objectType
-                    if selType == adsk.fusion.BRepBody.classType():
-                        bodies.append(input.selection(i).entity)
-                    elif selType == adsk.fusion.BRepEdge.classType():
-                        self.edges.append(input.selection(i).entity)
-            else:
-                raise RuntimeError("Unhandled parameter " + input.id)
-
+        for i in range(inputs['select'].selectionCount):
+            entity = inputs['select'].selection(i).entity
+            if entity.objectType == adsk.fusion.BRepBody.classType():
+                bodies.append(entity)
+            elif entity.objectType == adsk.fusion.BRepEdge.classType():
+                self.edges.append(entity)
 
         for body in bodies:
             for bodyEdge in body.edges:
@@ -168,7 +131,15 @@ class DogboneCommand(object):
                             # Add edge to the selection
                             self.edges.append(bodyEdge)
 
+    def onExecute(self, args):
+        start = time.time()
+
+        self.parseInputs(args.firingEvent.sender.commandInputs)
         self.createConsolidatedDogbones()
+
+        if self.benchmark:
+            utils.messageBox("Benchmark: {:.02f} sec processing {} edges".format(
+                time.time() - start, len(self.edges)))
 
     def onValidate(self, args):
         cmd = args.firingEvent.sender
@@ -181,15 +152,6 @@ class DogboneCommand(object):
                 if input.value <= 0:
                     args.areInputsValid = False
 
-    def removeButton(self):
-        cmdDef = self.ui.commandDefinitions.itemById('dogboneBtn')
-        if cmdDef:
-            cmdDef.deleteMe()
-        createPanel = self.ui.allToolbarPanels.itemById('SolidCreatePanel')
-        cntrl = createPanel.controls.itemById('dogboneBtn')
-        if cntrl:
-            cntrl.deleteMe()
-
     @property
     def design(self):
         return self.app.activeProduct
@@ -199,17 +161,10 @@ class DogboneCommand(object):
         return self.design.rootComponent
 
     @property
-    def rootComp(self):
-        return self.design.rootComponent
-
-    @property
     def originPlane(self):
-        return self.rootComp.xZConstructionPlane if self.yUp \
-            else self.rootComp.xYConstructionPlane
+        return self.rootComp.xZConstructionPlane if self.yUp else self.rootComp.xYConstructionPlane
 
-    #
     # The main algorithm
-    #
     def createConsolidatedDogbones(self):
         if not self.design:
             raise RuntimeError('No active Fusion design')
@@ -384,4 +339,3 @@ def stop(context):
         dog.removeButton()
     except:
         utils.messageBox(traceback.format_exc())
-

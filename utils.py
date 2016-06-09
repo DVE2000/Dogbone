@@ -1,4 +1,5 @@
 import math
+import traceback
 
 import adsk.core
 import adsk.fusion
@@ -123,3 +124,24 @@ def isVertical(e, yup):
 
 def messageBox(*args):
     adsk.core.Application.get().userInterface.messageBox(*args)
+
+
+class HandlerHelper(object):
+    def __init__(self):
+        # Note: we need to maintain a reference to each handler, otherwise the handlers will be GC'd and SWIG will be
+        # unable to call our callbacks. Learned this the hard way!
+        self.handlers = []  # needed to prevent GC of SWIG objects
+
+    def make_handler(self, handler_cls, notify_method, catch_exceptions=True):
+        class _Handler(handler_cls):
+            def notify(self, args):
+                if catch_exceptions:
+                    try:
+                        notify_method(args)
+                    except:
+                        messageBox('Failed:\n{}'.format(traceback.format_exc()))
+                else:
+                    notify_method(args)
+        h = _Handler()
+        self.handlers.append(h)
+        return h
