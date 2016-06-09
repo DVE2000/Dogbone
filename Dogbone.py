@@ -196,6 +196,10 @@ class DogboneCommand(object):
 
             sketch = sketches.add(h0Plane)
 
+            # Deferring sketch computation only works when using unconstrained geometry.
+            # Otherwise, projected lines in the sketch won't be computed.
+            sketch.isComputeDeferred = self.outputUnconstrainedGeometry
+
             for edge, (cornerEdge0, cornerEdge1) in edges:
                 if progressDialog.wasCancelled:
                     return
@@ -214,6 +218,7 @@ class DogboneCommand(object):
             adsk.doEvents()
 
             # Extrude-cut the dogbones
+            sketch.isComputeDeferred = False
             profileColl = adsk.core.ObjectCollection.create()
             for prof in sketch.profiles:
                 profileColl.add(prof)
@@ -226,8 +231,9 @@ class DogboneCommand(object):
 
         # group all the features we added
         endIndex = self.design.timeline.markerPosition - 1
-        if endIndex > startIndex:  # at least two items to group
-            self.design.timeline.timelineGroups.add(startIndex, endIndex)
+        # if endIndex > startIndex:  # at least two items to group
+            # utils.messageBox("{} - {}".format(startIndex, endIndex))
+            # self.design.timeline.timelineGroups.add(startIndex, endIndex)
 
         progressDialog.hide()
 
