@@ -25,7 +25,7 @@ class DogboneCommand(object):
 
         self.offStr = "0"
         self.offVal = None
-        self.circStr = "cutter"
+        self.circStr = "0.25 in"
         self.circVal = None
         self.yUp = False
         self.outputUnconstrainedGeometry = True
@@ -195,6 +195,7 @@ class DogboneCommand(object):
             h0Plane = planes.add(planeInput)
 
             sketch = sketches.add(h0Plane)
+            sketch.name = "Dogbone"
 
             # Deferring sketch computation only works when using unconstrained geometry.
             # Otherwise, projected lines in the sketch won't be computed.
