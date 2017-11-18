@@ -28,6 +28,9 @@ Additionally, other enhancements were added:
 - Robustness: Exception handling is consolidated, tracebacks always shown, launching the plugin automatically cleans up
   old crashed instances of the plugin.
 
+New enhancement by DVE200:
+- Add options to create dogbones along the longest side or shortest side of a mortise. This is useful when using non-through
+  mortises and you'd like the required holes to be hidden by the tenon.
 
 ## Limitations
 
@@ -60,3 +63,4 @@ Samples are licensed under the terms of the [MIT License](http://opensource.org/
 - Original version by Casey Rogers: http://github.com/caseycrogers/Dogbone
 - Modified by Patrick Rainsberry (Autodesk Fusion 360 Business Development)
 - Modified by David Liu (http://github.com/iceboundflame/)
+- Modified by DVE2000: http://github.com/DVE2000/Dogbone

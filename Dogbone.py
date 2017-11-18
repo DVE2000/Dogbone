@@ -25,12 +25,13 @@ class DogboneCommand(object):
 
         self.offStr = "0"
         self.offVal = None
-        self.circStr = "0.25 in"
+        self.circStr = "0.125 in"
         self.circVal = None
         self.yUp = False
         self.outputUnconstrainedGeometry = True
         self.edges = []
         self.benchmark = False
+        self.boneDirection = "both" 
 
         self.handlers = utils.HandlerHelper()
 
@@ -74,6 +75,11 @@ class DogboneCommand(object):
         selInput0.addSelectionFilter('SolidBodies')
         selInput0.setSelectionLimits(1,0)
 
+        typelist = inputs.addDropDownCommandInput('typeList', ' Select Dogbone Direction', adsk.core.DropDownStyles.LabeledIconDropDownStyle)
+        typelist.listItems.add('Along Both Sides', self.boneDirection == 'both', '')
+        typelist.listItems.add('Along Longest', self.boneDirection == 'longest', '')
+        typelist.listItems.add('Along Shortest', self.boneDirection == 'shortest', '')
+
         inp = inputs.addValueInput(
             'circDiameter', 'Tool Diameter', self.design.unitsManager.defaultLengthUnits,
             adsk.core.ValueInput.createByString(self.circStr))
@@ -112,6 +118,12 @@ class DogboneCommand(object):
         self.outputUnconstrainedGeometry = inputs['outputUnconstrainedGeometry'].value
         self.yUp = inputs['yUp'].value
         self.benchmark = inputs['benchmark'].value
+        if (inputs['typeList'].selectedItem.name == "Along Both Sides") :
+            self.boneDirection = "both"
+        if (inputs['typeList'].selectedItem.name == "Along Longest") :
+            self.boneDirection = "longest"
+        if (inputs['typeList'].selectedItem.name == "Along Shortest") :
+            self.boneDirection = "shortest"
 
         self.edges = []
         bodies = []
@@ -257,9 +269,22 @@ class DogboneCommand(object):
             ac.normalize()
             ad = ab.copy()
             ad.add(ac)
-            ad.normalize()
+            ad.normalize()          
             radius = self.circVal / 2 + self.offVal
             ad.scaleBy(radius)
+
+            if self.boneDirection != 'both':
+                if ab.length >= ac.length:
+                    if self.boneDirection == 'longest':
+                        ad = ac.copy()
+                    else:
+                        ad = ab.copy()
+                else:
+                    if self.boneDirection == 'longest':
+                        ad = ab.copy()
+                    else:
+                        ad = ac.copy()
+                ad.scaleBy(radius)
 
             d = a.copy()
             d.translateBy(ad)
@@ -273,16 +298,25 @@ class DogboneCommand(object):
             # Corner is defined by points c-a-b, a is where the edges meet.
             a, b, c = utils.findPoints(line1, line2)
 
-            # This is a temporary point for our Dogbone sketch's centerline to end at
-            d = adsk.core.Point3D.create((b.geometry.x + c.geometry.x) / 2,
-                                         (b.geometry.y + c.geometry.y) / 2, 0)
-            line0 = sketch.sketchCurves.sketchLines.addByTwoPoints(a, d)
+            if self.boneDirection == 'both':
+                # This is a temporary point for our Dogbone sketch's centerline to end at
+                d = adsk.core.Point3D.create((b.geometry.x + c.geometry.x) / 2,
+                                             (b.geometry.y + c.geometry.y) / 2, 0)
+                line0 = sketch.sketchCurves.sketchLines.addByTwoPoints(a, d)
+                # line0 should form line a-d that bisects angle c-a-b.
+                sketch.geometricConstraints.addSymmetry(line1, line2, line0)
+            else:
+                addX, addY = utils.findDogboneCenterPoint (self.boneDirection, self.circVal / 2, a, b, c)
+                d = adsk.core.Point3D.create(a.geometry.x + addX,
+                                             a.geometry.y + addY, 0)
+                line0 = sketch.sketchCurves.sketchLines.addByTwoPoints(a, d)
+                # Not sure what or if a constraint is required here
+                #sketch.geometricConstraints.addCoincident(line0.startSketchpoint, a)
 
             line0.isConstruction = True
             line1.isConstruction = True
             line2.isConstruction = True
-            # line0 should form line a-d that bisects angle c-a-b.
-            sketch.geometricConstraints.addSymmetry(line1, line2, line0)
+        
 
             # Constrain the length of the centerline to the radius of the desired dogbone
             length = sketch.sketchDimensions.addDistanceDimension(
