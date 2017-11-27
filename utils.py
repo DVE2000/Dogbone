@@ -122,6 +122,39 @@ def isVertical(e, yup):
            and math.fabs(e.geometry.startPoint.y - e.geometry.endPoint.y) <.00001
 
 
+# Return centerpoint for dogbone when using boneDirection #points[0] is the shared point
+def findDogboneCenterPoint(direction, radius, *points):
+    longestIndex = 2
+   
+    # Assume along longest and that longest line is the line using points[2]. Find longest line first. 
+    if (math.hypot(math.fabs(points[0].geometry.x - points[1].geometry.x), 
+                    math.fabs(points[0].geometry.y - points[1].geometry.y)) >= 
+         math.hypot(math.fabs(points[0].geometry.x - points[2].geometry.x), 
+                    math.fabs(points[0].geometry.y - points[2].geometry.y))):
+        longestIndex = 1
+
+    # If along shortest, just switch longest and shortest. What's in a name?
+    if (direction == 'shortest'):
+        longestIndex = (~longestIndex) & 3 # switch 1 to 2 or vice-versa
+
+    shortestIndex = (~longestIndex) & 3
+
+    angle = math.atan2(math.fabs(points[0].geometry.y - points[longestIndex].geometry.y), 
+                       math.fabs(points[0].geometry.x - points[longestIndex].geometry.x))
+
+    # Adjust for non-vertical and non-horizontal mortises with trig
+    addX = (radius / 2.0) * math.sin(angle)
+    addY = (radius / 2.0) * math.cos(angle)
+
+    # Figure out direction to move on "shortest" line
+    if points[0].geometry.y > points[shortestIndex].geometry.y:
+        addY *= -1.0
+    if points[0].geometry.x > points[shortestIndex].geometry.x:
+        addX *= -1.0
+
+    return addX, addY
+
+
 def messageBox(*args):
     adsk.core.Application.get().userInterface.messageBox(*args)
 
