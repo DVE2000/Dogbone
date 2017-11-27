@@ -23,7 +23,7 @@ class DogboneCommand(object):
         self.app = adsk.core.Application.get()
         self.ui = self.app.userInterface
 
-        self.offStr = "0"
+        self.offStr = "0 in"
         self.offVal = None
         self.circStr = "0.125 in"
         self.circVal = None
@@ -276,17 +276,18 @@ class DogboneCommand(object):
                        for p in utils.findPoints(cornerEdge0, cornerEdge1)]
             a.z = b.z = c.z = 0
             ab = a.vectorTo(b)
+            abRealLength = ab.length
             ab.normalize()
             ac = a.vectorTo(c)
+            acRealLength = ac.length
             ac.normalize()
             ad = ab.copy()
             ad.add(ac)
             ad.normalize()          
             radius = self.circVal / 2 + self.offVal
-            ad.scaleBy(radius)
 
             if self.boneDirection != 'both':
-                if ab.length >= ac.length:
+                if abRealLength >= acRealLength:
                     if self.boneDirection == 'longest':
                         ad = ac.copy()
                     else:
@@ -296,7 +297,8 @@ class DogboneCommand(object):
                         ad = ab.copy()
                     else:
                         ad = ac.copy()
-                ad.scaleBy(radius)
+
+            ad.scaleBy(radius)
 
             d = a.copy()
             d.translateBy(ad)
