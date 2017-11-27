@@ -66,6 +66,8 @@ class DogboneCommand(object):
             cntrl.deleteMe()
 
     def onCreate(self, args):
+
+
         inputs = args.command.commandInputs
 
         selInput0 = inputs.addSelectionInput(
@@ -144,14 +146,24 @@ class DogboneCommand(object):
                             self.edges.append(bodyEdge)
 
     def onExecute(self, args):
+        app = adsk.core.Application.get()
         start = time.time()
+        doc = app.activeDocument  
+        design = app.activeProduct
+        timeLine = design.timeline
+        timeLineGroups = timeLine.timelineGroups
+        timelineCurrentIndex = timeLine.markerPosition
+        
 
         self.parseInputs(args.firingEvent.sender.commandInputs)
         self.createConsolidatedDogbones()
 
         if self.benchmark:
-            utils.messageBox("Benchmark: {:.02f} sec processing {} edges".format(
-                time.time() - start, len(self.edges)))
+            utils.messageBox("Benchmark: {:.02f} sec processing {} edges".format(time.time() - start, len(self.edges)))
+        
+        timelineEndIndex = timeLine.markerPosition
+        exportTimelineGroup = timeLineGroups.add(timelineCurrentIndex, timelineEndIndex-1)# the minus 1 thing works, weird.
+        
 
     def onValidate(self, args):
         cmd = args.firingEvent.sender
