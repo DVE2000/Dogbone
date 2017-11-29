@@ -31,7 +31,8 @@ class DogboneCommand(object):
         self.outputUnconstrainedGeometry = True
         self.edges = []
         self.benchmark = False
-        self.boneDirection = "both" 
+        self.boneDirection = "both"
+        self.minimal = False
 
         self.handlers = utils.HandlerHelper()
 
@@ -101,7 +102,14 @@ class DogboneCommand(object):
                                        True, "", self.outputUnconstrainedGeometry)
         inp.tooltip = "~5x faster, but non-parametric. " \
                       "If enabled, you'll have to delete and re-generate dogbones if geometry " \
-                      "preceding dogbones is updated."
+                      "preceding dogbones is updated. " \
+                      "And if using parametric, the the constraints don't really help."
+
+        inp = inputs.addBoolValueInput("minimal", "Attempt Minimal dogbones", True, "", self.minimal)
+        inp.tooltip = "Offsets the dogbone circle inwards by 10% to get a minimal dogbone. " \
+                      "Workpieces will probably need to be hammered together.\n" \
+                      "Only works with \"Along Both Sides\"."
+        inp.isVisible = (self.boneDirection == 'both')
 
         inputs.addBoolValueInput("benchmark", "Benchmark running time", True, "", self.benchmark)
 
@@ -109,6 +117,8 @@ class DogboneCommand(object):
         args.command.execute.add(self.handlers.make_handler(adsk.core.CommandEventHandler, self.onExecute))
         args.command.validateInputs.add(
             self.handlers.make_handler(adsk.core.ValidateInputsEventHandler, self.onValidate))
+        args.command.inputChanged.add(
+            self.handlers.make_handler(adsk.core.InputChangedEventHandler, self.onInputChanged))
 
     def parseInputs(self, inputs):
         inputs = {inp.id: inp for inp in inputs}
@@ -126,6 +136,8 @@ class DogboneCommand(object):
             self.boneDirection = "longest"
         if (inputs['typeList'].selectedItem.name == "Along Shortest") :
             self.boneDirection = "shortest"
+
+        self.minimal = inputs['minimal'].value
 
         self.edges = []
         bodies = []
@@ -175,6 +187,18 @@ class DogboneCommand(object):
             elif input.id == 'circDiameter':
                 if input.value <= 0:
                     args.areInputsValid = False
+
+    def onInputChanged(self, args):
+        cmd = args.firingEvent.sender
+
+        for input in cmd.commandInputs:
+            if input.id == 'typeList':
+                typeList = adsk.core.DropDownCommandInput.cast(cmd.commandInputs.itemById('typeList'))
+                minimal = adsk.core.BoolValueCommandInput.cast(cmd.commandInputs.itemById('minimal'))
+                if typeList.selectedItem.name == "Along Both Sides":
+                    minimal.isVisible = True
+                else:
+                    minimal.isVisible = False
 
     @property
     def design(self):
@@ -285,6 +309,7 @@ class DogboneCommand(object):
             ad.add(ac)
             ad.normalize()          
             radius = self.circVal / 2 + self.offVal
+            position = radius
 
             if self.boneDirection != 'both':
                 if abRealLength >= acRealLength:
@@ -297,8 +322,10 @@ class DogboneCommand(object):
                         ad = ab.copy()
                     else:
                         ad = ac.copy()
+            elif self.minimal:
+                position += self.circVal / 10.0
 
-            ad.scaleBy(radius)
+            ad.scaleBy(position)
 
             d = a.copy()
             d.translateBy(ad)
@@ -314,34 +341,46 @@ class DogboneCommand(object):
 
             if self.boneDirection == 'both':
                 # This is a temporary point for our Dogbone sketch's centerline to end at
-                d = adsk.core.Point3D.create((b.geometry.x + c.geometry.x) / 2,
-                                             (b.geometry.y + c.geometry.y) / 2, 0)
+                addX = (b.geometry.x + c.geometry.x) / 2 + .5
+                addY = (b.geometry.y + c.geometry.y) / 2 + 0.5
+
+                d = adsk.core.Point3D.create(addX, addY, 0)
                 line0 = sketch.sketchCurves.sketchLines.addByTwoPoints(a, d)
                 # line0 should form line a-d that bisects angle c-a-b.
                 sketch.geometricConstraints.addSymmetry(line1, line2, line0)
             else:
-                addX, addY = utils.findDogboneCenterPoint (self.boneDirection, self.circVal / 2, a, b, c)
+                addX, addY, parallelLine = utils.findDogboneCenterPoint (self.boneDirection, self.circVal / 2, a, b, c)
                 d = adsk.core.Point3D.create(a.geometry.x + addX,
                                              a.geometry.y + addY, 0)
                 line0 = sketch.sketchCurves.sketchLines.addByTwoPoints(a, d)
-                # Not sure what or if a constraint is required here
-                #sketch.geometricConstraints.addCoincident(line0.startSketchpoint, a)
+                # We can add a constraint to be parallel to a construction line. Problem is, if underlying sketch changes, The dogbones are still messed up
+                if parallelLine == 1:
+                    lineToBeParallelTo = line1
+                else:
+                    lineToBeParallelTo = line2
+                sketch.geometricConstraints.addParallel(line0, lineToBeParallelTo)
 
             line0.isConstruction = True
             line1.isConstruction = True
             line2.isConstruction = True
         
-
             # Constrain the length of the centerline to the radius of the desired dogbone
             length = sketch.sketchDimensions.addDistanceDimension(
                 line0.startSketchPoint, line0.endSketchPoint,
                 adsk.fusion.DimensionOrientations.AlignedDimensionOrientation,
                 utils.findMidPoint(line0))
             length.parameter.expression = self.circStr + "/ 2 + " + self.offStr
+            if self.boneDirection == 'both' and self.minimal:
+                length.parameter.expression = length.parameter.expression + " + " + self.circStr + " /10"
+
 
             # Create the dogbone's profile
-            circle = sketch.sketchCurves.sketchCircles.addByCenterRadius(line0.endSketchPoint, self.circVal / 2)
-            sketch.geometricConstraints.addCoincident(a, circle)
+            circle = sketch.sketchCurves.sketchCircles.addByCenterRadius(line0.endSketchPoint, self.circVal / 2 + self.offVal)
+            if self.boneDirection == 'both' and not self.minimal:
+                sketch.geometricConstraints.addCoincident(a, circle)
+            else:
+                diameterDimension = adsk.core.Point3D.create(a.geometry.x, a.geometry.y, 0)
+                sketch.sketchDimensions.addDiameterDimension(circle, diameterDimension)
 
     def groupEdgesByVExtent(self, edges):
         """Group edges by their vertical extent, returning a dict where the keys are vertical extents

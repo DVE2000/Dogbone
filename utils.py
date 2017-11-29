@@ -152,7 +152,7 @@ def findDogboneCenterPoint(direction, radius, *points):
     if points[0].geometry.x > points[shortestIndex].geometry.x:
         addX *= -1.0
 
-    return addX, addY
+    return addX, addY, shortestIndex
 
 
 def messageBox(*args):
