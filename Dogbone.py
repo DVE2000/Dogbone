@@ -1,4 +1,4 @@
-#Author-Casey Rogers and Patrick Rainsberry and David Liu
+#Author-Casey Rogers and Patrick Rainsberry and David Liu and Gary Singer
 #Description-An Add-In for making dog-bone fillets.
 
 # Select edges interior to 90 degree angles. Specify a tool diameter and a radial offset.
@@ -23,16 +23,22 @@ class DogboneCommand(object):
         self.app = adsk.core.Application.get()
         self.ui = self.app.userInterface
 
+        # Additional offset for the cutter. Effectively increases the diameter
         self.offStr = "0 in"
         self.offVal = None
+        # Diameter of the cutter
         self.circStr = "0.125 in"
         self.circVal = None
         self.yUp = False
+        # Quck and dirty. Although constrained has some issues still
         self.outputUnconstrainedGeometry = True
         self.edges = []
+        self.bodies = []
+        #self.components = []
         self.benchmark = False
         self.boneDirection = "both"
         self.minimal = False
+        self.minimalPercentage = 10.0
 
         self.handlers = utils.HandlerHelper()
 
@@ -68,8 +74,10 @@ class DogboneCommand(object):
 
     def onCreate(self, args):
 
-
         inputs = args.command.commandInputs
+        args.command.setDialogInitialSize(425, 475)
+        args.command.setDialogMinimumSize(425, 475)
+
 
         selInput0 = inputs.addSelectionInput(
             'select', 'Interior Edges or Solid Bodies',
@@ -105,11 +113,15 @@ class DogboneCommand(object):
                       "preceding dogbones is updated. " \
                       "And if using parametric, the the constraints don't really help."
 
-        inp = inputs.addBoolValueInput("minimal", "Attempt Minimal dogbones", True, "", self.minimal)
-        inp.tooltip = "Offsets the dogbone circle inwards by 10% to get a minimal dogbone. " \
+        inp = inputs.addBoolValueInput("minimal", "Create Minimal dogbones", True, "", self.minimal)
+        inp.tooltip = "Offsets the dogbone circle inwards by (default) 10% to get a minimal dogbone. " \
                       "Workpieces will probably need to be hammered together.\n" \
                       "Only works with \"Along Both Sides\"."
         inp.isVisible = (self.boneDirection == 'both')
+
+        inp = inputs.addFloatSpinnerCommandInput('minimalPercentage', 'Minimal Dogbone Offset Percentage(8.0-14.2)', '', 8.0 , 14.2, .2, self.minimalPercentage)
+        inp.tooltip = "Percentage offset for minimal dogbone. Bigger value is a smaller cutout and more hammering!"
+        inp.isVisible = (self.boneDirection == 'both' and self.minimal)
 
         inputs.addBoolValueInput("benchmark", "Benchmark running time", True, "", self.benchmark)
 
@@ -138,14 +150,19 @@ class DogboneCommand(object):
             self.boneDirection = "shortest"
 
         self.minimal = inputs['minimal'].value
+        self.minimalPercentage = inputs['minimalPercentage'].value
 
         self.edges = []
+        self.bodies = []
         bodies = []
         for i in range(inputs['select'].selectionCount):
             entity = inputs['select'].selection(i).entity
             if entity.objectType == adsk.fusion.BRepBody.classType():
+                self.bodies.append(entity)
                 bodies.append(entity)
             elif entity.objectType == adsk.fusion.BRepEdge.classType():
+                if entity.body not in self.bodies:
+                    self.bodies.append(entity.body)
                 self.edges.append(entity)
 
         for body in bodies:
@@ -156,6 +173,7 @@ class DogboneCommand(object):
                         if utils.getAngleBetweenFaces(bodyEdge) < math.pi:
                             # Add edge to the selection
                             self.edges.append(bodyEdge)
+       
 
     def onExecute(self, args):
         app = adsk.core.Application.get()
@@ -192,13 +210,19 @@ class DogboneCommand(object):
         cmd = args.firingEvent.sender
 
         for input in cmd.commandInputs:
-            if input.id == 'typeList':
+            if input.id in ('typeList', 'minimal'):
                 typeList = adsk.core.DropDownCommandInput.cast(cmd.commandInputs.itemById('typeList'))
                 minimal = adsk.core.BoolValueCommandInput.cast(cmd.commandInputs.itemById('minimal'))
+                minimalPercentage = adsk.core.FloatSpinnerCommandInput.cast(cmd.commandInputs.itemById('minimalPercentage'))
                 if typeList.selectedItem.name == "Along Both Sides":
                     minimal.isVisible = True
+                    if minimal.value:
+                        minimalPercentage.isVisible = True
+                    else:
+                        minimalPercentage.isVisible = False
                 else:
                     minimal.isVisible = False
+                    minimalPercentage.isVisible = False
 
     @property
     def design(self):
@@ -273,6 +297,7 @@ class DogboneCommand(object):
                 profileColl.add(prof)
             exInput = extrudes.createInput(profileColl, adsk.fusion.FeatureOperations.CutFeatureOperation)
             exInput.setDistanceExtent(False, adsk.core.ValueInput.createByReal(h1 - h0))
+            exInput.participantBodies = self.bodies
             extrudes.add(exInput)
 
         progressDialog.message = "All done. Grouping timeline operations."
@@ -323,7 +348,7 @@ class DogboneCommand(object):
                     else:
                         ad = ac.copy()
             elif self.minimal:
-                position += self.circVal / 10.0
+                position += self.circVal / (100.0 / self.minimalPercentage)
 
             ad.scaleBy(position)
 
@@ -341,8 +366,8 @@ class DogboneCommand(object):
 
             if self.boneDirection == 'both':
                 # This is a temporary point for our Dogbone sketch's centerline to end at
-                addX = (b.geometry.x + c.geometry.x) / 2 + .5
-                addY = (b.geometry.y + c.geometry.y) / 2 + 0.5
+                addX = (b.geometry.x + c.geometry.x) / 2
+                addY = (b.geometry.y + c.geometry.y) / 2
 
                 d = adsk.core.Point3D.create(addX, addY, 0)
                 line0 = sketch.sketchCurves.sketchLines.addByTwoPoints(a, d)
@@ -371,16 +396,16 @@ class DogboneCommand(object):
                 utils.findMidPoint(line0))
             length.parameter.expression = self.circStr + "/ 2 + " + self.offStr
             if self.boneDirection == 'both' and self.minimal:
-                length.parameter.expression = length.parameter.expression + " + " + self.circStr + " /10"
+                length.parameter.expression = length.parameter.expression + " + " + self.circStr + " / (100.0 / " + str(self.minimalPercentage) + ")"
 
 
             # Create the dogbone's profile
             circle = sketch.sketchCurves.sketchCircles.addByCenterRadius(line0.endSketchPoint, self.circVal / 2 + self.offVal)
-            if self.boneDirection == 'both' and not self.minimal:
-                sketch.geometricConstraints.addCoincident(a, circle)
-            else:
-                diameterDimension = adsk.core.Point3D.create(a.geometry.x, a.geometry.y, 0)
-                sketch.sketchDimensions.addDiameterDimension(circle, diameterDimension)
+            #if self.boneDirection == 'both' and not self.minimal:
+            #    sketch.geometricConstraints.addCoincident(a, circle)
+            #else:
+            diameterDimension = adsk.core.Point3D.create(a.geometry.x, a.geometry.y, 0)
+            sketch.sketchDimensions.addDiameterDimension(circle, diameterDimension)
 
     def groupEdgesByVExtent(self, edges):
         """Group edges by their vertical extent, returning a dict where the keys are vertical extents

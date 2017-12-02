@@ -31,7 +31,8 @@ Additionally, other enhancements were added:
 New enhancements by DVE2000:
 - Add options to create dogbones along the longest side or shortest side of a mortise. This is useful when using non-through
   mortises and you'd like the required holes to be hidden by the tenon. Or even just for looks.
-- Add option to try create a minimal Dogbone. See http://fablab.ruc.dk/more-elegant-cnc-dogbones/
+- Add option to create a minimal Dogbone. See http://fablab.ruc.dk/more-elegant-cnc-dogbones/
+  The default offset percent is 10%, but it can be changed from 8% to 14.2%.
 
 ## Limitations
 
@@ -40,8 +41,8 @@ Still TODO:
 - Handle acute angles (<90deg) by generating a slot.
 - Allow user to specify orientation (i.e. select "vertical" vector) instead of only handling edges.
 - Handle duplicate edges (avoid generating duplicate overlapping geometry)
-- Even if you use the slower "constrained" version, once the initial sketch is modified, the dogbones will not be 
-  recreated properly. Just add the dogbones last, or delete them before changing the underlying sketch and redo them afterwards.
+- Even if you use the slower "constrained" version, once the initial sketch is modified earlier in the timeline, the dogbones will
+  not be recreated properly. Just add the dogbones last, or delete them before changing the underlying sketch and redo them afterwards.
   I need to figure out the appropriate constraints...
 
 ## Usage:
