@@ -114,12 +114,16 @@ def findCorner(edge):
 
 
 # Check if edge is vertical
-def isVertical(e, yup):
-    if yup:
+def isVertical(e, upPlane):
+    if upPlane == 'Z':
+        return math.fabs(e.geometry.startPoint.x - e.geometry.endPoint.x) < .00001 \
+               and math.fabs(e.geometry.startPoint.y - e.geometry.endPoint.y) <.00001
+    if upPlane == 'Y':
         return math.fabs(e.geometry.startPoint.x - e.geometry.endPoint.x) < .00001 \
                and math.fabs(e.geometry.startPoint.z - e.geometry.endPoint.z) <.00001
-    return math.fabs(e.geometry.startPoint.x - e.geometry.endPoint.x) < .00001 \
-           and math.fabs(e.geometry.startPoint.y - e.geometry.endPoint.y) <.00001
+    else:
+        return math.fabs(e.geometry.startPoint.y - e.geometry.endPoint.y) < .00001 \
+               and math.fabs(e.geometry.startPoint.z - e.geometry.endPoint.z) <.00001
 
 
 # Return centerpoint for dogbone when using boneDirection #points[0] is the shared point

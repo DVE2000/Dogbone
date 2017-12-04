@@ -11,6 +11,8 @@ from collections import defaultdict
 import adsk.core, adsk.fusion
 import math
 import traceback
+import re
+import os
 
 import time
 from . import utils
@@ -25,22 +27,55 @@ class DogboneCommand(object):
 
         # Additional offset for the cutter. Effectively increases the diameter
         self.offStr = "0 in"
-        self.offVal = None
+        self.offVal = 0 
         # Diameter of the cutter
         self.circStr = "0.125 in"
-        self.circVal = None
-        self.yUp = False
+        self.circVal = 0
+        self.upPlane = 'Z'
         # Quck and dirty. Although constrained has some issues still
         self.outputUnconstrainedGeometry = True
         self.edges = []
         self.bodies = []
-        #self.components = []
         self.benchmark = False
         self.boneDirection = "both"
         self.minimal = False
         self.minimalPercentage = 10.0
 
         self.handlers = utils.HandlerHelper()
+
+        self.appPath = os.path.dirname(os.path.abspath(__file__))
+
+    def writeDefaults(self):
+        with open(os.path.join(self.appPath, 'defaults.dat'), 'w') as file:
+            file.write('offStr:' + self.offStr)
+            file.write('!offVal:' + str(self.offVal))
+            file.write('!circStr:' + self.circStr)
+            file.write('!circVal:' + str(self.circVal))
+            file.write('!upPlane:' + self.upPlane)
+            file.write('!outputUnconstrainedGeometry:' + str(self.outputUnconstrainedGeometry))
+            file.write('!benchmark:' + str(self.benchmark))
+            file.write('!boneDirection:' + self.boneDirection)
+            file.write('!minimal:' + str(self.minimal))
+            file.write('!minimalPercentage:' + str(self.minimalPercentage))
+    
+    def readDefaults(self): 
+        if not os.path.isfile(os.path.join(self.appPath, 'defaults.dat')):
+            return
+        with open(os.path.join(self.appPath, 'defaults.dat'), 'r') as file:
+            line = file.read()
+
+        for data in line.split('!'):
+            var, val = data.split(':')
+            if   var == 'offStr': self.offStr = val
+            elif var == 'offVal': self.offVal = float(val)
+            elif var == 'circStr': self.circStr = val
+            elif var == 'circVal': self.circVal = float(val)
+            elif var == 'upPlane': self.upPlane = val
+            elif var == 'outputUnconstrainedGeometry': self.outputUnconstrainedGeometry = bool(val)
+            elif var == 'benchmark': self.benchmark = val == 'True'
+            elif var == 'boneDirection': self.boneDirection = val
+            elif var == 'minimal': self.minimal = val == 'True'
+            elif var == 'minimalPercentage': self.minimalPercentage = float(val)
 
     def addButton(self):
         # clean up any crashed instances of the button if existing
@@ -74,6 +109,8 @@ class DogboneCommand(object):
 
     def onCreate(self, args):
 
+        self.readDefaults()
+
         inputs = args.command.commandInputs
         args.command.setDialogInitialSize(425, 475)
         args.command.setDialogMinimumSize(425, 475)
@@ -101,9 +138,11 @@ class DogboneCommand(object):
             adsk.core.ValueInput.createByString(self.offStr))
         inp.tooltip = "Additional increase to the radius of the dogbone."
 
-        inp = inputs.addBoolValueInput("yUp", "Y-Up", True, "", self.yUp)
-        inp.tooltip = "Controls which direction is vertical (parallel to cutter). " \
-                      "Check this box to use Y, otherwise Z."
+        inp = inputs.addDropDownCommandInput('upPlane', 'Up plane (parallel to cutter)', adsk.core.DropDownStyles.LabeledIconDropDownStyle)
+        inp.listItems.add('Z-Plane (Use XY faces)', self.upPlane == 'Z')
+        inp.listItems.add('Y-Plane (Use XZ faces)', self.upPlane == 'Y')
+        inp.listItems.add('X-Plane (Use YZ faces)', self.upPlane == 'X')
+        inp.tooltip = "Cut dogbones on selected plane face. The Add-In can be run 3 times on one body, changing the plane used each time "
 
         inp = inputs.addBoolValueInput("outputUnconstrainedGeometry",
                                        "Output unconstrained geometry",
@@ -140,7 +179,6 @@ class DogboneCommand(object):
         self.offStr = inputs['offset'].expression
         self.offVal = inputs['offset'].value
         self.outputUnconstrainedGeometry = inputs['outputUnconstrainedGeometry'].value
-        self.yUp = inputs['yUp'].value
         self.benchmark = inputs['benchmark'].value
         if (inputs['typeList'].selectedItem.name == "Along Both Sides") :
             self.boneDirection = "both"
@@ -148,6 +186,13 @@ class DogboneCommand(object):
             self.boneDirection = "longest"
         if (inputs['typeList'].selectedItem.name == "Along Shortest") :
             self.boneDirection = "shortest"
+        
+        if re.search(r'Z-Plane', inputs['upPlane'].selectedItem.name) is not None :
+            self.upPlane = 'Z'
+        elif re.search(r'Y-Plane', inputs['upPlane'].selectedItem.name) is not None :
+            self.upPlane = 'Y'
+        else:
+            self.upPlane = 'X'
 
         self.minimal = inputs['minimal'].value
         self.minimalPercentage = inputs['minimalPercentage'].value
@@ -168,7 +213,7 @@ class DogboneCommand(object):
         for body in bodies:
             for bodyEdge in body.edges:
                 if bodyEdge.geometry.objectType == adsk.core.Line3D.classType():
-                    if utils.isVertical(bodyEdge, self.yUp):
+                    if utils.isVertical(bodyEdge, self.upPlane):
                         # Check if its an internal edge
                         if utils.getAngleBetweenFaces(bodyEdge) < math.pi:
                             # Add edge to the selection
@@ -176,6 +221,7 @@ class DogboneCommand(object):
        
 
     def onExecute(self, args):
+
         app = adsk.core.Application.get()
         start = time.time()
         doc = app.activeDocument  
@@ -186,6 +232,7 @@ class DogboneCommand(object):
         
 
         self.parseInputs(args.firingEvent.sender.commandInputs)
+        self.writeDefaults()
         self.createConsolidatedDogbones()
 
         if self.benchmark:
@@ -205,6 +252,7 @@ class DogboneCommand(object):
             elif input.id == 'circDiameter':
                 if input.value <= 0:
                     args.areInputsValid = False
+
 
     def onInputChanged(self, args):
         cmd = args.firingEvent.sender
@@ -234,7 +282,12 @@ class DogboneCommand(object):
 
     @property
     def originPlane(self):
-        return self.rootComp.xZConstructionPlane if self.yUp else self.rootComp.xYConstructionPlane
+        if self.upPlane == 'Z':
+            return self.rootComp.xYConstructionPlane 
+        elif self.upPlane == 'Y':
+            return self.rootComp.xZConstructionPlane 
+        else:
+            return self.rootComp.yZConstructionPlane
 
     # The main algorithm
     def createConsolidatedDogbones(self):
@@ -277,7 +330,7 @@ class DogboneCommand(object):
                 if progressDialog.wasCancelled:
                     return
 
-                if not utils.isVertical(edge, self.yUp):
+                if not utils.isVertical(edge, self.upPlane):
                     progressDialog.progressValue += 1
                     skipped += 1
                     continue
@@ -430,7 +483,12 @@ class DogboneCommand(object):
         return edgesByTrueExtent
 
     def getH(self, point):
-        return point.geometry.y if self.yUp else point.geometry.z
+        if self.upPlane == 'Z':
+            return point.geometry.z
+        elif self.upPlane == 'Y':
+            return point.geometry.y
+        else:
+            return point.geometry.x
 
     @staticmethod
     def normalizeVExtent(h0, h1):

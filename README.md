@@ -33,6 +33,11 @@ New enhancements by DVE2000:
   mortises and you'd like the required holes to be hidden by the tenon. Or even just for looks.
 - Add option to create a minimal Dogbone. See http://fablab.ruc.dk/more-elegant-cnc-dogbones/
   The default offset percent is 10%, but it can be changed from 8% to 14.2%.
+- Dogbones can be created on any of the three X, Y, or Z planes at one time. If you run the Add-In 3 times, trying 
+  each plane, you can create all the dogbones for a 3D assembly.
+- The Add-In now remembers all your inputs from the last time time the Add-In was used. Even on Fusion 360 restart.
+  If you ever want to get to the absolute default settings, delete the defaults.dat file in the Add-In install directory,
+  while the Dogbone dialog box is closed.
 
 ## Limitations
 
