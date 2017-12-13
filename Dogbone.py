@@ -40,6 +40,7 @@ class DogboneCommand(object):
         self.boneDirection = "both"
         self.minimal = False
         self.minimalPercentage = 10.0
+        self.limitParticipation = False
 
         self.handlers = utils.HandlerHelper()
 
@@ -57,6 +58,7 @@ class DogboneCommand(object):
             file.write('!boneDirection:' + self.boneDirection)
             file.write('!minimal:' + str(self.minimal))
             file.write('!minimalPercentage:' + str(self.minimalPercentage))
+            file.write('!limitParticipation:' + str(self.limitParticipation))
     
     def readDefaults(self): 
         if not os.path.isfile(os.path.join(self.appPath, 'defaults.dat')):
@@ -76,6 +78,7 @@ class DogboneCommand(object):
             elif var == 'boneDirection': self.boneDirection = val
             elif var == 'minimal': self.minimal = val == 'True'
             elif var == 'minimalPercentage': self.minimalPercentage = float(val)
+            elif var == 'limitParticipation': self.limitParticipation = val == 'True'
 
     def addButton(self):
         # clean up any crashed instances of the button if existing
@@ -162,6 +165,11 @@ class DogboneCommand(object):
         inp.tooltip = "Percentage offset for minimal dogbone. Bigger value is a smaller cutout and more hammering!"
         inp.isVisible = (self.boneDirection == 'both' and self.minimal)
 
+        inp = inputs.addBoolValueInput("limitParticipation", "Limit to body", True, "", self.limitParticipation)
+        inp.tooltip = "Attempts to limit the dogbones to only selected bodies or bodies of selected edges.\n " \
+                      "It can be useful if bodies are touching in an assembly.\n" \
+                      "THIS CAN CAUSE DOGBONES TO NOT BE CREATED!"
+
         inputs.addBoolValueInput("benchmark", "Benchmark running time", True, "", self.benchmark)
 
         # Add handlers to this command.
@@ -197,16 +205,19 @@ class DogboneCommand(object):
         self.minimal = inputs['minimal'].value
         self.minimalPercentage = inputs['minimalPercentage'].value
 
+        self.limitParticipation = inputs['limitParticipation'].value
+
         self.edges = []
         self.bodies = []
         bodies = []
         for i in range(inputs['select'].selectionCount):
             entity = inputs['select'].selection(i).entity
             if entity.objectType == adsk.fusion.BRepBody.classType():
-                self.bodies.append(entity)
+                if self.limitParticipation:
+                    self.bodies.append(entity)
                 bodies.append(entity)
             elif entity.objectType == adsk.fusion.BRepEdge.classType():
-                if entity.body not in self.bodies:
+                if self.limitParticipation and entity.body not in self.bodies:
                     self.bodies.append(entity.body)
                 self.edges.append(entity)
 
@@ -350,7 +361,8 @@ class DogboneCommand(object):
                 profileColl.add(prof)
             exInput = extrudes.createInput(profileColl, adsk.fusion.FeatureOperations.CutFeatureOperation)
             exInput.setDistanceExtent(False, adsk.core.ValueInput.createByReal(h1 - h0))
-            exInput.participantBodies = self.bodies
+            if self.limitParticipation:
+                exInput.participantBodies = self.bodies
             extrudes.add(exInput)
 
         progressDialog.message = "All done. Grouping timeline operations."

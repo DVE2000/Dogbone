@@ -38,6 +38,9 @@ New enhancements by DVE2000:
 - The Add-In now remembers all your inputs from the last time dogbones were created. Even on Fusion 360 restarts.
   If you ever want to get to the absolute default settings, delete the defaults.dat file in the Add-In install directory,
   while the Dogbone dialog box is closed.
+- There's an option to try limit the dogbones to selected bodies or bodies of selected edges. It can be useful if
+  you have an assembley and dogbones are cut where they shouldn't be. This was not an optiion in a previous release,
+  but it was present and caused dogbones to not be cut for at least one user. (Seems like a Fusion bug to me, but whatever.)
 
 ## Limitations
 
