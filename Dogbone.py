@@ -41,6 +41,8 @@ class DogboneCommand(object):
         self.minimal = False
         self.minimalPercentage = 10.0
         self.limitParticipation = False
+        self.minimumAngle = 80
+        self.maximumAngle = 100
 
         self.handlers = utils.HandlerHelper()
 
@@ -59,6 +61,8 @@ class DogboneCommand(object):
             file.write('!minimal:' + str(self.minimal))
             file.write('!minimalPercentage:' + str(self.minimalPercentage))
             file.write('!limitParticipation:' + str(self.limitParticipation))
+            file.write('!minimumAngle:' + str(self.minimumAngle))
+            file.write('!maximumAngle:' + str(self.maximumAngle))
     
     def readDefaults(self): 
         if not os.path.isfile(os.path.join(self.appPath, 'defaults.dat')):
@@ -79,6 +83,8 @@ class DogboneCommand(object):
             elif var == 'minimal': self.minimal = val == 'True'
             elif var == 'minimalPercentage': self.minimalPercentage = float(val)
             elif var == 'limitParticipation': self.limitParticipation = val == 'True'
+            elif var == 'minimumAngle': self.minimumAngle = int(val)
+            elif var == 'maximumAngle': self.maximumAngle = int(val)
 
     def addButton(self):
         # clean up any crashed instances of the button if existing
@@ -140,8 +146,18 @@ class DogboneCommand(object):
             'offset', 'Additional Offset', self.design.unitsManager.defaultLengthUnits,
             adsk.core.ValueInput.createByString(self.offStr))
         inp.tooltip = "Additional increase to the radius of the dogbone."
-
-        inp = inputs.addDropDownCommandInput('upPlane', 'Up plane (parallel to cutter)', adsk.core.DropDownStyles.LabeledIconDropDownStyle)
+        
+        #inp = inputs.addFloatSliderCommandInput('angleRange', 'Angles Included (bodies only)', 'degree', 0, math.pi, True)
+        inp = inputs.addIntegerSliderCommandInput('angleRange', 'Angles Included In Degrees (bodies only)', 0, 180, True)
+        inp.valueOne = self.minimumAngle
+        inp.valueTwo = self.maximumAngle
+        #inp.valueOne = math.radians(self.minimumAngle)
+        #inp.valueTwo = math.radians(self.maximumAngle)
+        inp.tooltip = "This option can specifically exclude narrow edges, fillets, and even previously created non-minimal dogbones.\n" \
+                      "Set the values to 0 and 180 for previous compatibility.\n" \
+                      "Ensure that the range is 90,91 for 90 degrees only."
+            
+        inp = inputs.addDropDownCommandInput('upPlane', 'Up Plane (parallel to cutter)', adsk.core.DropDownStyles.LabeledIconDropDownStyle)
         inp.listItems.add('Z-Plane (Use XY faces)', self.upPlane == 'Z')
         inp.listItems.add('Y-Plane (Use XZ faces)', self.upPlane == 'Y')
         inp.listItems.add('X-Plane (Use YZ faces)', self.upPlane == 'X')
@@ -155,7 +171,7 @@ class DogboneCommand(object):
                       "preceding dogbones is updated. " \
                       "And if using parametric, the the constraints don't really help."
 
-        inp = inputs.addBoolValueInput("minimal", "Create Minimal dogbones", True, "", self.minimal)
+        inp = inputs.addBoolValueInput("minimal", "Create Minimal Dogbones", True, "", self.minimal)
         inp.tooltip = "Offsets the dogbone circle inwards by (default) 10% to get a minimal dogbone. " \
                       "Workpieces will probably need to be hammered together.\n" \
                       "Only works with \"Along Both Sides\"."
@@ -165,12 +181,12 @@ class DogboneCommand(object):
         inp.tooltip = "Percentage offset for minimal dogbone. Bigger value is a smaller cutout and more hammering!"
         inp.isVisible = (self.boneDirection == 'both' and self.minimal)
 
-        inp = inputs.addBoolValueInput("limitParticipation", "Limit to body", True, "", self.limitParticipation)
+        inp = inputs.addBoolValueInput("limitParticipation", "Limit To Body", True, "", self.limitParticipation)
         inp.tooltip = "Attempts to limit the dogbones to only selected bodies or bodies of selected edges.\n " \
                       "It can be useful if bodies are touching in an assembly.\n" \
-                      "THIS CAN CAUSE DOGBONES TO NOT BE CREATED!"
+                      "THIS CAN CAUSE DOGBONES TO NOT BE CREATED IN RARE CASES! (Bug opened at Autodesk.)"
 
-        inputs.addBoolValueInput("benchmark", "Benchmark running time", True, "", self.benchmark)
+        inputs.addBoolValueInput("benchmark", "Benchmark Running Time", True, "", self.benchmark)
 
         # Add handlers to this command.
         args.command.execute.add(self.handlers.make_handler(adsk.core.CommandEventHandler, self.onExecute))
@@ -195,6 +211,8 @@ class DogboneCommand(object):
         if (inputs['typeList'].selectedItem.name == "Along Shortest") :
             self.boneDirection = "shortest"
         
+        self.minimumAngle = inputs['angleRange'].valueOne
+        self.maximumAngle = inputs['angleRange'].valueTwo
         if re.search(r'Z-Plane', inputs['upPlane'].selectedItem.name) is not None :
             self.upPlane = 'Z'
         elif re.search(r'Y-Plane', inputs['upPlane'].selectedItem.name) is not None :
@@ -226,7 +244,9 @@ class DogboneCommand(object):
                 if bodyEdge.geometry.objectType == adsk.core.Line3D.classType():
                     if utils.isVertical(bodyEdge, self.upPlane):
                         # Check if its an internal edge
-                        if utils.getAngleBetweenFaces(bodyEdge) < math.pi:
+                        angleBetween = utils.getAngleBetweenFaces(bodyEdge)
+                        if angleBetween >= math.radians(self.minimumAngle) and angleBetween < math.radians(self.maximumAngle):
+                        #if utils.getAngleBetweenFaces(bodyEdge) < math.pi:
                             # Add edge to the selection
                             self.edges.append(bodyEdge)
        
@@ -282,6 +302,9 @@ class DogboneCommand(object):
                 else:
                     minimal.isVisible = False
                     minimalPercentage.isVisible = False
+#            if input.id == 'angleRange':
+#                angleRange = adsk.core.FloatSliderCommandInput.cast(cmd.commandInputs.itemById('angleRange')) 
+#                utils.messageBox(str(angleRange.valueOne) + " Min Degrees" + str(angleRange.valueTwo) + " Max Degrees")
 
     @property
     def design(self):

@@ -39,8 +39,13 @@ New enhancements by DVE2000:
   If you ever want to get to the absolute default settings, delete the defaults.dat file in the Add-In install directory,
   while the Dogbone dialog box is closed.
 - There's an option to try limit the dogbones to selected bodies or bodies of selected edges. It can be useful if
-  you have an assembly and dogbones are cut where they shouldn't be. This was not an optiion in a previous release,
-  but it was present and caused dogbones to not be cut for at least one user. (Seems like a Fusion bug to me, but whatever.)
+  you have an assembly and dogbones are cut where they shouldn't be. This was not an option in a previous release,
+  but it was present and caused dogbones to not be cut for at least one user. (Confirmed bug opened at Autodesk. Default is on.)
+- For selected bodies ONLY, you can now specify the minimum and maximum edge angles in degrees that will be included in dogbone
+  cuts. The default is 80 degrees minimum and 100 degrees maximum. This means for any corners in a selected body that have at
+  least an 80 degree angle (included) up to a 100 degree angle (100 degrees is not included), dogbones will be cut. Any edges that
+  are less than 80 degrees or greater or equal to 100 degrees will be left alone. Fillets should no longer be cut. If you 
+  want dogbones on only 90 degree corners, set the minimum angle to 90 degrees and the maximum angle to 91 degrees.
 
 ## Limitations
 
