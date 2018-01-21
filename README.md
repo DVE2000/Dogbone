@@ -34,7 +34,7 @@ New enhancements by DVE2000:
 - Add option to create a minimal Dogbone. See http://fablab.ruc.dk/more-elegant-cnc-dogbones/
   The default offset percent is 10%, but it can be changed from 8% to 14.2%.
 - Dogbones can be created on any of the three X, Y, or Z planes at one time. If you run the Add-In 3 times, trying 
-  each plane, you can create all the dogbones for a 3D assembly.
+  each plane, you can create all the dogbones for a 3D assembly. There's a cautionary note in the limitations section below.
 - The Add-In now remembers all your inputs from the last time dogbones were created. Even on Fusion 360 restarts.
   If you ever want to get to the absolute default settings, delete the defaults.dat file in the Add-In install directory,
   while the Dogbone dialog box is closed.
@@ -46,17 +46,27 @@ New enhancements by DVE2000:
   least an 80 degree angle (included) up to a 100 degree angle (100 degrees is not included), dogbones will be cut. Any edges that
   are less than 80 degrees or greater or equal to 100 degrees will be left alone. Fillets should no longer be cut. If you 
   want dogbones on only 90 degree corners, set the minimum angle to 90 degrees and the maximum angle to 91 degrees.
+- Constrained dogbone creation is now working properly! This means that if you clear the "Output Unconstrained Geometry" checkbox, while the 
+  dogbone creation will be very slow and could even bog down, once you change parameters or sizes for items in the underlying sketch,
+  the dogbones will move properly with the corners.
 
 ## Limitations
+If you run dogbones on an entire body, if the body has holes in other faces, you'll get dogbones created in unexpected places. You'll also
+get partial dogbones on steps. See the following blue highlights:
+![Caution](./Resources/caution.jpg)
+(I did create a solution for steps, but I'm not releasing it yet. Fusion sometimes acts weirdly with extended dogbones on steps, even giving
+the incorrect part of the shape for where to create the dogbones. That happened in the design shown in the next paragraph.)
+
+Also, if you have something like the design below, you won't be able to create dogbones by selecting the body. You'll get a traceback dialog. 
+Make sure to just select edges of the same heights before creating the dogbones. See a problematic edge selection below:
+![Problems](./Resources/problems.jpg)
 
 
 Still TODO:
 - Handle acute angles (<90deg) by generating a slot.
-- Allow user to specify orientation (i.e. select "vertical" vector) instead of only handling edges.
+- Allow user to specify orientation (i.e. select "vertical" vector) instead of only handling edges (i.e. in the X, Y or Z direction only).
 - Handle duplicate edges (avoid generating duplicate overlapping geometry)
-- Even if you use the slower "constrained" version, once the initial sketch is modified earlier in the timeline, the dogbones will
-  not be recreated properly. Just add the dogbones last, or delete them before changing the underlying sketch and redo them afterwards.
-  I need to figure out the appropriate constraints...
+- Selecting a body instead of edges for steps in the design
 
 ## Usage:
 

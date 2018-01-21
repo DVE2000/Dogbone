@@ -77,7 +77,7 @@ class DogboneCommand(object):
             elif var == 'circStr': self.circStr = val
             elif var == 'circVal': self.circVal = float(val)
             elif var == 'upPlane': self.upPlane = val
-            elif var == 'outputUnconstrainedGeometry': self.outputUnconstrainedGeometry = bool(val)
+            elif var == 'outputUnconstrainedGeometry': self.outputUnconstrainedGeometry = val == 'True'
             elif var == 'benchmark': self.benchmark = val == 'True'
             elif var == 'boneDirection': self.boneDirection = val
             elif var == 'minimal': self.minimal = val == 'True'
@@ -343,6 +343,7 @@ class DogboneCommand(object):
 
         progressMsg = '[%p%] %v / %m dogbones created'
         skipped = 0
+
         for (h0, h1), edges in self.groupEdgesByVExtent(self.edges).items():
             # Edges with the same vertical extent will be dogboned using one sketch + extrude-cut operation.
             progressDialog.message = "{}\nOperating on {} edges with extent {:.03f},{:.03f}".format(
@@ -451,27 +452,48 @@ class DogboneCommand(object):
 
             # Corner is defined by points c-a-b, a is where the edges meet.
             a, b, c = utils.findPoints(line1, line2)
-
+            
+            # Used for various dimensions
+            diameterDimension = adsk.core.Point3D.create(a.geometry.x, a.geometry.y, 0)
+            
             if self.boneDirection == 'both':
                 # This is a temporary point for our Dogbone sketch's centerline to end at
                 addX = (b.geometry.x + c.geometry.x) / 2
                 addY = (b.geometry.y + c.geometry.y) / 2
 
                 d = adsk.core.Point3D.create(addX, addY, 0)
-                line0 = sketch.sketchCurves.sketchLines.addByTwoPoints(a, d)
+                # Add a temp point to be used for a starting point. It will be constrained to a.
+                new_a = adsk.core.Point3D.create(a.geometry.x, a.geometry.y, a.geometry.z)
+                line0 = sketch.sketchCurves.sketchLines.addByTwoPoints(new_a, d)
                 # line0 should form line a-d that bisects angle c-a-b.
-                sketch.geometricConstraints.addSymmetry(line1, line2, line0)
+                
+                # Make sure the start of the line always stays at the projected corner
+                sketch.geometricConstraints.addCoincident(line0.startSketchPoint, a);
+                # If the bounding box/mortise of the underlying sketch is moved, fusion doesn't handle the symmetry move properly
+                # So add symmetry to move the line where we want, then delete it, and add a dimensioned constraint
+                tmpConst = sketch.geometricConstraints.addSymmetry(line1, line2, line0)
+                tmpConst.deleteMe()
+                sketch.sketchDimensions.addAngularDimension(line1, line0, diameterDimension)
             else:
                 addX, addY, parallelLine = utils.findDogboneCenterPoint (self.boneDirection, self.circVal / 2, a, b, c)
                 d = adsk.core.Point3D.create(a.geometry.x + addX,
                                              a.geometry.y + addY, 0)
-                line0 = sketch.sketchCurves.sketchLines.addByTwoPoints(a, d)
-                # We can add a constraint to be parallel to a construction line. Problem is, if underlying sketch changes, The dogbones are still messed up
+                # Add a temp point to be used for a starting point. It will be constrained to a.
+                new_a = adsk.core.Point3D.create(a.geometry.x, a.geometry.y, a.geometry.z)
+                line0 = sketch.sketchCurves.sketchLines.addByTwoPoints(new_a, d)
+                # Make sure the start of the line always stays at the projected corner
+                sketch.geometricConstraints.addCoincident(line0.startSketchPoint, a);
+                # We can add a constraint to be parallel to a construction line. Problem is, if underlying sketch changes, 
+                # fusion doesn't work properly. So, add a parallel constraint to move the line, delete it, and then add and angular
+                # constraint
                 if parallelLine == 1:
                     lineToBeParallelTo = line1
                 else:
                     lineToBeParallelTo = line2
-                sketch.geometricConstraints.addParallel(line0, lineToBeParallelTo)
+                tmpConst = sketch.geometricConstraints.addParallel(line0, lineToBeParallelTo)
+                tmpConst.deleteMe()
+                sketch.sketchDimensions.addAngularDimension(line0, lineToBeParallelTo, diameterDimension)
+
 
             line0.isConstruction = True
             line1.isConstruction = True
@@ -492,7 +514,7 @@ class DogboneCommand(object):
             #if self.boneDirection == 'both' and not self.minimal:
             #    sketch.geometricConstraints.addCoincident(a, circle)
             #else:
-            diameterDimension = adsk.core.Point3D.create(a.geometry.x, a.geometry.y, 0)
+            #diameterDimension = adsk.core.Point3D.create(a.geometry.x, a.geometry.y, 0)
             sketch.sketchDimensions.addDiameterDimension(circle, diameterDimension)
 
     def groupEdgesByVExtent(self, edges):
