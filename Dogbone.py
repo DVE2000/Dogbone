@@ -49,20 +49,23 @@ class DogboneCommand(object):
         self.appPath = os.path.dirname(os.path.abspath(__file__))
 
     def writeDefaults(self):
-        with open(os.path.join(self.appPath, 'defaults.dat'), 'w') as file:
-            file.write('offStr:' + self.offStr)
-            file.write('!offVal:' + str(self.offVal))
-            file.write('!circStr:' + self.circStr)
-            file.write('!circVal:' + str(self.circVal))
-            file.write('!upPlane:' + self.upPlane)
-            file.write('!outputUnconstrainedGeometry:' + str(self.outputUnconstrainedGeometry))
-            file.write('!benchmark:' + str(self.benchmark))
-            file.write('!boneDirection:' + self.boneDirection)
-            file.write('!minimal:' + str(self.minimal))
-            file.write('!minimalPercentage:' + str(self.minimalPercentage))
-            file.write('!limitParticipation:' + str(self.limitParticipation))
-            file.write('!minimumAngle:' + str(self.minimumAngle))
-            file.write('!maximumAngle:' + str(self.maximumAngle))
+        try:
+            with open(os.path.join(self.appPath, 'defaults.dat'), 'w') as file:
+                file.write('offStr:' + self.offStr)
+                file.write('!offVal:' + str(self.offVal))
+                file.write('!circStr:' + self.circStr)
+                file.write('!circVal:' + str(self.circVal))
+                file.write('!upPlane:' + self.upPlane)
+                file.write('!outputUnconstrainedGeometry:' + str(self.outputUnconstrainedGeometry))
+                file.write('!benchmark:' + str(self.benchmark))
+                file.write('!boneDirection:' + self.boneDirection)
+                file.write('!minimal:' + str(self.minimal))
+                file.write('!minimalPercentage:' + str(self.minimalPercentage))
+                file.write('!limitParticipation:' + str(self.limitParticipation))
+                file.write('!minimumAngle:' + str(self.minimumAngle))
+                file.write('!maximumAngle:' + str(self.maximumAngle))
+        except:
+            pass
     
     def readDefaults(self): 
         if not os.path.isfile(os.path.join(self.appPath, 'defaults.dat')):
@@ -164,7 +167,7 @@ class DogboneCommand(object):
         inp.tooltip = "Cut dogbones on selected plane face. The Add-In can be run 3 times on one body, changing the plane used each time "
 
         inp = inputs.addBoolValueInput("outputUnconstrainedGeometry",
-                                       "Output unconstrained geometry",
+                                       "Output Unconstrained Geometry",
                                        True, "", self.outputUnconstrainedGeometry)
         inp.tooltip = "~5x faster, but non-parametric. " \
                       "If enabled, you'll have to delete and re-generate dogbones if geometry " \
