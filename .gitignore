@@ -17,6 +17,16 @@ $RECYCLE.BIN/
 # Windows shortcuts
 *.lnk
 
+# Dogbone files
+.spyderworkspace
+dogbone.log
+defaults.dat
+__pycache__
+
+# Vim files
+.*.swp
+.*.swo
+
 # =========================
 # Operating System Files
 # =========================
