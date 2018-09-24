@@ -5,10 +5,6 @@ Dogbone
 
 ## Description
 
-A Fusion360 Add-In for making dog-bone fillets. Generally used in woodworking joinery.
-
-This is a totally overhauled version, both in edge selection and operation. The original version may be found here: https://github.com/caseycrogers/Dogbone/tree/cbe8f2c95317ae7eded43fee384171a492c6900e
-
 ## Notes:
 
 This version should work with all static dogbones. Parameterized dogbones mostly work, but there are definite issues with the Fusion360 API that may cause problems when trying to create dogbones. If that happens, you can create a logfile and post it here to let us know. If it turns out that it **is** a Fusion360 bug, please report it to Autodesk.
