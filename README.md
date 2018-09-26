@@ -1,9 +1,19 @@
 Dogbone
 ===
 
-## Version: 2
+## Version: 2.0
+
+You can download a self extracting file [here](https://github.com/DVE2000/Dogbone/releases/download/v2.0/setup_Dogbone_v2_0.exe)
+
+---
 
 ## Description
+
+This addin includes 3 dogbone styles (normal, minimal and mortise) and allows dogbones to be cut from either the topface or selected face.  Both static and parametric options are available - however due to a number of bugs in F360, parametric will fail on mirrored components and some component copies.  These bugs have been reported (see [here](https://forums.autodesk.com/t5/fusion-360-api-and-scripts/4-bugs-at-least-related-to-occurrences/m-p/8105766#M6240)), but as of writing AD has not addressed them.
+
+The interface has been improved, and specifically allows any face orientation to be chosen on any component.  The addin is based on the f360 primitive hole feature, and is as efficient as f360 single threaded engine allows.  In Static mode it will create 70 dogbones in about 7 seconds.  Parametric mode takes a little longer to calculate initially, but recalculation is very fast if you change your model parameters.  Of course, speed also depends on the processing power of you computer.
+
+---
 
 ## Notes:
 
