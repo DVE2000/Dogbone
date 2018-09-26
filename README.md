@@ -1,4 +1,4 @@
-Dogbone
+Dogbone addin for fusion 360
 ===
 
 ## Version: 2.0
