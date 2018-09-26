@@ -22,6 +22,7 @@ $RECYCLE.BIN/
 dogbone.log
 defaults.dat
 __pycache__
+install
 
 # Vim files
 .*.swp
