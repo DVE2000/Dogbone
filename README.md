@@ -5,6 +5,8 @@ Dogbone
 
 You can download a self extracting file [here](https://github.com/DVE2000/Dogbone/releases/download/v2.0/winsetup_Dogbone_v2_0.exe) - Windows only
 
+zip and tar files available (for both Mac and Windows) [here](https://github.com/DVE2000/Dogbone/releases)
+
 ---
 
 ## Description
