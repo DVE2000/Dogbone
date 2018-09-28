@@ -7,9 +7,9 @@ You can download a self extracting file [here](https://github.com/DVE2000/Dogbon
 
 Mac users: 
 
-If you installed F360 directly from AD - use [this](https://github.com/DVE2000/Dogbone/releases/download/v2.0/macSetup_AD_dogbone_v2_0.pkg)
+If you installed F360 directly from AD - download self extracting file [here](https://github.com/DVE2000/Dogbone/releases/download/v2.0/macSetup_AD_dogbone_v2_0.pkg)
 
-If you installed F360 from Apple App Store - use [this](https://github.com/DVE2000/Dogbone/releases/download/v2.0/macSetup_appstore_dogbone_v2_0.pkg)
+If you installed F360 from Apple App Store - download self extracting file [here](https://github.com/DVE2000/Dogbone/releases/download/v2.0/macSetup_appstore_dogbone_v2_0.pkg)
 
 
 
