@@ -4,8 +4,8 @@ Dogbone addin for fusion 360
 ## Version: 2.0
 
 You can download a self extracting file [here](https://github.com/DVE2000/Dogbone/releases/download/v2.0/winsetup_Dogbone_v2_0.exe) for Windows users
-or
-[here](https://github.com/DVE2000/Dogbone/releases/download/v2.0/macSetup-dogbone-v2.0.pkg) for Mac users
+
+Mac users will have to wait while we figure out how to create a simple install file (Sorry)
 
 zip and tar files available (for both Mac and Windows) [here](https://github.com/DVE2000/Dogbone/releases)
 
