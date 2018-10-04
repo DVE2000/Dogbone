@@ -1,8 +1,6 @@
 Dogbone addin for fusion 360
 ===
 
-![dogbone_overview](./Resources/dogbone_overview.png)
-
 ## Version: 2.0
 
 * **Windows users:**
@@ -24,6 +22,8 @@ zip and tar files available (for both Mac and Windows) [here](https://github.com
 ---
 
 ## Description
+
+![dogbone_overview](./Resources/dogbone_overview.png)
 
 This addin includes 3 dogbone styles (normal, minimal and mortise) and allows dogbones to be cut from either the topface or selected face.  Both static and parametric options are available - however due to a number of bugs in F360, parametric will fail on mirrored components and some component copies.  These bugs have been reported (see [here](https://forums.autodesk.com/t5/fusion-360-api-and-scripts/4-bugs-at-least-related-to-occurrences/m-p/8105766#M6240)), but as of writing AD has not addressed them.
 
