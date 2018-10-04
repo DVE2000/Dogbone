@@ -1,5 +1,6 @@
 Dogbone addin for fusion 360
 ===
+![dogbone_overview](./Resources/dogbone_overview.png)
 
 ## Version: 2.0
 
