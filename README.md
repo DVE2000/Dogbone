@@ -71,7 +71,7 @@ See [How to install sample Add-Ins and Scripts](https://rawgit.com/AutodeskFusio
    ![EdgeSelection](./Resources/edge_selection.jpg)
 3. Specify a tool diameter and a radial offset.
 4. Select the Mode - Static Dogbones or Parameterized Dogbones. Parameters are created for the second mode - dogbones will move with edge changes, and you can change diameter or offset from the normal "Change Parameters" dialog.
-5. Choose the type of dogbone - Normal, Minimal or Mortise. See http://fablab.ruc.dk/more-elegant-cnc-dogbones/ for a description of minimal dogbones. Mortise dogbones place the dogbones along the sides, so that they can be hidden by a connecting piece with a cut tenon. Minimal and Mortise dogbones have their own option lines become visible when selected.
+5. Choose the type of dogbone - Normal, Minimal or Mortise. See http://fablab.ruc.dk/more-elegant-cnc-dogbones/ for a description of minimal dogbones. Mortise dogbones place the dogbones along the sides, so that they can be hidden by a connecting piece with a cut tenon. Minimal and Mortise dogbones have their own option lines become visible when selected.  Note: In the minimal dogbone dialog, you can make the **Percentage Reduction** negative (eg -20), to inset the dogbone into the workpiece.
 6. Decide if you'd like dogbones to be cut to the top. (Useful if you have steps, but can't do two sided machining.)
    ![TopSelection1](./Resources/top_select1.jpg) ![TopSelection2](./Resources/top_select2.jpg)
 7. You can expand Settings and specify if you'd like to see benchmark time or do any logging. 
@@ -85,6 +85,7 @@ The add-in will then create the specified dogbones. If you choose parameterized,
 
 ## To do:
 1. Handle acute angles (<90 degrees) by generating a slot.
+1. Handle obtuse angles (>90 degrees) 
 2. ... who knows
 
 ## License
