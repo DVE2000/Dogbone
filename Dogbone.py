@@ -354,10 +354,10 @@ class DogboneCommand(object):
                                             "A piece with a tenon can be used to hide them if they're not cut all the way through the workpiece."
         
         mortiseRowInput = adsk.core.ButtonRowCommandInput.cast(modeGroupChildInputs.addButtonRowCommandInput('mortiseType', 'Mortise Type', False))
-        mortiseRowInput.listItems.add('On Long Side', self.longside, 'resources/hidden/longside' )
-        mortiseRowInput.listItems.add('On Short Side', not self.longside, 'resources/hidden/shortside' )
-        mortiseRowInput.tooltipDescription = "On Long Side will have the dogbones cut into the longer sides.\n" \
-                                             "\nOn Short Side will have the dogbones cut into the shorter sides."
+        mortiseRowInput.listItems.add('Along Long Side', self.longside, 'resources/hidden/longside' )
+        mortiseRowInput.listItems.add('Along Short Side', not self.longside, 'resources/hidden/shortside' )
+        mortiseRowInput.tooltipDescription = "Along Long Side will have the dogbones cut into the longer sides." \
+                                             "\nAlong Short Side will have the dogbones cut into the shorter sides."
         mortiseRowInput.isVisible = self.dbType == 'Mortise Dogbone'
 
         minPercentInp = modeGroupChildInputs.addValueInput(
@@ -671,6 +671,7 @@ class DogboneCommand(object):
             elif input.id == 'circDiameter':
                 if input.value <= 0:
                     args.areInputsValid = False
+                    
     def onFaceSelect(self, args):
         '''==============================================================================
             Routine gets called with every mouse movement, if a commandInput select is active                   
@@ -745,9 +746,9 @@ class DogboneCommand(object):
                     if face.selected:
                         primaryFace = face
                         break
-                else:
-                    eventArgs.isSelectable = True
-                    return
+                    else:
+                        eventArgs.isSelectable = True
+                        return
             except KeyError:
                 return
             primaryFaceNormal = dbUtils.getFaceNormal(primaryFace.face)
@@ -945,7 +946,14 @@ class DogboneCommand(object):
                     holeInput.setOneSideToExtent(extentToEntity, False)
                     self.logger.info('hole added to list - {}'.format(centrePoint.asArray()))
  
-                    holes.add(holeInput)
+                    holeFeature = holes.add(holeInput)
+                    holeFeature.name = 'dogbone'
+                    holeFeature.isSuppressed = True
+                    
+                for hole in holes:
+                    if hole.name[:7] != 'dogbone':
+                        break
+                    hole.isSuppressed = False
                     
             endTlMarker = self.design.timeline.markerPosition-1
             if endTlMarker - startTlMarker >0:
