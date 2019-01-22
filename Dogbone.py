@@ -354,10 +354,10 @@ class DogboneCommand(object):
                                             "A piece with a tenon can be used to hide them if they're not cut all the way through the workpiece."
         
         mortiseRowInput = adsk.core.ButtonRowCommandInput.cast(modeGroupChildInputs.addButtonRowCommandInput('mortiseType', 'Mortise Type', False))
-        mortiseRowInput.listItems.add('Along Long Side', self.longside, 'resources/hidden/longside' )
-        mortiseRowInput.listItems.add('Along Short Side', not self.longside, 'resources/hidden/shortside' )
-        mortiseRowInput.tooltipDescription = "Along Long Side will have the dogbones cut into the longer sides." \
-                                             "\nAlong Short Side will have the dogbones cut into the shorter sides."
+        mortiseRowInput.listItems.add('Along Longest', self.longside, 'resources/hidden/longside' )
+        mortiseRowInput.listItems.add('Along Shortest', not self.longside, 'resources/hidden/shortside' )
+        mortiseRowInput.tooltipDescription = "Along Longest will have the dogbones cut into the longer sides." \
+                                             "\nAlong Shortest will have the dogbones cut into the shorter sides."
         mortiseRowInput.isVisible = self.dbType == 'Mortise Dogbone'
 
         minPercentInp = modeGroupChildInputs.addValueInput(
