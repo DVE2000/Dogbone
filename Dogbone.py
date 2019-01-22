@@ -356,8 +356,8 @@ class DogboneCommand(object):
         mortiseRowInput = adsk.core.ButtonRowCommandInput.cast(modeGroupChildInputs.addButtonRowCommandInput('mortiseType', 'Mortise Type', False))
         mortiseRowInput.listItems.add('On Long Side', self.longside, 'resources/hidden/longside' )
         mortiseRowInput.listItems.add('On Short Side', not self.longside, 'resources/hidden/shortside' )
-        mortiseRowInput.tooltipDescription = "Along Long Side will have the dogbones cut into the longer sides." \
-                                             "\nAlong Short Side will have the dogbones cut into the shorter sides."
+        mortiseRowInput.tooltipDescription = "Along Longest will have the dogbones cut into the longer sides." \
+                                             "\nAlong Shortest will have the dogbones cut into the shorter sides."
         mortiseRowInput.isVisible = self.dbType == 'Mortise Dogbone'
 
         minPercentInp = modeGroupChildInputs.addValueInput(
