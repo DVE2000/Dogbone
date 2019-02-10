@@ -297,7 +297,12 @@ class DogboneCommand(object):
         self.selectedEdges = {} 
         
         argsCmd = adsk.core.Command.cast(args)
- 
+        
+        if self.design.designType != adsk.fusion.DesignTypes.ParametricDesignType :
+            returnValue = self.ui.messageBox('DogBone only works in Parametric Mode \n Do you want to change modes?', 'Change to Parametric mode', adsk.core.MessageBoxButtonTypes.YesNoButtonType, adsk.core.MessageBoxIconTypes.WarningIconType)
+            if returnValue != adsk.core.DialogResults.DialogYes:
+                return
+            self.design.designType = adsk.fusion.DesignTypes.ParametricDesignType
         self.readDefaults()
 
         inputs = adsk.core.CommandInputs.cast(inputs.command.commandInputs)
