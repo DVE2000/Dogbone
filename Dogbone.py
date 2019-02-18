@@ -805,7 +805,6 @@ class DogboneCommand(object):
         self.errorCount = 0
         if not self.design:
             raise RuntimeError('No active Fusion design')
-        zeroVal = adsk.core.ValueInput.createByReal(0.0)
         holeInput = adsk.fusion.HoleFeatureInput.cast(None)
         offsetByStr = adsk.core.ValueInput.createByString('dbHoleOffset')
         centreDistance = self.radius*(1+self.minimalPercent/100 if self.dbType=='Minimal Dogbone' else  1)
@@ -824,22 +823,13 @@ class DogboneCommand(object):
                occ = None
                self.logger.debug('processing Rootcomponent')
 
-            planes = comp.constructionPlanes
-
             if self.fromTop:
                 (topFace, topFaceRefPoint) = dbUtils.getTopFace(makeNative(occurrenceFace[0].face))
-                topPlaneInput = planes.createInput()
-                topPlaneInput.setByOffset(topFace, zeroVal)
-                topFacePlane = planes.add(topPlaneInput)
-                topFacePlane.isLightBulbOn = False
-                topFacePlane.name = 'dogbonePlane'
-
                 self.logger.info('Processing holes from top face - {}'.format(topFace.body.name))
 
             for selectedFace in occurrenceFace:
                 if len(selectedFace.selectedEdges.values()) <1:
                     self.logger.debug('Face has no edges')
-
                 face = makeNative(selectedFace.face)
                 
                 comp = adsk.fusion.Component.cast(comp)
@@ -861,13 +851,7 @@ class DogboneCommand(object):
                     self.logger.debug('topFace isValid = {}'.format(topFace.isValid))
                     transformVector = dbUtils.getTranslateVectorBetweenFaces(face, topFace)
                     self.logger.debug('creating transformVector to topFace = ({},{},{}) length = {}'.format(transformVector.x, transformVector.y, transformVector.z, transformVector.length))
-                else:
-                    planeInput = planes.createInput()
-                    planeInput.setByOffset(face, zeroVal)
-                    facePlane = planes.add(planeInput)
-                    facePlane.isLightBulbOn = False
-                    facePlane.name = 'dogbonePlane'
-                    
+                                
                 for selectedEdge in selectedFace.selectedEdges.values():
                     
                     self.logger.debug('Processing edge - {}'.format(selectedEdge.edge.tempId))
@@ -947,20 +931,12 @@ class DogboneCommand(object):
                     if self.fromTop:
                         centrePoint.translateBy(transformVector)
                         self.logger.debug('centrePoint at topFace = {}'.format(centrePoint.asArray()))
-                        holePlane = topFacePlane #if self.fromTop else face
+                        holePlane = topFace if self.fromTop else face
                         if not holePlane.isValid:
                             holePlane = reValidateFace(comp, topFaceRefPoint)
                     else:
                         holePlane = makeNative(face)
-                        holePlane = facePlane
                          
-#==============================================================================
-#                     planes = comp.constructionPlanes
-#                     planeInput = planes.createInput()
-#                     planeInput.setByOffset(holePlane, ZEROVAL)
-#==============================================================================
-#                    holePlane = planes.add(planeInput)
-
                     holes =  comp.features.holeFeatures
                     holeInput = holes.createSimpleInput(adsk.core.ValueInput.createByString('dbRadius*2'))
 #                    holeInput.creationOccurrence = occ #This needs to be uncommented once AD fixes component copy issue!!
@@ -977,12 +953,11 @@ class DogboneCommand(object):
  
                     holeFeature = holes.add(holeInput)
                     holeFeature.name = 'dogbone'
-                    self.logger.debug('{} - added'.format(holeFeature.name))
                     holeFeature.isSuppressed = True
                     
                 for hole in holes:
                     if hole.name[:7] != 'dogbone':
-                        continue
+                        break
                     hole.isSuppressed = False
                     
             endTlMarker = self.design.timeline.markerPosition-1
