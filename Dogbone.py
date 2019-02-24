@@ -662,6 +662,8 @@ class DogboneCommand(object):
 
         self.closeLogger()
         
+
+        
         if self.benchmark:
             dbUtils.messageBox("Benchmark: {:.02f} sec processing {} edges".format(
                 time.time() - start, len(self.edges)))
@@ -1234,10 +1236,16 @@ class DogboneCommand(object):
                     holeInput.setPositionBySketchPoints(pointCollection)
                     holeInput.setDistanceExtent(adsk.core.ValueInput.createByReal(depth))
 
-                    holes.add(holeInput)
+                    newHole = holes.add(holeInput)
+                    newHole.isSuppressed = True
+                    newHole.name = 'dogbone'
                     self.logger.info('{} Holes added'.format(holeCount))
             sketch.isComputeDeferred = False
                     
+            for hole in holes:
+                if hole.name[:7] != 'dogbone':
+                    continue
+                hole.isSuppressed = False
             endTlMarker = self.design.timeline.markerPosition-1
             if endTlMarker - startTlMarker >0:
                 timelineGroup = self.design.timeline.timelineGroups.add(startTlMarker,endTlMarker)
