@@ -38,6 +38,8 @@ DEBUGLEVEL = logging.NOTSET
 # Generate an edgeId or faceId from object
 calcId = lambda x: str(x.tempId) + ':' + x.assemblyContext.name.split(':')[-1] if x.assemblyContext else str(x.tempId) + ':' + x.body.name
 makeNative = lambda x: x.nativeObject if x.nativeObject else x
+makeTopOcc = lambda x, y: x.nativeObject.createForAssemblyContext(y)
+getOccName = lambda x: x.assemblyContext.name if x.assemblyContext else x.name
 reValidateFace = lambda comp, x: comp.findBRepUsingPoint(x, adsk.fusion.BRepEntityTypes.BRepFaceEntityType,-1.0 ,False ).item(0)
 
 class SelectedEdge:
@@ -401,6 +403,7 @@ class DogboneCommand(object):
         cmd.selectionEvent.add(self.handlers.make_handler(adsk.core.SelectionEventHandler, self.onFaceSelect))
         cmd.validateInputs.add(
             self.handlers.make_handler(adsk.core.ValidateInputsEventHandler, self.onValidate))
+        cmd.mouseDoubleClick.add(self.handlers.make_handler(adsk.core.MouseEventHandler, self.onMouseDoubleClick))
         cmd.inputChanged.add(
             self.handlers.make_handler(adsk.core.InputChangedEventHandler, self.onChange))
 
@@ -571,7 +574,7 @@ class DogboneCommand(object):
                 
     def initLogger(self):
         self.logger = logging.getLogger(__name__)
-        self.formatter = logging.Formatter('%(asctime)s ; %(name)s ; %(levelname)s ; %(lineno)d; %(message)s')
+        self.formatter = logging.Formatter('%(asctime)s ; %(filename)s ; %(levelname)s ; %(lineno)d; %(message)s')
 #        if not os.path.isfile(os.path.join(self.appPath, 'dogBone.log')):
 #            return
         self.logHandler = logging.FileHandler(os.path.join(self.appPath, 'dogbone.log'), mode='w')
@@ -677,6 +680,27 @@ class DogboneCommand(object):
                 if input.value <= 0:
                     args.areInputsValid = False
                     
+    def onMouseDoubleClick(self, args:adsk.core.MouseEventArgs):
+#==============================================================================
+#         Gets triggered by a double click
+#         1st click will trigger standard selection
+#         2nd click will trigger this def
+#==============================================================================
+
+#        textResult = args.firingEvent.sender.commandInputs.itemById("debugText") #Debugging
+#        textResult.text = textResult.text + "onDoubleClick" + '\n' #Debugging
+        if not self.ui.activeSelections.count:
+            return
+        primaryFace = list(filter(lambda x: x.entity.objectType == adsk.fusion.BRepFace.classType(), self.ui.activeSelections.asArray() ))[-1]
+        primaryFaceNormal = dbUtils.getFaceNormal(primaryFace.entity)
+                
+        for face in primaryFace.entity.body.faces:
+            faceNormal = dbUtils.getFaceNormal(face)
+            if primaryFaceNormal.dotProduct(faceNormal) < 0:
+                continue
+            if primaryFaceNormal.isParallelTo(faceNormal):
+                self.ui.activeSelections.add(face) # Each time a face is added - onChange event is triggered, so face processing is done one at a time.
+                    
     def onFaceSelect(self, args):
         '''==============================================================================
             Routine gets called with every mouse movement, if a commandInput select is active                   
@@ -715,6 +739,9 @@ class DogboneCommand(object):
                     return
 
                 primaryFaceNormal = dbUtils.getFaceNormal(primaryFace.face)
+                if primaryFaceNormal.dotProduct(dbUtils.getFaceNormal(eventArgs.selection.entity)) <0:
+                    eventArgs.isSelectable = False
+                    return
                 if primaryFaceNormal.isParallelTo(dbUtils.getFaceNormal(eventArgs.selection.entity)):
                     eventArgs.isSelectable = True
                     return
@@ -757,6 +784,9 @@ class DogboneCommand(object):
             except KeyError:
                 return
             primaryFaceNormal = dbUtils.getFaceNormal(primaryFace.face)
+            if primaryFaceNormal.dotProduct(dbUtils.getFaceNormal(eventArgs.selection.entity)) <0:
+                eventArgs.isSelectable = False
+                return
             if primaryFaceNormal.isParallelTo(dbUtils.getFaceNormal(eventArgs.selection.entity)):
                 eventArgs.isSelectable = True
                 return
@@ -814,20 +844,38 @@ class DogboneCommand(object):
             startTlMarker = self.design.timeline.markerPosition
 
             if occurrenceFace[0].face.assemblyContext:
-                comp = occurrenceFace[0].face.assemblyContext.component
                 occ = occurrenceFace[0].face.assemblyContext
-                self.logger.debug('processing component  = {}'.format(comp.name))
                 self.logger.debug('processing occurrence  = {}'.format(occ.name))
-                #entityName = occ.name.split(':')[-1]
+
+                comp = adsk.fusion.Component.cast(occ.component)
+                occ = self.rootComp.allOccurrencesByComponent(comp).item(0) #work around F360 shortcomings on adding hole feature to occurrences
+#                creates top level occurrence :1
+                self.logger.debug('processing component  = {}'.format(comp.name))
+#            set up common variables
+                planes = adsk.fusion.ConstructionPlanes.cast(comp.constructionPlanes)
+                extrusions = adsk.fusion.ExtrudeFeatures.cast(comp.features.extrudeFeatures)
+                holes =  adsk.fusion.HoleFeatures.cast(comp.features.holeFeatures)
+
             else:
-               comp = self.rootComp
+               comp = adsk.fusion.Component.cast(self.rootComp)
                occ = None
                self.logger.debug('processing Rootcomponent')
+#            set up common variables
+               planes = adsk.fusion.ConstructionPlanes.cast(self.rootComp.constructionPlanes)
+               extrusions = adsk.fusion.ExtrudeFeatures.cast(self.rootComp.features.extrudeFeatures)
+               holes =  adsk.fusion.HoleFeatures.cast(self.rootComp.features.holeFeatures)
 
-            planes = comp.constructionPlanes
 
             if self.fromTop:
-                (topFace, topFaceRefPoint) = dbUtils.getTopFace(makeNative(occurrenceFace[0].face))
+                refFace = makeTopOcc(occurrenceFace[0].face, occ)
+                if not refFace.isValid:
+                    refFace = reValidateFace(refFace, occurrenceFace[0].refPoint)
+                    self.logger.debug('revalidating refFace')
+                    self.logger.debug('refFace occurrence = {}'.format(getOccName(refFace)))
+#                (topFace, topFaceRefPoint) = dbUtils.getTopFace(makeNative(occurrenceFace[0].face))
+                (topFace, topFaceRefPoint) = dbUtils.getTopFace(refFace)
+                topFace = makeTopOcc(topFace, occ)
+                self.logger.debug('topFace occurrence = {}'.format(getOccName(topFace)))
                 topPlaneInput = planes.createInput()
                 topPlaneInput.setByOffset(topFace, zeroVal)
                 topFacePlane = planes.add(topPlaneInput)
@@ -840,9 +888,12 @@ class DogboneCommand(object):
                 if len(selectedFace.selectedEdges.values()) <1:
                     self.logger.debug('Face has no edges')
 
-                face = makeNative(selectedFace.face)
+#                face = makeNative(selectedFace.face)
+                face = selectedFace.face
+                face = makeTopOcc(face, occ)
+                self.logger.debug('face occurrence = {}'.format(getOccName(face)))
                 
-                comp = adsk.fusion.Component.cast(comp)
+#                comp = adsk.fusion.Component.cast(comp)
                 
                 if not face.isValid:
                     self.logger.debug('revalidating Face')
@@ -855,12 +906,11 @@ class DogboneCommand(object):
                     if not topFace.isValid:
                        self.logger.debug('revalidating topFace') 
                        topFace = reValidateFace(comp, topFaceRefPoint)
+                       self.logger.debug('topFace occurrence = {}'.format(getOccName(topFace)))
 
-                    topFace = makeNative(topFace)
-                       
                     self.logger.debug('topFace isValid = {}'.format(topFace.isValid))
                     transformVector = dbUtils.getTranslateVectorBetweenFaces(face, topFace)
-                    self.logger.debug('creating transformVector to topFace = ({},{},{}) length = {}'.format(transformVector.x, transformVector.y, transformVector.z, transformVector.length))
+                    self.logger.debug('creating transformVector to topFace = ({}) length = {}'.format(transformVector.asArray(), transformVector.length))
                 else:
                     planeInput = planes.createInput()
                     planeInput.setByOffset(face, zeroVal)
@@ -877,13 +927,19 @@ class DogboneCommand(object):
                         continue
 
                     if not face.isValid:
-                        self.logger.debug('Revalidating face')
                         face = reValidateFace(comp, selectedFace.refPoint)
+                        self.logger.debug('Revalidating face')
+                        self.logger.debug('face occurrence = {}'.format(getOccName(face)))
 
                     if not selectedEdge.edge.isValid:
                         continue # edges that have been processed already will not be valid any more - at the moment this is easier than removing the 
     #                    affected edge from self.edges after having been processed
-                    edge = makeNative(selectedEdge.edge)
+
+#                    edge = makeNative(selectedEdge.edge)
+                    edge = selectedEdge.edge
+                    edge = makeTopOcc(edge, occ)
+                    self.logger.debug('edge occurrence = {}'.format(getOccName(edge)))
+                    
                     try:
                         if not dbUtils.isEdgeAssociatedWithFace(face, edge):
                             continue  # skip if edge is not associated with the face currently being processed
@@ -891,22 +947,29 @@ class DogboneCommand(object):
                         pass
                     
                     startVertex = adsk.fusion.BRepVertex.cast(dbUtils.getVertexAtFace(face, edge))
+                    self.logger.debug('start vertex occurrence = {}'.format(getOccName(startVertex)))
                     extentToEntity = dbUtils.findExtent(face, edge)
+                    self.logger.debug('extentToEntity occurrence = {}'.format(getOccName(extentToEntity)))
 
-                    extentToEntity = makeNative(extentToEntity)
+#                    extentToEntity = makeNative(extentToEntity)
                     self.logger.debug('extentToEntity - {}'.format(extentToEntity.isValid))
                     if not extentToEntity.isValid:
-                        self.logger.debug('To face invalid')
+                        self.logger.debug('extent To face invalid')
 
                     try:
                         (edge1, edge2) = dbUtils.getCornerEdgesAtFace(face, edge)
+                        self.logger.debug('edge1 occurrence = {}'.format(getOccName(edge1)))
+                        self.logger.debug('edge2 occurrence = {}'.format(getOccName(edge2)))
                     except:
                         self.logger.exception('Failed at findAdjecentFaceEdges')
                         dbUtils.messageBox('Failed at findAdjecentFaceEdges:\n{}'.format(traceback.format_exc()))
-                    
-                    centrePoint = makeNative(startVertex).geometry.copy()
+
+#                    centrePoint = makeNative(startVertex).geometry.copy()
+                    centrePoint = startVertex.geometry.copy()
+                    self.logger.debug('initial centrePoint = {}'.format(centrePoint.asArray()))
                         
-                    selectedEdgeFaces = makeNative(selectedEdge.edge).faces
+#                    selectedEdgeFaces = makeNative(selectedEdge.edge).faces
+                    selectedEdgeFaces = makeTopOcc(selectedEdge.edge, occ).faces
                     
                     dirVect = adsk.core.Vector3D.cast(dbUtils.getFaceNormal(selectedEdgeFaces[0]).copy())
                     dirVect.add(dbUtils.getFaceNormal(selectedEdgeFaces[1]))
@@ -914,8 +977,9 @@ class DogboneCommand(object):
                     dirVect.scaleBy(centreDistance)  #ideally radius should be linked to parameters, 
  
                     if self.dbType == 'Mortise Dogbone':
-                        direction0 = dbUtils.correctedEdgeVector(edge1,startVertex) 
-                        direction1 = dbUtils.correctedEdgeVector(edge2,startVertex)
+                        self.logger.debug('doing Mortice Dogbone')
+                        direction0 = dbUtils.correctedEdgeVector(edge1, startVertex) 
+                        direction1 = dbUtils.correctedEdgeVector(edge2, startVertex)
                         
                         if self.longside:
                             if (edge1.length > edge2.length):
@@ -936,47 +1000,64 @@ class DogboneCommand(object):
                                 edge1OffsetByStr = adsk.core.ValueInput.createByReal(0)
                                 edge2OffsetByStr = offsetByStr
                     else:
-                        dirVect = adsk.core.Vector3D.cast(dbUtils.getFaceNormal(makeNative(selectedEdgeFaces[0])).copy())
-                        dirVect.add(dbUtils.getFaceNormal(makeNative(selectedEdgeFaces[1])))
+                        dirVect = adsk.core.Vector3D.cast(dbUtils.getFaceNormal(makeTopOcc(selectedEdgeFaces[0], occ)).copy())
+#                        dirVect.add(dbUtils.getFaceNormal(makeNative(selectedEdgeFaces[1])))
+                        dirVect.add(dbUtils.getFaceNormal(makeTopOcc(selectedEdgeFaces[1], occ)))
                         edge1OffsetByStr = offsetByStr
                         edge2OffsetByStr = offsetByStr
 
                     centrePoint.translateBy(dirVect)
-                    self.logger.debug('centrePoint = ({},{},{})'.format(centrePoint.x, centrePoint.y, centrePoint.z))
+                    self.logger.debug('final centrePoint = {}'.format(centrePoint.asArray()))
 
                     if self.fromTop:
                         centrePoint.translateBy(transformVector)
+
                         self.logger.debug('centrePoint at topFace = {}'.format(centrePoint.asArray()))
                         holePlane = topFacePlane #if self.fromTop else face
                         if not holePlane.isValid:
                             holePlane = reValidateFace(comp, topFaceRefPoint)
+                            self.logger.debug('revalidating topface = {}'.format(centrePoint.asArray()))
                     else:
-                        holePlane = makeNative(face)
-                        holePlane = facePlane
-                         
-#==============================================================================
-#                     planes = comp.constructionPlanes
-#                     planeInput = planes.createInput()
-#                     planeInput.setByOffset(holePlane, ZEROVAL)
-#==============================================================================
-#                    holePlane = planes.add(planeInput)
+#                        holePlane = makeNative(face)
+                        holePlane = makeTopOcc(face, occ)
 
-                    holes =  comp.features.holeFeatures
+                    self.logger.debug('holePlane occurrence = {}'.format(getOccName(holePlane)))
+                         
                     holeInput = holes.createSimpleInput(adsk.core.ValueInput.createByString('dbRadius*2'))
 #                    holeInput.creationOccurrence = occ #This needs to be uncommented once AD fixes component copy issue!!
                     holeInput.isDefaultDirection = True
                     holeInput.tipAngle = adsk.core.ValueInput.createByString('180 deg')
 #                    holeInput.participantBodies = [face.nativeObject.body if occ else face.body]  #Restore this once AD fixes occurrence bugs
-                    holeInput.participantBodies = [makeNative(face.body)]
+#                    holeInput.participantBodies = [makeNative(face.body)]
+                    holeInput.participantBodies = [face.body]
+                    holeInput.creationOccurrence = occ
                     
                     self.logger.debug('extentToEntity before setPositionByPlaneAndOffsets - {}'.format(extentToEntity.isValid))
+                    self.logger.debug('hole plane - u{} v{}'.format(holePlane.geometry.uDirection.asArray(), holePlane.geometry.vDirection.asArray()))
                     holeInput.setPositionByPlaneAndOffsets(holePlane, centrePoint, edge1, edge1OffsetByStr, edge2, edge2OffsetByStr)
                     self.logger.debug('extentToEntity after setPositionByPlaneAndOffsets - {}'.format(extentToEntity.isValid))
-                    holeInput.setOneSideToExtent(extentToEntity, False)
+#                    holeInput.setOneSideToExtent(extentToEntity, False)
+                    holeInput.setDistanceExtent(adsk.core.ValueInput.createByReal(0.1))
                     self.logger.info('hole added to list - {}'.format(centrePoint.asArray()))
  
-                    holeFeature = holes.add(holeInput)
+                    holeFeature = adsk.fusion.HoleFeature.cast(holes.add(holeInput))
                     holeFeature.name = 'dogbone'
+#                    occurrence1 = self.rootComp.occurrencesByComponent(comp).item(0)
+                    extentDefinition = adsk.fusion.ToEntityExtentDefinition.create(extentToEntity,True)
+                    self.logger.debug('extentToEntity occurrence = {}'.format(getOccName(extentToEntity)))
+                    self.logger.debug('extentDefinition = {}'.format(extentDefinition.isValid))
+
+                    for endFace in holeFeature.endFaces:
+                        extrusionInput = extrusions.createInput(endFace.createForAssemblyContext(occ), adsk.fusion.FeatureOperations.CutFeatureOperation)
+                        extrusionInput.setDistanceExtent(False, adsk.core.ValueInput.createByString('-0.5 in'))
+#                        extrusionInput.setOneSideExtent(extentDefinition, False)
+                        self.logger.debug('extrusionInput isValid  = {}'.format(extrusionInput.isValid))
+                        self.logger.debug('endFace occurrence = {}'.format(getOccName(endFace.createForAssemblyContext(occ))))
+#                        extrusionInput.setOneSideExtent(extentDefinition, adsk.fusion.ExtentDirections.NegativeExtentDirection)
+                        extrusion = extrusions.add(extrusionInput)
+                        extrusion.name = "dogbone"
+                        extrusion.isSuppressed = True
+                    
                     self.logger.debug('{} - added'.format(holeFeature.name))
                     holeFeature.isSuppressed = True
                     
@@ -984,6 +1065,11 @@ class DogboneCommand(object):
                     if hole.name[:7] != 'dogbone':
                         continue
                     hole.isSuppressed = False
+                for extrusion in extrusions:
+                    if extrusion.name[:7] != 'dogbone':
+                        continue
+                    extrusion.isSuppressed = False
+                    
                     
             endTlMarker = self.design.timeline.markerPosition-1
             if endTlMarker - startTlMarker >0:
@@ -994,6 +1080,7 @@ class DogboneCommand(object):
             
         if self.errorCount >0:
             dbUtils.messageBox('Reported errors:{}\nYou may not need to do anything, \nbut check holes have been created'.format(self.errorCount))
+
 
     def createStaticDogbones(self):
         self.logger.info('Creating static dogbones')
@@ -1007,11 +1094,11 @@ class DogboneCommand(object):
             startTlMarker = self.design.timeline.markerPosition
             
             if occurrenceFace[0].face.assemblyContext:
-                comp = occurrenceFace[0].face.assemblyContext.component
                 occ = occurrenceFace[0].face.assemblyContext
-                self.logger.info('processing component  = {}'.format(comp.name))
                 self.logger.info('processing occurrence  = {}'.format(occ.name))
-                #entityName = occ.name.split(':')[-1]
+                comp = occ.component
+                self.logger.info('processing component  = {}'.format(comp.name))
+
             else:
                comp = self.rootComp
                occ = None
