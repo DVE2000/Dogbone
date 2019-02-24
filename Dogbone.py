@@ -739,10 +739,11 @@ class DogboneCommand(object):
                     return
 
                 primaryFaceNormal = dbUtils.getFaceNormal(primaryFace.face)
-                if primaryFaceNormal.dotProduct(dbUtils.getFaceNormal(eventArgs.selection.entity)) <0:
+                entityNormal = dbUtils.getFaceNormal(eventArgs.selection.entity)
+                if primaryFaceNormal.dotProduct(entityNormal) <0:
                     eventArgs.isSelectable = False
                     return
-                if primaryFaceNormal.isParallelTo(dbUtils.getFaceNormal(eventArgs.selection.entity)):
+                if primaryFaceNormal.isParallelTo(entityNormal):
                     eventArgs.isSelectable = True
                     return
                 eventArgs.isSelectable = False
@@ -784,10 +785,11 @@ class DogboneCommand(object):
             except KeyError:
                 return
             primaryFaceNormal = dbUtils.getFaceNormal(primaryFace.face)
-            if primaryFaceNormal.dotProduct(dbUtils.getFaceNormal(eventArgs.selection.entity)) <0:
+            entityNormal = dbUtils.getFaceNormal(eventArgs.selection.entity)
+            if primaryFaceNormal.dotProduct(entityNormal) <0:
                 eventArgs.isSelectable = False
                 return
-            if primaryFaceNormal.isParallelTo(dbUtils.getFaceNormal(eventArgs.selection.entity)):
+            if primaryFaceNormal.isParallelTo(entityNormal):
                 eventArgs.isSelectable = True
                 return
             eventArgs.isSelectable = False
