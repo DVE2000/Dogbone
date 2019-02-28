@@ -742,7 +742,7 @@ class DogboneCommand(object):
 
                 primaryFaceNormal = dbUtils.getFaceNormal(primaryFace.face)
                 entityNormal = dbUtils.getFaceNormal(eventArgs.selection.entity)
-                if primaryFaceNormal.dotProduct(entityNormal) <0:
+                if primaryFaceNormal.dotProduct(entityNormal) <0: #eliminate faces that look down
                     eventArgs.isSelectable = False
                     return
                 if primaryFaceNormal.isParallelTo(entityNormal):
