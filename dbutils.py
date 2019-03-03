@@ -1,9 +1,32 @@
 import math, logging
-import traceback
+import traceback, time
 
 import adsk.core
 import adsk.fusion
+from collections import namedtuple
 
+HoleParameters = namedtuple('HoleParameters',['centre','vertex', 'edge1','edge2', 'bottomFace'])
+
+logger = logging.getLogger(__name__)
+
+makeTopOcc = lambda x, y: x.nativeObject.createForAssemblyContext(y)
+getOccName = lambda x: x.assemblyContext.name if x.assemblyContext else x.name
+getFaceNormal = lambda face: face.evaluator.getNormalAtPoint(face.pointOnFace)[1]
+
+class Root(object):
+    def __init__(self, entity):
+        self.root = entity.assemblyContext
+        
+        
+
+#utility wrapper function to record how long a function takes
+def timer(func):
+    def wrapper(*args, **kwargs):
+        startTime = time.time()
+        result = func(*args, **kwargs)
+        logger.debug('{}: time taken = {}'.format(func.__name__, time.time() - startTime))
+        return result
+    return wrapper
 
 def getAngleBetweenFaces(edge):
     # Verify that the two faces are planar.
@@ -49,8 +72,6 @@ def getAngleBetweenFaces(edge):
 
 def findExtent(face, edge):
     
-#    faceNormal = adsk.core.Vector3D.cast(face.evaluator.getNormalAtPoint(face.pointOnFace)[1])
-    
     if edge.startVertex in face.vertices:
         endVertex = edge.endVertex
     else:
@@ -90,7 +111,6 @@ def getCornerEdgesAtFace(face, edge):
         startVertex = edge.endVertex 
     #edge has 2 adjacent faces - therefore the face that isn't from the 3 faces of startVertex, has to be the top face edges
 #    returnVal = [edge1 for edge1 in edge.startVertex.edges if edge1 in face.edges]
-    logger = logging.getLogger(__name__)
     returnVal = []
     for edge1 in startVertex.edges:
         if edge1 not in face.edges:
@@ -108,10 +128,55 @@ def getVertexAtFace(face, edge):
     else:
         return edge.endVertex
     return False
+
+def getHoleLocationParameters(face:adsk.fusion.BRepFace, edge:adsk.fusion.BRepEdge, centreOffset):
+    occ = face.assemblyContext
+    edge = makeTopOcc(edge, occ)
+    logger.debug('edge occurrence = {}'.format(getOccName(edge)))
     
-def getFaceNormal(face):
-    return face.evaluator.getNormalAtPoint(face.pointOnFace)[1]
+    if not isEdgeAssociatedWithFace(face, edge):
+        return False
+#                continue  # skip if edge is not associated with the face currently being processed
+
+    startVertex = adsk.fusion.BRepVertex.cast(getVertexAtFace(face, edge))
+    logger.debug('start vertex occurrence = {}'.format(getOccName(startVertex)))
+    extentToEntity = findExtent(face, edge)
+    extentFaces = extentToEntity.faces
+    startFaceNormal = face.evaluator.getNormalAtPoint(face.pointOnFace)
+    for bFace in extentFaces:
+        if not bFace.evaluator.getNormalAtPoint(bFace.pointOnFace)[1].isParallelTo(startFaceNormal[1]):
+            continue
+        bottomFace = bFace
+        break
     
+    logger.debug('extentToEntity occurrence = {}'.format(getOccName(extentToEntity)))
+
+    logger.debug('extentToEntity - {}'.format(extentToEntity.isValid))
+
+    try:
+        (edge1, edge2) = getCornerEdgesAtFace(face.nativeObject, edge.nativeObject)
+    except:
+        logger.exception('Failed at findAdjecentFaceEdges')
+        messageBox('Failed at findAdjecentFaceEdges:\n{}'.format(traceback.format_exc()))
+
+    centrePoint = startVertex.geometry.copy()
+    logger.debug('initial centrePoint = {}'.format(centrePoint.asArray()))
+        
+    selectedEdgeFaces = makeTopOcc(edge, occ).faces
+    
+    dirVect = adsk.core.Vector3D.cast(getFaceNormal(selectedEdgeFaces[0]).copy())
+    dirVect.add(getFaceNormal(selectedEdgeFaces[1]))
+    dirVect.normalize()
+    dirVect.scaleBy(centreOffset)
+ 
+    dirVect = adsk.core.Vector3D.cast(getFaceNormal(makeTopOcc(selectedEdgeFaces[0], occ)).copy())
+    dirVect.add(getFaceNormal(makeTopOcc(selectedEdgeFaces[1], occ)))
+
+    centrePoint.translateBy(dirVect)
+    logger.debug('final centrePoint = {}'.format(centrePoint.asArray()))
+
+    return HoleParameters(centrePoint, startVertex, edge1.createForAssemblyContext(occ), edge2.createForAssemblyContext(occ), bottomFace)
+   
     
 def messageBox(*args):
     adsk.core.Application.get().userInterface.messageBox(*args)
@@ -143,8 +208,6 @@ def getTopFace(selectedFace):
 
 def getTranslateVectorBetweenFaces(fromFace, toFace):
 #   returns absolute distance
-    logger = logging.getLogger(__name__)
-
     normal = getFaceNormal(fromFace)
     if not normal.isParallelTo(getFaceNormal(fromFace)):
         return False
