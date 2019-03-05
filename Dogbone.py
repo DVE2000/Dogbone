@@ -37,6 +37,13 @@ REV_ID = 'revId'
 ID = 'id'
 DEBUGLEVEL = logging.NOTSET
 
+appPath = os.path.dirname(os.path.abspath(__file__))
+logger = logging.getLogger(__name__)
+formatter = logging.Formatter('%(asctime)s ; %(name)s ; %(levelname)s ; %(lineno)d; %(message)s')
+logHandler = logging.FileHandler(os.path.join(appPath, 'dogbone.log'), mode='w')
+logHandler.setFormatter(formatter)
+logHandler.flush()
+logger.addHandler(logHandler)
 
 # Generate an edgeId or faceId from object
 calcId = lambda x: str(x.tempId) + ':' + x.assemblyContext.component.name if x.assemblyContext else str(x.tempId) + ':' + x.body.name
@@ -46,11 +53,11 @@ getOccName = lambda x: x.assemblyContext.name if x.assemblyContext else x.name
 reValidateFace = lambda comp, x: comp.findBRepUsingPoint(x, adsk.fusion.BRepEntityTypes.BRepFaceEntityType,-1.0 ,False ).item(0)
 
 class SelectedEdge:
-    def __init__(self, edge, edgeId, activeEdgeName, tempId, selectedFace):
+    def __init__(self, edge, edgeId, activeEdgeName, selectedFace):
         self.edge = edge
         self.edgeId = edgeId
         self.activeEdgeName = activeEdgeName
-        self.tempId = tempId
+        self.tempId = edge.tempId
         self.selected = True
         self.selectedFace = selectedFace
 
@@ -59,13 +66,13 @@ class SelectedEdge:
 
 
 class SelectedFace:
-    def __init__(self, dog, face, faceId, tempId, occurrenceName, refPoint, commandInputsEdgeSelect):
+    def __init__(self, dog, face, faceId, occurrenceName, commandInputsEdgeSelect):
         self.dog = dog
         self.face = face # BrepFace
         self.faceId = faceId
-        self.tempId = tempId
+        self.tempId = face.tempId
         self.occurrenceName = occurrenceName
-        self.refPoint = refPoint
+        self.refPoint = face.nativeObject.pointOnFace if face.assemblyContext else face.pointOnFace
         self.commandInputsEdgeSelect = commandInputsEdgeSelect
         self.selected = True
         self.selectedEdges = {} # Keyed with edge
@@ -103,7 +110,7 @@ class SelectedFace:
 
                     activeEdgeName = edge.assemblyContext.component.name if edge.assemblyContext else edge.body.name
                     edgeId = str(edge.tempId)+':'+ activeEdgeName
-                    self.selectedEdges[edgeId] = SelectedEdge(edge, edgeId, activeEdgeName, edge.tempId, self)
+                    self.selectedEdges[edgeId] = SelectedEdge(edge = edge, edgeId = edgeId, activeEdgeName = activeEdgeName, selectedFace = self)
                     self.brepEdges.append(edge)
                     dog.addingEdges = True
                     self.commandInputsEdgeSelect.addSelection(edge)
@@ -153,7 +160,7 @@ class DogboneCommand(object):
         self.fromTop = False
 
         self.addingEdges = 0
-        self.parametric = True
+        self.parametric = False
         self.logging = 0
         self.loggingLevels = {'Notset':0,'Debug':10,'Info':20,'Warning':30,'Error':40}
 
@@ -168,7 +175,7 @@ class DogboneCommand(object):
         
 
     def writeDefaults(self):
-        self.logger.info('config file write')
+        logger.info('config file write')
 
         self.defaultData['offStr'] = self.offStr
         self.defaultData['offVal'] = self.offVal
@@ -193,15 +200,43 @@ class DogboneCommand(object):
             #file.write('!minimumAngle:' = str(self.minimumAngle))
             #file.write('!maximumAngle:' = str(self.maximumAngle))
     
-    def readDefaults(self): 
-#        self.logger.info('config file read')
+    def readDefaults(self):
+        logger.info('read config file')
+        '''
+        Reads default variable values back into dogbone
+        '''        
+     
+        variables = {'offStr': str,\
+        'offVal': float,\
+        'circStr': str,\
+        'circVal': float,\
+        'benchmark': bool,\
+        'dbType': str,\
+        'minimalPercent': float,\
+        'fromTop': bool,\
+        'parametric': bool,\
+        'logging': bool,\
+        'mortiseType': str,\
+        'expandModeGroup': bool,\
+        'expandSettingsGroup': bool}
+        
         if not os.path.isfile(os.path.join(self.appPath, 'defaults.dat')):
             return
         json_file = open(os.path.join(self.appPath, 'defaults.dat'), 'r', encoding='UTF-8')
         try:
             self.defaultData = json.load(json_file)
+            check = [var for var in self.defaultData.keys() if var not in variables.keys()] #weeds out keys that are not in the variables list
+            if len(check) > 0:
+                for key in check:
+                    del self.defaultData[key] #delete the renegade keys
+            if len(self.defaultData)!= len(variables):
+                raise ValueError
+            for var in self.defaultData.keys():
+                if type(self.defaultData[var])!= variables[var]: #check that the variable type is correct
+                    raise ValueError
+                
         except ValueError:
-            self.logger.error('default.dat error')
+            logger.error('default.dat error')
             json_file.close()
             json_file = open(os.path.join(self.appPath, 'defaults.dat'), 'w', encoding='UTF-8')
             json.dump(self.defaultData, json_file, ensure_ascii=False)
@@ -227,7 +262,7 @@ class DogboneCommand(object):
 
         except KeyError: 
         
-#            self.logger.error('Key error on read config file')
+#            logger.error('Key error on read config file')
         #if there's a keyError - means file is corrupted - so, rewrite it with known existing defaultData - it will result in a valid dict, 
         # but contents may have extra, superfluous  data
             json_file = open(os.path.join(self.appPath, 'defaults.dat'), 'w', encoding='UTF-8')
@@ -236,10 +271,10 @@ class DogboneCommand(object):
             return
             
     def debugFace(self, face):
-        if self.logger.level < logging.DEBUG:
+        if logger.level < logging.DEBUG:
             return
         for edge in face.edges:
-            self.logger.debug('edge {}; startVertex: {}; endVertex: {}'.format(edge.tempId, edge.startVertex.geometry.asArray(), edge.endVertex.geometry.asArray()))
+            logger.debug('edge {}; startVertex: {}; endVertex: {}'.format(edge.tempId, edge.startVertex.geometry.asArray(), edge.endVertex.geometry.asArray()))
 
         return
 
@@ -418,7 +453,7 @@ class DogboneCommand(object):
     def onChange(self, args:adsk.core.InputChangedEventArgs):
         
         changedInput = adsk.core.CommandInput.cast(args.input)
-#        self.logger.debug('input changed- {}'.format(changedInput.id))
+#        logger.debug('input changed- {}'.format(changedInput.id))
 
         if changedInput.id == 'dogboneType':
             changedInput.commandInputs.itemById('minimalPercent').isVisible = (changedInput.commandInputs.itemById('dogboneType').selectedItem.name == 'Minimal Dogbone')
@@ -428,7 +463,7 @@ class DogboneCommand(object):
         if changedInput.id != 'select' and changedInput.id != 'edgeSelect':
             return
 
-#        self.logger.debug('input changed- {}'.format(changedInput.id))
+#        logger.debug('input changed- {}'.format(changedInput.id))
         if changedInput.id == 'select':
 
             #==============================================================================
@@ -484,9 +519,9 @@ class DogboneCommand(object):
                                             self, 
                                             face = face,
                                             faceId = faceId,
-                                            tempId = changedEntity.tempId,
+#                                            tempId = changedEntity.tempId,
                                             occurrenceName = changedEntityName,
-                                            refPoint = face.nativeObject.pointOnFace if face.assemblyContext else face.pointOnFace,
+#                                            refPoint = face.nativeObject.pointOnFace if face.assemblyContext else face.pointOnFace,
                                             commandInputsEdgeSelect = changedInput.commandInputs.itemById('edgeSelect')
                                           )  # creates a collecton (of edges) associated with a faceId
             faces = []
@@ -536,7 +571,7 @@ class DogboneCommand(object):
         self.logging = self.loggingLevels[inputs['logging'].selectedItem.name]
         self.logHandler.setLevel(self.logging)
 
-        self.logger.debug('Parsing inputs')
+        logger.debug('Parsing inputs')
 
         self.circStr = inputs['circDiameter'].expression
         self.circVal = inputs['circDiameter'].value
@@ -551,17 +586,17 @@ class DogboneCommand(object):
         self.expandModeGroup = (inputs['modeGroup']).isExpanded
         self.expandSettingsGroup = (inputs['settingsGroup']).isExpanded
 
-        self.logger.debug('self.fromTop = {}'.format(self.fromTop))
-        self.logger.debug('self.dbType = {}'.format(self.dbType))
-        self.logger.debug('self.parametric = {}'.format(self.parametric))
-        self.logger.debug('self.circStr = {}'.format(self.circStr))
-        self.logger.debug('self.circDiameter = {}'.format(self.circVal))
-        self.logger.debug('self.offStr = {}'.format(self.offStr))
-        self.logger.debug('self.offVal = {}'.format(self.offVal))
-        self.logger.debug('self.benchmark = {}'.format(self.benchmark))
-        self.logger.debug('self.mortiseType = {}'.format(self.longside))
-        self.logger.debug('self.expandModeGroup = {}'.format(self.expandModeGroup))
-        self.logger.debug('self.expandSettingsGroup = {}'.format(self.expandSettingsGroup))
+        logger.debug('self.fromTop = {}'.format(self.fromTop))
+        logger.debug('self.dbType = {}'.format(self.dbType))
+        logger.debug('self.parametric = {}'.format(self.parametric))
+        logger.debug('self.circStr = {}'.format(self.circStr))
+        logger.debug('self.circDiameter = {}'.format(self.circVal))
+        logger.debug('self.offStr = {}'.format(self.offStr))
+        logger.debug('self.offVal = {}'.format(self.offVal))
+        logger.debug('self.benchmark = {}'.format(self.benchmark))
+        logger.debug('self.mortiseType = {}'.format(self.longside))
+        logger.debug('self.expandModeGroup = {}'.format(self.expandModeGroup))
+        logger.debug('self.expandSettingsGroup = {}'.format(self.expandSettingsGroup))
         
         self.edges = []
         self.faces = []
@@ -576,17 +611,17 @@ class DogboneCommand(object):
                 self.faces.append(entity)
                 
     def initLogger(self):
-        self.logger = logging.getLogger(__name__)
+        logger = logging.getLogger(__name__)
         self.formatter = logging.Formatter('%(asctime)s ; %(filename)s ; %(levelname)s ; %(lineno)d; %(message)s')
 #        if not os.path.isfile(os.path.join(self.appPath, 'dogBone.log')):
 #            return
         self.logHandler = logging.FileHandler(os.path.join(self.appPath, 'dogbone.log'), mode='w')
         self.logHandler.setFormatter(self.formatter)
         self.logHandler.flush()
-        self.logger.addHandler(self.logHandler)
+        logger.addHandler(self.logHandler)
         
     def closeLogger(self):
-        for handler in self.logger.handlers:
+        for handler in logger.handlers:
             handler.flush()
             handler.close()
 
@@ -594,10 +629,10 @@ class DogboneCommand(object):
         start = time.time()
 
         self.initLogger()
-        self.logger.log(0, 'logging Level = %(levelname)')
+        logger.log(0, 'logging Level = %(levelname)')
         self.parseInputs(args.firingEvent.sender.commandInputs)
         self.logHandler.setLevel(self.logging)
-        self.logger.setLevel(self.logging)
+        logger.setLevel(self.logging)
 
         self.writeDefaults()
 
@@ -661,7 +696,7 @@ class DogboneCommand(object):
             
             self.createStaticDogbones()
         
-        self.logger.info('all dogbones complete\n-------------------------------------------\n')
+        logger.info('all dogbones complete\n-------------------------------------------\n')
 
         self.closeLogger()
         
@@ -838,7 +873,7 @@ class DogboneCommand(object):
 
     # The main algorithm for parametric dogbones
     def createParametricDogbones(self):
-        self.logger.info('Creating parametric dogbones')
+        logger.info('Creating parametric dogbones')
         self.errorCount = 0
         if not self.design:
             raise RuntimeError('No active Fusion design')
@@ -852,12 +887,12 @@ class DogboneCommand(object):
 
             if occurrenceFace[0].face.assemblyContext:
                 occ = occurrenceFace[0].face.assemblyContext
-                self.logger.debug('processing occurrence  = {}'.format(occ.name))
+                logger.debug('processing occurrence  = {}'.format(occ.name))
 
                 comp = adsk.fusion.Component.cast(occ.component)
                 occ = self.rootComp.allOccurrencesByComponent(comp).item(0) #work around F360 shortcomings on adding hole feature to occurrences
 #                creates top level occurrence :1
-                self.logger.debug('processing component  = {}'.format(comp.name))
+                logger.debug('processing component  = {}'.format(comp.name))
 #            set up common variables
                 planes = adsk.fusion.ConstructionPlanes.cast(comp.constructionPlanes)
                 extrusions = adsk.fusion.ExtrudeFeatures.cast(comp.features.extrudeFeatures)
@@ -866,7 +901,7 @@ class DogboneCommand(object):
             else:
                comp = adsk.fusion.Component.cast(self.rootComp)
                occ = None
-               self.logger.debug('processing Rootcomponent')
+               logger.debug('processing Rootcomponent')
 #            set up common variables
                planes = adsk.fusion.ConstructionPlanes.cast(self.rootComp.constructionPlanes)
                extrusions = adsk.fusion.ExtrudeFeatures.cast(self.rootComp.features.extrudeFeatures)
@@ -877,47 +912,47 @@ class DogboneCommand(object):
                 refFace = makeTopOcc(occurrenceFace[0].face, occ)
                 if not refFace.isValid:
                     refFace = reValidateFace(refFace, occurrenceFace[0].refPoint)
-                    self.logger.debug('revalidating refFace')
-                    self.logger.debug('refFace occurrence = {}'.format(getOccName(refFace)))
+                    logger.debug('revalidating refFace')
+                    logger.debug('refFace occurrence = {}'.format(getOccName(refFace)))
 #                (topFace, topFaceRefPoint) = du.getTopFace(makeNative(occurrenceFace[0].face))
                 (topFace, topFaceRefPoint) = du.getTopFace(refFace)
                 topFace = makeTopOcc(topFace, occ)
-                self.logger.debug('topFace occurrence = {}'.format(getOccName(topFace)))
+                logger.debug('topFace occurrence = {}'.format(getOccName(topFace)))
                 topPlaneInput = planes.createInput()
                 topPlaneInput.setByOffset(topFace, zeroVal)
                 topFacePlane = planes.add(topPlaneInput)
                 topFacePlane.isLightBulbOn = False
                 topFacePlane.name = 'dogbonePlane'
 
-                self.logger.info('Processing holes from top face - {}'.format(topFace.body.name))
+                logger.info('Processing holes from top face - {}'.format(topFace.body.name))
 
             for selectedFace in occurrenceFace:
                 if len(selectedFace.selectedEdges.values()) <1:
-                    self.logger.debug('Face has no edges')
+                    logger.debug('Face has no edges')
 
 #                face = makeNative(selectedFace.face)
                 face = selectedFace.face
                 face = makeTopOcc(face, occ)
-                self.logger.debug('face occurrence = {}'.format(getOccName(face)))
+                logger.debug('face occurrence = {}'.format(getOccName(face)))
                 
 #                comp = adsk.fusion.Component.cast(comp)
                 
                 if not face.isValid:
-                    self.logger.debug('revalidating Face')
+                    logger.debug('revalidating Face')
                     face = reValidateFace(comp, selectedFace.refPoint)
-                self.logger.debug('Processing Face = {}'.format(face.tempId))
+                logger.debug('Processing Face = {}'.format(face.tempId))
               
                 #faceNormal = du.getFaceNormal(face.nativeObject)
                 if self.fromTop:
-                    self.logger.debug('topFace type {}'.format(type(topFace)))
+                    logger.debug('topFace type {}'.format(type(topFace)))
                     if not topFace.isValid:
-                       self.logger.debug('revalidating topFace') 
+                       logger.debug('revalidating topFace') 
                        topFace = reValidateFace(comp, topFaceRefPoint)
-                       self.logger.debug('topFace occurrence = {}'.format(getOccName(topFace)))
+                       logger.debug('topFace occurrence = {}'.format(getOccName(topFace)))
 
-                    self.logger.debug('topFace isValid = {}'.format(topFace.isValid))
+                    logger.debug('topFace isValid = {}'.format(topFace.isValid))
                     transformVector = du.getTranslateVectorBetweenFaces(face, topFace)
-                    self.logger.debug('creating transformVector to topFace = ({}) length = {}'.format(transformVector.asArray(), transformVector.length))
+                    logger.debug('creating transformVector to topFace = ({}) length = {}'.format(transformVector.asArray(), transformVector.length))
                 else:
                     planeInput = planes.createInput()
                     planeInput.setByOffset(face, zeroVal)
@@ -927,16 +962,16 @@ class DogboneCommand(object):
                     
                 for selectedEdge in selectedFace.selectedEdges.values():
                     
-                    self.logger.debug('Processing edge - {}'.format(selectedEdge.edge.tempId))
+                    logger.debug('Processing edge - {}'.format(selectedEdge.edge.tempId))
 
                     if not selectedEdge.selected:
-                        self.logger.debug('  Not selected. Skipping...')
+                        logger.debug('  Not selected. Skipping...')
                         continue
 
                     if not face.isValid:
                         face = reValidateFace(comp, selectedFace.refPoint)
-                        self.logger.debug('Revalidating face')
-                        self.logger.debug('face occurrence = {}'.format(getOccName(face)))
+                        logger.debug('Revalidating face')
+                        logger.debug('face occurrence = {}'.format(getOccName(face)))
 
                     if not selectedEdge.edge.isValid:
                         continue # edges that have been processed already will not be valid any more - at the moment this is easier than removing the 
@@ -945,7 +980,7 @@ class DogboneCommand(object):
 #                    edge = makeNative(selectedEdge.edge)
                     edge = selectedEdge.edge
                     edge = makeTopOcc(edge, occ)
-                    self.logger.debug('edge occurrence = {}'.format(getOccName(edge)))
+                    logger.debug('edge occurrence = {}'.format(getOccName(edge)))
                     
                     try:
                         if not du.isEdgeAssociatedWithFace(face, edge):
@@ -954,26 +989,26 @@ class DogboneCommand(object):
                         pass
                     
                     startVertex = adsk.fusion.BRepVertex.cast(du.getVertexAtFace(face, edge))
-                    self.logger.debug('start vertex occurrence = {}'.format(getOccName(startVertex)))
+                    logger.debug('start vertex occurrence = {}'.format(getOccName(startVertex)))
                     extentToEntity = du.findExtent(face, edge)
-                    self.logger.debug('extentToEntity occurrence = {}'.format(getOccName(extentToEntity)))
+                    logger.debug('extentToEntity occurrence = {}'.format(getOccName(extentToEntity)))
 
 #                    extentToEntity = makeNative(extentToEntity)
-                    self.logger.debug('extentToEntity - {}'.format(extentToEntity.isValid))
+                    logger.debug('extentToEntity - {}'.format(extentToEntity.isValid))
                     if not extentToEntity.isValid:
-                        self.logger.debug('extent To face invalid')
+                        logger.debug('extent To face invalid')
 
                     try:
                         (edge1, edge2) = du.getCornerEdgesAtFace(face, edge)
-                        self.logger.debug('edge1 occurrence = {}'.format(getOccName(edge1)))
-                        self.logger.debug('edge2 occurrence = {}'.format(getOccName(edge2)))
+                        logger.debug('edge1 occurrence = {}'.format(getOccName(edge1)))
+                        logger.debug('edge2 occurrence = {}'.format(getOccName(edge2)))
                     except:
-                        self.logger.exception('Failed at findAdjecentFaceEdges')
+                        logger.exception('Failed at findAdjecentFaceEdges')
                         du.messageBox('Failed at findAdjecentFaceEdges:\n{}'.format(traceback.format_exc()))
 
 #                    centrePoint = makeNative(startVertex).geometry.copy()
                     centrePoint = startVertex.geometry.copy()
-                    self.logger.debug('initial centrePoint = {}'.format(centrePoint.asArray()))
+                    logger.debug('initial centrePoint = {}'.format(centrePoint.asArray()))
                         
 #                    selectedEdgeFaces = makeNative(selectedEdge.edge).faces
                     selectedEdgeFaces = makeTopOcc(selectedEdge.edge, occ).faces
@@ -984,7 +1019,7 @@ class DogboneCommand(object):
                     dirVect.scaleBy(centreDistance)  #ideally radius should be linked to parameters, 
  
                     if self.dbType == 'Mortise Dogbone':
-                        self.logger.debug('doing Mortice Dogbone')
+                        logger.debug('doing Mortice Dogbone')
                         direction0 = du.correctedEdgeVector(edge1, startVertex) 
                         direction1 = du.correctedEdgeVector(edge2, startVertex)
                         
@@ -1014,21 +1049,21 @@ class DogboneCommand(object):
                         edge2OffsetByStr = offsetByStr
 
                     centrePoint.translateBy(dirVect)
-                    self.logger.debug('final centrePoint = {}'.format(centrePoint.asArray()))
+                    logger.debug('final centrePoint = {}'.format(centrePoint.asArray()))
 
                     if self.fromTop:
                         centrePoint.translateBy(transformVector)
 
-                        self.logger.debug('centrePoint at topFace = {}'.format(centrePoint.asArray()))
+                        logger.debug('centrePoint at topFace = {}'.format(centrePoint.asArray()))
                         holePlane = topFacePlane #if self.fromTop else face
                         if not holePlane.isValid:
                             holePlane = reValidateFace(comp, topFaceRefPoint)
-                            self.logger.debug('revalidating topface = {}'.format(centrePoint.asArray()))
+                            logger.debug('revalidating topface = {}'.format(centrePoint.asArray()))
                     else:
 #                        holePlane = makeNative(face)
                         holePlane = makeTopOcc(face, occ)
 
-                    self.logger.debug('holePlane occurrence = {}'.format(getOccName(holePlane)))
+                    logger.debug('holePlane occurrence = {}'.format(getOccName(holePlane)))
                          
                     holeInput = holes.createSimpleInput(adsk.core.ValueInput.createByString('dbRadius*2'))
 #                    holeInput.creationOccurrence = occ #This needs to be uncommented once AD fixes component copy issue!!
@@ -1039,33 +1074,33 @@ class DogboneCommand(object):
                     holeInput.participantBodies = [face.body]
                     holeInput.creationOccurrence = occ
                     
-                    self.logger.debug('extentToEntity before setPositionByPlaneAndOffsets - {}'.format(extentToEntity.isValid))
-                    self.logger.debug('hole plane - u{} v{}'.format(holePlane.geometry.uDirection.asArray(), holePlane.geometry.vDirection.asArray()))
+                    logger.debug('extentToEntity before setPositionByPlaneAndOffsets - {}'.format(extentToEntity.isValid))
+                    logger.debug('hole plane - u{} v{}'.format(holePlane.geometry.uDirection.asArray(), holePlane.geometry.vDirection.asArray()))
                     holeInput.setPositionByPlaneAndOffsets(holePlane, centrePoint, edge1, edge1OffsetByStr, edge2, edge2OffsetByStr)
-                    self.logger.debug('extentToEntity after setPositionByPlaneAndOffsets - {}'.format(extentToEntity.isValid))
+                    logger.debug('extentToEntity after setPositionByPlaneAndOffsets - {}'.format(extentToEntity.isValid))
 #                    holeInput.setOneSideToExtent(extentToEntity, False)
                     holeInput.setDistanceExtent(adsk.core.ValueInput.createByReal(0.1))
-                    self.logger.info('hole added to list - {}'.format(centrePoint.asArray()))
+                    logger.info('hole added to list - {}'.format(centrePoint.asArray()))
  
                     holeFeature = adsk.fusion.HoleFeature.cast(holes.add(holeInput))
                     holeFeature.name = 'dogbone'
 #                    occurrence1 = self.rootComp.occurrencesByComponent(comp).item(0)
                     extentDefinition = adsk.fusion.ToEntityExtentDefinition.create(extentToEntity,True)
-                    self.logger.debug('extentToEntity occurrence = {}'.format(getOccName(extentToEntity)))
-                    self.logger.debug('extentDefinition = {}'.format(extentDefinition.isValid))
+                    logger.debug('extentToEntity occurrence = {}'.format(getOccName(extentToEntity)))
+                    logger.debug('extentDefinition = {}'.format(extentDefinition.isValid))
 
                     for endFace in holeFeature.endFaces:
                         extrusionInput = extrusions.createInput(endFace.createForAssemblyContext(occ), adsk.fusion.FeatureOperations.CutFeatureOperation)
                         extrusionInput.setDistanceExtent(False, adsk.core.ValueInput.createByString('-0.5 in'))
 #                        extrusionInput.setOneSideExtent(extentDefinition, False)
-                        self.logger.debug('extrusionInput isValid  = {}'.format(extrusionInput.isValid))
-                        self.logger.debug('endFace occurrence = {}'.format(getOccName(endFace.createForAssemblyContext(occ))))
+                        logger.debug('extrusionInput isValid  = {}'.format(extrusionInput.isValid))
+                        logger.debug('endFace occurrence = {}'.format(getOccName(endFace.createForAssemblyContext(occ))))
 #                        extrusionInput.setOneSideExtent(extentDefinition, adsk.fusion.ExtentDirections.NegativeExtentDirection)
                         extrusion = extrusions.add(extrusionInput)
                         extrusion.name = "dogbone"
                         extrusion.isSuppressed = True
                     
-                    self.logger.debug('{} - added'.format(holeFeature.name))
+                    logger.debug('{} - added'.format(holeFeature.name))
                     holeFeature.isSuppressed = True
                     
                 for hole in holes:
@@ -1082,7 +1117,7 @@ class DogboneCommand(object):
             if endTlMarker - startTlMarker >0:
                 timelineGroup = self.design.timeline.timelineGroups.add(startTlMarker,endTlMarker)
                 timelineGroup.name = 'dogbone'
-#            self.logger.debug('doEvents - allowing display to refresh')
+#            logger.debug('doEvents - allowing display to refresh')
 #            adsk.doEvents()
             
         if self.errorCount >0:
@@ -1090,7 +1125,7 @@ class DogboneCommand(object):
 
 
     def createStaticDogbones(self):
-        self.logger.info('Creating static dogbones')
+        logger.info('Creating static dogbones')
         self.errorCount = 0
         if not self.design:
             raise RuntimeError('No active Fusion design')
@@ -1102,41 +1137,41 @@ class DogboneCommand(object):
             
             if occurrenceFace[0].face.assemblyContext:
                 occ = occurrenceFace[0].face.assemblyContext
-                self.logger.info('processing occurrence  = {}'.format(occ.name))
+                logger.info('processing occurrence  = {}'.format(occ.name))
                 comp = occ.component
-                self.logger.info('processing component  = {}'.format(comp.name))
+                logger.info('processing component  = {}'.format(comp.name))
 
             else:
                comp = self.rootComp
                occ = None
-               self.logger.info('processing Rootcomponent')
+               logger.info('processing Rootcomponent')
                
             
             if self.fromTop:
                 (topFace, topFaceRefPoint) = du.getTopFace(makeNative(occurrenceFace[0].face))
-                self.logger.debug('topFace ref point: {}'.format(topFaceRefPoint.asArray()))
-                self.logger.info('Processing holes from top face - {}'.format(topFace.tempId))
+                logger.debug('topFace ref point: {}'.format(topFaceRefPoint.asArray()))
+                logger.info('Processing holes from top face - {}'.format(topFace.tempId))
                 self.debugFace(topFace)
                 
                     
                 sketch = adsk.fusion.Sketch.cast(comp.sketches.add(topFace))  #used for fault finding
                 sketch.name = 'dogbone'
                 sketch.isComputeDeferred = True
-                self.logger.debug('Added topFace sketch - {}'.format(sketch.name))
+                logger.debug('Added topFace sketch - {}'.format(sketch.name))
 
             for selectedFace in occurrenceFace:
                 if len(selectedFace.selectedEdges.values()) <1:
-                    self.logger.debug('Face has no edges')
+                    logger.debug('Face has no edges')
                     continue 
                 face = makeNative(selectedFace.face)
 
                 if not face.isValid:
-                    self.logger.debug('Revalidating face')
+                    logger.debug('Revalidating face')
                     face = reValidateFace(comp, selectedFace.refPoint)
-                    self.logger.info('Processing Face = {}'.format(face.tempId))
+                    logger.info('Processing Face = {}'.format(face.tempId))
                     self.debugFace(face)
 
-                self.logger.info('processing face - {}'.format(face.tempId))
+                logger.info('processing face - {}'.format(face.tempId))
                 self.debugFace(face)
                 holeList = []                
 
@@ -1144,31 +1179,31 @@ class DogboneCommand(object):
                 
 
                 if self.fromTop:
-                    self.logger.debug('topFace type {}'.format(type(topFace)))
+                    logger.debug('topFace type {}'.format(type(topFace)))
                     if not topFace.isValid:
-                       self.logger.debug('revalidating topFace') 
+                       logger.debug('revalidating topFace') 
                        topFace = reValidateFace(comp, topFaceRefPoint)
                        topFaceRefPoint = topFace.pointOnFace
                        self.debugFace(topFace)
-                    self.logger.debug('topFace isValid = {}'.format(topFace.isValid))
+                    logger.debug('topFace isValid = {}'.format(topFace.isValid))
                     transformVector = du.getTranslateVectorBetweenFaces(face, topFace)
-                    self.logger.debug('creating transformVector to topFace = {} length = {}'.format(transformVector.asArray(), transformVector.length))
+                    logger.debug('creating transformVector to topFace = {} length = {}'.format(transformVector.asArray(), transformVector.length))
                 else:    
                     sketch = adsk.fusion.Sketch.cast(comp.sketches.add(face))
                     sketch.name = 'dogbone'
                     sketch.isComputeDeferred = True
-                    self.logger.debug('creating face plane sketch - {}'.format(sketch.name))
+                    logger.debug('creating face plane sketch - {}'.format(sketch.name))
                 
                 for selectedEdge in selectedFace.selectedEdges.values():
                     
-                    self.logger.debug('Processing edge - {}'.format(selectedEdge.edge.tempId))
+                    logger.debug('Processing edge - {}'.format(selectedEdge.edge.tempId))
 
                     if not selectedEdge.selected:
-                        self.logger.debug('  Not selected. Skipping...')
+                        logger.debug('  Not selected. Skipping...')
                         continue
 
                     if not face.isValid:
-                        self.logger.debug('Revalidating face')
+                        logger.debug('Revalidating face')
                         face = reValidateFace(comp, selectedFace.refPoint)
                         
                     if not selectedEdge.edge.isValid:
@@ -1215,12 +1250,12 @@ class DogboneCommand(object):
                     sketchPoint = sketch.sketchPoints.add(centrePoint)  #as the centre is placed on midline endPoint, it automatically gets constrained
                     length = (selectedEdge.edge.length + transformVector.length) if self.fromTop else makeNative(selectedEdge.edge).length
                     holeList.append([length, sketchPoint])
-                    self.logger.info('hole added to list - length {}, {}'.format(length, sketchPoint.geometry.asArray()))
+                    logger.info('hole added to list - length {}, {}'.format(length, sketchPoint.geometry.asArray()))
                     
                 depthList = set(map(lambda x: x[0], holeList))  #create a unique set of depths - using this in the filter will automatically group depths
 
                 for depth in depthList:
-                    self.logger.debug('processing holes at depth {}'.format(depth))
+                    logger.debug('processing holes at depth {}'.format(depth))
                     pointCollection = adsk.core.ObjectCollection.create()  #needed for the setPositionBySketchpoints
                     holeCount = 0
                     for hole in filter(lambda h: h[0] == depth, holeList):
@@ -1228,7 +1263,7 @@ class DogboneCommand(object):
                         holeCount+=1
                     
                     if not face.isValid:
-                        self.logger.debug('Revalidating face')
+                        logger.debug('Revalidating face')
                         face = reValidateFace(comp, selectedFace.refPoint)
 
                     holes =  comp.features.holeFeatures
@@ -1242,7 +1277,7 @@ class DogboneCommand(object):
                     newHole = holes.add(holeInput)
                     newHole.isSuppressed = True
                     newHole.name = 'dogbone'
-                    self.logger.info('{} Holes added'.format(holeCount))
+                    logger.info('{} Holes added'.format(holeCount))
             sketch.isComputeDeferred = False
                     
             for hole in holes:
@@ -1253,7 +1288,7 @@ class DogboneCommand(object):
             if endTlMarker - startTlMarker >0:
                 timelineGroup = self.design.timeline.timelineGroups.add(startTlMarker,endTlMarker)
                 timelineGroup.name = 'dogbone'
-#            self.logger.debug('doEvents - allowing fusion to refresh')
+#            logger.debug('doEvents - allowing fusion to refresh')
 #            adsk.doEvents()
             
         if self.errorCount >0:
