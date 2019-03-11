@@ -14,6 +14,7 @@
 
 import logging
 
+
 import sys
 from . import dbutils as du
 from .dbutils import timer
@@ -145,33 +146,36 @@ class DogboneCommand(object):
         self.app = adsk.core.Application.get()
         self.ui = self.app.userInterface
 
-        self.offStr = "0"
-        self.offVal = None
-        self.circStr = "0.25 in"
-        self.circVal = None
+        self.setDefaults()
         self.edges = []
-        self.benchmark = False
         self.errorCount = 0
-#        self.boneDirection = "top"
-        self.dbType = 'Normal Dogbone'
-        self.longside = True
-        self.minimalPercent = 10.0
         self.faceSelections = adsk.core.ObjectCollection.create()
-        self.fromTop = False
 
         self.addingEdges = 0
-        self.parametric = False
-        self.logging = 0
         self.loggingLevels = {'Notset':0,'Debug':10,'Info':20,'Warning':30,'Error':40}
-
-        self.expandModeGroup = True
-        self.expandSettingsGroup = False
-#        self.loggingLevelsLookUp = {self.loggingLevels[k]:k for k in self.loggingLevels}
         self.levels = {}
 
         self.handlers = du.HandlerHelper()
 
         self.appPath = os.path.dirname(os.path.abspath(__file__))
+        
+    def setDefaults(self):
+
+        self.offStr = "0"
+        self.offVal = None
+        self.circStr = "0.25 in"
+        self.circVal = None
+        self.benchmark = False
+        self.dbType = 'Normal Dogbone'
+        self.longside = True
+        self.minimalPercent = 10.0
+        self.fromTop = False
+        self.parametric = False
+        self.logging = 0
+
+        self.expandModeGroup = True
+        self.expandSettingsGroup = False
+        
         
 
     def writeDefaults(self):
@@ -196,9 +200,6 @@ class DogboneCommand(object):
         json_file = open(os.path.join(self.appPath, 'defaults.dat'), 'w', encoding='UTF-8')
         json.dump(self.defaultData, json_file, ensure_ascii=False)
         json_file.close()
-            #file.write('!limitParticipation:' = str(self.limitParticipation))
-            #file.write('!minimumAngle:' = str(self.minimumAngle))
-            #file.write('!maximumAngle:' = str(self.maximumAngle))
     
     def readDefaults(self):
         logger.info('read config file')
@@ -206,17 +207,17 @@ class DogboneCommand(object):
         Reads default variable values back into dogbone
         '''        
      
-        variables = {'offStr': str,\
+        variables = {'offStr': adsk.core.ValueInput,\
         'offVal': float,\
-        'circStr': str,\
+        'circStr': adsk.core.ValueInput,\
         'circVal': float,\
         'benchmark': bool,\
         'dbType': str,\
         'minimalPercent': float,\
         'fromTop': bool,\
         'parametric': bool,\
-        'logging': bool,\
-        'mortiseType': str,\
+        'logging': int,\
+        'mortiseType': bool,\
         'expandModeGroup': bool,\
         'expandSettingsGroup': bool}
         
@@ -232,12 +233,19 @@ class DogboneCommand(object):
             if len(self.defaultData)!= len(variables):
                 raise ValueError
             for var in self.defaultData.keys():
-                if type(self.defaultData[var])!= variables[var]: #check that the variable type is correct
-                    raise ValueError
+                if variables[var] == adsk.core.ValueInput:
+                    self.design.unitsManager.evaluateExpression(self.defaultData[var])  # this will throw a RuntimeError 6 if the expression is not valid
+                else:
+                    if type(self.defaultData[var])!= variables[var]: #check that the variable type is correct
+                        raise ValueError
                 
-        except ValueError:
+        except (ValueError, RuntimeError) as e:
+            if type(e) == RuntimeError and e.args[0].split(":")[0].strip() != '6':
+                raise
             logger.error('default.dat error')
             json_file.close()
+            self.ui.messageBox('Oops!\nSomething went wrong with the saved configuration\nresetting defaults', 'Note', adsk.core.MessageBoxButtonTypes.OKButtonType)
+            self.setDefaults()
             json_file = open(os.path.join(self.appPath, 'defaults.dat'), 'w', encoding='UTF-8')
             json.dump(self.defaultData, json_file, ensure_ascii=False)
             return
