@@ -885,7 +885,6 @@ class DogboneCommand(object):
         self.errorCount = 0
         if not self.design:
             raise RuntimeError('No active Fusion design')
-        zeroVal = adsk.core.ValueInput.createByReal(0.0)
         holeInput = adsk.fusion.HoleFeatureInput.cast(None)
         offsetByStr = adsk.core.ValueInput.createByString('dbHoleOffset')
         centreDistance = self.radius*(1+self.minimalPercent/100 if self.dbType=='Minimal Dogbone' else  1)
@@ -915,33 +914,42 @@ class DogboneCommand(object):
                extrusions = adsk.fusion.ExtrudeFeatures.cast(self.rootComp.features.extrudeFeatures)
                holes =  adsk.fusion.HoleFeatures.cast(self.rootComp.features.holeFeatures)
 
-
+#==============================================================================
+#             if self.fromTop:
+#                 refFace = makeTopOcc(occurrenceFace[0].face, occ)
+#                 if not refFace.isValid:
+#                     refFace = reValidateFace(refFace, occurrenceFace[0].refPoint)
+#                     logger.debug('revalidating refFace')
+#                     logger.debug('refFace occurrence = {}'.format(getOccName(refFace)))
+# #                (topFace, topFaceRefPoint) = du.getTopFace(makeNative(occurrenceFace[0].face))
+#                 (topFace, topFaceRefPoint) = du.getTopFace(refFace)
+#                 topFace = makeTopOcc(topFace, occ)
+#                 logger.debug('topFace occurrence = {}'.format(getOccName(topFace)))
+#                 topPlaneInput = planes.createInput()
+#                 topPlaneInput.setByOffset(topFace, zeroVal)
+#                 topFacePlane = planes.add(topPlaneInput)
+#                 topFacePlane.isLightBulbOn = False
+#                 topFacePlane.name = 'dogbonePlane'
+# 
+#                 logger.info('Processing holes from top face - {}'.format(topFace.body.name))
+# 
+#             for selectedFace in occurrenceFace:
+#                 if len(selectedFace.selectedEdges.values()) <1:
+#                     logger.debug('Face has no edges')
+# 
+# #                face = makeNative(selectedFace.face)
+#                 face = selectedFace.face
+#                 face = makeTopOcc(face, occ)
+#                 logger.debug('face occurrence = {}'.format(getOccName(face)))
+#==============================================================================
             if self.fromTop:
-                refFace = makeTopOcc(occurrenceFace[0].face, occ)
-                if not refFace.isValid:
-                    refFace = reValidateFace(refFace, occurrenceFace[0].refPoint)
-                    logger.debug('revalidating refFace')
-                    logger.debug('refFace occurrence = {}'.format(getOccName(refFace)))
-#                (topFace, topFaceRefPoint) = du.getTopFace(makeNative(occurrenceFace[0].face))
-                (topFace, topFaceRefPoint) = du.getTopFace(refFace)
-                topFace = makeTopOcc(topFace, occ)
-                logger.debug('topFace occurrence = {}'.format(getOccName(topFace)))
-                topPlaneInput = planes.createInput()
-                topPlaneInput.setByOffset(topFace, zeroVal)
-                topFacePlane = planes.add(topPlaneInput)
-                topFacePlane.isLightBulbOn = False
-                topFacePlane.name = 'dogbonePlane'
-
-                logger.info('Processing holes from top face - {}'.format(topFace.body.name))
+                (topFace, topFaceRefPoint) = dbUtils.getTopFace(makeNative(occurrenceFace[0].face))
+                self.logger.info('Processing holes from top face - {}'.format(topFace.body.name))
 
             for selectedFace in occurrenceFace:
                 if len(selectedFace.selectedEdges.values()) <1:
-                    logger.debug('Face has no edges')
-
-#                face = makeNative(selectedFace.face)
-                face = selectedFace.face
-                face = makeTopOcc(face, occ)
-                logger.debug('face occurrence = {}'.format(getOccName(face)))
+                    self.logger.debug('Face has no edges')
+                face = makeNative(selectedFace.face)
                 
 #                comp = adsk.fusion.Component.cast(comp)
                 
@@ -958,16 +966,24 @@ class DogboneCommand(object):
                        topFace = reValidateFace(comp, topFaceRefPoint)
                        logger.debug('topFace occurrence = {}'.format(getOccName(topFace)))
 
-                    logger.debug('topFace isValid = {}'.format(topFace.isValid))
-                    transformVector = du.getTranslateVectorBetweenFaces(face, topFace)
-                    logger.debug('creating transformVector to topFace = ({}) length = {}'.format(transformVector.asArray(), transformVector.length))
-                else:
-                    planeInput = planes.createInput()
-                    planeInput.setByOffset(face, zeroVal)
-                    facePlane = planes.add(planeInput)
-                    facePlane.isLightBulbOn = False
-                    facePlane.name = 'dogbonePlane'
-                    
+#==============================================================================
+#                     logger.debug('topFace isValid = {}'.format(topFace.isValid))
+#                     transformVector = du.getTranslateVectorBetweenFaces(face, topFace)
+#                     logger.debug('creating transformVector to topFace = ({}) length = {}'.format(transformVector.asArray(), transformVector.length))
+#                 else:
+#                     planeInput = planes.createInput()
+#                     planeInput.setByOffset(face, zeroVal)
+#                     facePlane = planes.add(planeInput)
+#                     facePlane.isLightBulbOn = False
+#                     facePlane.name = 'dogbonePlane'
+#                     
+#==============================================================================
+                    topFace = makeNative(topFace)
+                       
+                    self.logger.debug('topFace isValid = {}'.format(topFace.isValid))
+                    transformVector = dbUtils.getTranslateVectorBetweenFaces(face, topFace)
+                    self.logger.debug('creating transformVector to topFace = ({},{},{}) length = {}'.format(transformVector.x, transformVector.y, transformVector.z, transformVector.length))
+                                
                 for selectedEdge in selectedFace.selectedEdges.values():
                     
                     logger.debug('Processing edge - {}'.format(selectedEdge.edge.tempId))
@@ -1062,17 +1078,25 @@ class DogboneCommand(object):
                     if self.fromTop:
                         centrePoint.translateBy(transformVector)
 
-                        logger.debug('centrePoint at topFace = {}'.format(centrePoint.asArray()))
-                        holePlane = topFacePlane #if self.fromTop else face
+#==============================================================================
+#                         logger.debug('centrePoint at topFace = {}'.format(centrePoint.asArray()))
+#                         holePlane = topFacePlane #if self.fromTop else face
+#==============================================================================
+                        self.logger.debug('centrePoint at topFace = {}'.format(centrePoint.asArray()))
+                        holePlane = topFace if self.fromTop else face
                         if not holePlane.isValid:
                             holePlane = reValidateFace(comp, topFaceRefPoint)
                             logger.debug('revalidating topface = {}'.format(centrePoint.asArray()))
                     else:
-#                        holePlane = makeNative(face)
-                        holePlane = makeTopOcc(face, occ)
-
-                    logger.debug('holePlane occurrence = {}'.format(getOccName(holePlane)))
+#==============================================================================
+# #                        holePlane = makeNative(face)
+#                         holePlane = makeTopOcc(face, occ)
+# 
+#                     logger.debug('holePlane occurrence = {}'.format(getOccName(holePlane)))
+#==============================================================================
+                        holePlane = makeNative(face)
                          
+                    holes =  comp.features.holeFeatures
                     holeInput = holes.createSimpleInput(adsk.core.ValueInput.createByString('dbRadius*2'))
 #                    holeInput.creationOccurrence = occ #This needs to be uncommented once AD fixes component copy issue!!
                     holeInput.isDefaultDirection = True
@@ -1092,28 +1116,30 @@ class DogboneCommand(object):
  
                     holeFeature = adsk.fusion.HoleFeature.cast(holes.add(holeInput))
                     holeFeature.name = 'dogbone'
-#                    occurrence1 = self.rootComp.occurrencesByComponent(comp).item(0)
-                    extentDefinition = adsk.fusion.ToEntityExtentDefinition.create(extentToEntity,True)
-                    logger.debug('extentToEntity occurrence = {}'.format(getOccName(extentToEntity)))
-                    logger.debug('extentDefinition = {}'.format(extentDefinition.isValid))
-
-                    for endFace in holeFeature.endFaces:
-                        extrusionInput = extrusions.createInput(endFace.createForAssemblyContext(occ), adsk.fusion.FeatureOperations.CutFeatureOperation)
-                        extrusionInput.setDistanceExtent(False, adsk.core.ValueInput.createByString('-0.5 in'))
-#                        extrusionInput.setOneSideExtent(extentDefinition, False)
-                        logger.debug('extrusionInput isValid  = {}'.format(extrusionInput.isValid))
-                        logger.debug('endFace occurrence = {}'.format(getOccName(endFace.createForAssemblyContext(occ))))
-#                        extrusionInput.setOneSideExtent(extentDefinition, adsk.fusion.ExtentDirections.NegativeExtentDirection)
-                        extrusion = extrusions.add(extrusionInput)
-                        extrusion.name = "dogbone"
-                        extrusion.isSuppressed = True
-                    
-                    logger.debug('{} - added'.format(holeFeature.name))
+#==============================================================================
+# #                    occurrence1 = self.rootComp.occurrencesByComponent(comp).item(0)
+#                     extentDefinition = adsk.fusion.ToEntityExtentDefinition.create(extentToEntity,True)
+#                     logger.debug('extentToEntity occurrence = {}'.format(getOccName(extentToEntity)))
+#                     logger.debug('extentDefinition = {}'.format(extentDefinition.isValid))
+# 
+#                     for endFace in holeFeature.endFaces:
+#                         extrusionInput = extrusions.createInput(endFace.createForAssemblyContext(occ), adsk.fusion.FeatureOperations.CutFeatureOperation)
+#                         extrusionInput.setDistanceExtent(False, adsk.core.ValueInput.createByString('-0.5 in'))
+# #                        extrusionInput.setOneSideExtent(extentDefinition, False)
+#                         logger.debug('extrusionInput isValid  = {}'.format(extrusionInput.isValid))
+#                         logger.debug('endFace occurrence = {}'.format(getOccName(endFace.createForAssemblyContext(occ))))
+# #                        extrusionInput.setOneSideExtent(extentDefinition, adsk.fusion.ExtentDirections.NegativeExtentDirection)
+#                         extrusion = extrusions.add(extrusionInput)
+#                         extrusion.name = "dogbone"
+#                         extrusion.isSuppressed = True
+#                     
+#                     logger.debug('{} - added'.format(holeFeature.name))
+#==============================================================================
                     holeFeature.isSuppressed = True
                     
                 for hole in holes:
                     if hole.name[:7] != 'dogbone':
-                        continue
+                        break
                     hole.isSuppressed = False
                 for extrusion in extrusions:
                     if extrusion.name[:7] != 'dogbone':
