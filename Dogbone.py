@@ -234,7 +234,7 @@ class DogboneCommand(object):
                 raise
             self.logger.error('default.dat error')
             json_file.close()
-            self.ui.messageBox('Oops!\nSomething went wrong with the saved configuration\nresetting defaults', 'Note', adsk.core.MessageBoxButtonTypes.OKButtonType)
+            self.ui.messageBox('Oops!\nSomething went wrong with the saved configuration\nresetting defaults', 'Note', adsk.core.MessageBoxButtonTypes.OKButtonType, adsk.core.MessageBoxIconTypes.InformationIconType)
             self.setDefaults()
             json_file = open(os.path.join(self.appPath, 'defaults.dat'), 'w', encoding='UTF-8')
             json.dump(self.defaultData, json_file, ensure_ascii=False)
