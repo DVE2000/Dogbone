@@ -4,6 +4,41 @@ import traceback
 import adsk.core
 import adsk.fusion
 
+getFaceNormal = lambda face: face.evaluator.getNormalAtPoint(face.pointOnFace)[1]
+edgeVector = lambda coEdge:  coEdge.edge.evaluator.getEndPoints()[2].vectorTo(coEdge.edge.evaluator.getEndPoints()[1]) if coEdge.isOpposedToEdge else coEdge.edge.evaluator.getEndPoints()[1].vectorTo(coEdge.edge.evaluator.getEndPoints()[2]) 
+
+
+def findInnerCorners(face):
+        face1 = adsk.fusion.BRepFace.cast(face)
+        if face1.objectType != adsk.fusion.BRepFace.classType():
+            return False
+        if face1.geometry.surfaceType != adsk.core.SurfaceTypes.PlaneSurfaceType:
+            return False
+        faceNormal = getFaceNormal(face)
+        edgeList = []
+        for loop in face1.loops:
+            for coEdge in loop.coEdges:
+                v1 = edgeVector(coEdge)
+                v1.normalize()
+                lastEdge = edgeVector(coEdge.previous)
+                lastEdge.normalize()
+                cornerAngle = lastEdge.angleTo(v1)
+                cross = adsk.core.Vector3D.cast(None)
+                cross = lastEdge.crossProduct(v1)
+                if cross.angleTo(faceNormal)!=0: # cross product must be opposite to face Normal to be an internal corner
+#                    if cornerAngle > math.pi*2/360*95:  
+#                        break
+                    edges = coEdge.edge.endVertex.edges if coEdge.isOpposedToEdge else coEdge.edge.startVertex.edges
+                    if edges.count != 3:
+                        break
+                    for edge in edges:  #find edge that is not on face
+                        points = edge.evaluator.getEndPoints()
+                        v1 = points[1].vectorTo(points[2]) if coEdge.isOpposedToEdge else points[2].vectorTo(points[1])
+                        if not v1.isParallelTo(faceNormal):
+                            continue
+                        edgeList.append(edge)
+        return edgeList
+
 
 def getAngleBetweenFaces(edge):
     # Verify that the two faces are planar.
@@ -16,36 +51,104 @@ def getAngleBetweenFaces(edge):
         return 0
 
     # Get the normal of each face.
-    ret = face1.evaluator.getNormalAtPoint(face1.pointOnFace)
-    normal1 = ret[1]
-    ret = face2.evaluator.getNormalAtPoint(face2.pointOnFace)
-    normal2 = ret[1]
+    normal1 = face1.evaluator.getNormalAtPoint(face1.pointOnFace)[1]
+    normal2 = face2.evaluator.getNormalAtPoint(face2.pointOnFace)[1]
     # Get the angle between the normals.
     normalAngle = normal1.angleTo(normal2)
+    return math.pi/2 - normalAngle
 
-    # Get the co-edge of the selected edge for face1.
-    if edge.coEdges.item(0).loop.face == face1:
-        coEdge = edge.coEdges.item(0)
-    elif edge.coEdges.item(1).loop.face == face1:
-        coEdge = edge.coEdges.item(1)
+#==============================================================================
+#     # Get the co-edge of the selected edge for face1.
+#     if edge.coEdges.item(0).loop.face == face1:
+#         coEdge = edge.coEdges.item(0)
+#     elif edge.coEdges.item(1).loop.face == face1:
+#         coEdge = edge.coEdges.item(1)
+# 
+#     # Create a vector that represents the direction of the co-edge.
+#     if coEdge.isOpposedToEdge:
+#         edgeDir = edge.startVertex.geometry.vectorTo(edge.endVertex.geometry)
+#     else:
+#         edgeDir = edge.endVertex.geometry.vectorTo(edge.startVertex.geometry)
+# 
+#     # Get the cross product of the face normals.
+#     cross = normal1.crossProduct(normal2)
+# 
+#     # Check to see if the cross product is in the same or opposite direction
+#     # of the co-edge direction.  If it's opposed then it's a convex angle.
+#     if edgeDir.angleTo(cross) > math.pi/2:
+#         angle = (math.pi * 2) - (math.pi - normalAngle)
+#     else:
+#         angle = math.pi - normalAngle
+#
+#    return angle
+#==============================================================================
+    
+def createTempDogbone(edge, toolDia, minimalPercent):
+    '''
+        returns temporary BRepBody - 
+    
+    '''        
+    toolRadius = toolDia/2
+    
+    points = adsk.fusion.BRepEdge.cast(None)
+    points = edge.evaluator.getEndPoints()
+    startPoint = points[1]
+    endPoint = points[2]
+    
+    edgeVector = startPoint.vectorTo(endPoint)
 
-    # Create a vector that represents the direction of the co-edge.
-    if coEdge.isOpposedToEdge:
-        edgeDir = edge.startVertex.geometry.vectorTo(edge.endVertex.geometry)
-    else:
-        edgeDir = edge.endVertex.geometry.vectorTo(edge.startVertex.geometry)
+    rotationMatrix = adsk.core.Matrix3D.create()
+    rotationMatrix.setToRotation(math.pi/2, edgeVector, startPoint)
+    
+    face1 = edge.faces.item(0)
+    face2 = edge.faces.item(1)
+    
+    face1Normal = face1.evaluator.getNormalAtPoint(face1.pointOnFace)[1]
+    face2Normal = face2.evaluator.getNormalAtPoint(face2.pointOnFace)[1]
 
-    # Get the cross product of the face normals.
-    cross = normal1.crossProduct(normal2)
+    centreLineVector = face1Normal.copy()
+    centreLineVector.add(face2Normal)
+    centreLineVector.normalize()
+    orthogonalToCentreLine = centreLineVector.copy()
+    
+    orthogonalToCentreLine.transformBy(rotationMatrix)
+    centreLineVector.scaleBy(toolRadius*minimalPercent)
+    orthogonalToCentreLine.scaleBy(toolRadius)
+    
+    startPoint.translateBy(centreLineVector)
+    endPoint.translateBy(centreLineVector)
+   
+    tempBrepMgr = adsk.fusion.TemporaryBRepManager.get()
+    dbBody = tempBrepMgr.createCylinderOrCone(startPoint, toolRadius, endPoint, toolRadius)
+    cornerAngle = face1Normal.angleTo(face2Normal)/2
+    cornerTan = math.tan(cornerAngle)
+    dbBox = None
+    if cornerAngle != 0 and cornerAngle != math.pi/4:  # 0 means that the angle between faces is also 0 
+        boxLength = abs(toolRadius*cornerTan - toolRadius*minimalPercent)
+        boxCentre = startPoint.copy()
+        boxWidth = toolDia
+        
+        boxCentreVector = centreLineVector.copy()
+        boxCentreVector.normalize()
+        boxCentreVector.scaleBy(boxLength/2)
+        
+        boxCentreVertVect = edgeVector.copy()
+        boxCentreVertVect.normalize()
+        boxHeight = startPoint.distanceTo(endPoint)
+        boxCentreVertVect.scaleBy(boxHeight/2)
+        
+        boxCentre.translateBy(boxCentreVector)
+        boxCentre.translateBy(boxCentreVertVect)
 
-    # Check to see if the cross product is in the same or opposite direction
-    # of the co-edge direction.  If it's opposed then it's a convex angle.
-    if edgeDir.angleTo(cross) > math.pi/2:
-        angle = (math.pi * 2) - (math.pi - normalAngle)
-    else:
-        angle = math.pi - normalAngle
-
-    return angle
+        if (boxLength < 0.001):
+            boxLength = .001 
+        
+        boundaryBox = adsk.core.OrientedBoundingBox3D.create(boxCentre, centreLineVector, orthogonalToCentreLine, boxLength, boxWidth, boxHeight)
+        
+        dbBox = tempBrepMgr.createBox(boundaryBox)
+        tempBrepMgr.booleanOperation(dbBody, dbBox, adsk.fusion.BooleanTypes.UnionBooleanType)
+        
+    return dbBody  #temporary body ready to be unioned to other bodies
 
 def findExtent(face, edge):
     
@@ -108,10 +211,6 @@ def getVertexAtFace(face, edge):
     else:
         return edge.endVertex
     return False
-    
-def getFaceNormal(face):
-    return face.evaluator.getNormalAtPoint(face.pointOnFace)[1]
-    
     
 def messageBox(*args):
     adsk.core.Application.get().userInterface.messageBox(*args)

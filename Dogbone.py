@@ -40,6 +40,7 @@ calcId = lambda x: str(x.tempId) + ':' + x.assemblyContext.name.split(':')[-1] i
 makeNative = lambda x: x.nativeObject if x.nativeObject else x
 reValidateFace = lambda comp, x: comp.findBRepUsingPoint(x, adsk.fusion.BRepEntityTypes.BRepFaceEntityType,-1.0 ,False ).item(0)
 
+
 class SelectedEdge:
     def __init__(self, edge, edgeId, activeEdgeName, tempId, selectedFace):
         self.edge = edge
@@ -70,43 +71,36 @@ class SelectedFace:
         #             this is where inside corner edges, dropping down from the face are processed
         #==============================================================================
         faceNormal = dbUtils.getFaceNormal(face)
+        
+        edgeList = dbUtils.findInnerCorners(face)
 
-        for edge in self.face.body.edges:
-                if edge.isDegenerate:
+        for edge in edgeList:
+            if edge.isDegenerate:
+                continue
+            if edge in self.brepEdges:
+                continue
+            try:
+                if edge.geometry.curveType != adsk.core.Curve3DTypes.Line3DCurveType:
                     continue
-                if edge in self.brepEdges:
+                vector = edge.startVertex.geometry.vectorTo(edge.endVertex.geometry)
+                if vector.isPerpendicularTo(faceNormal):
                     continue
-                try:
-                    if edge.geometry.curveType != adsk.core.Curve3DTypes.Line3DCurveType:
-                        continue
-                    vector = edge.startVertex.geometry.vectorTo(edge.endVertex.geometry)
-                    if vector.isPerpendicularTo(faceNormal):
-                        continue
-                    if edge.faces.item(0).geometry.objectType != adsk.core.Plane.classType():
-                        continue
-                    if edge.faces.item(1).geometry.objectType != adsk.core.Plane.classType():
-                        continue              
-                    if edge.startVertex not in face.vertices:
-                        if edge.endVertex not in face.vertices:
-                            continue
-                        else:
-                            vector = edge.endVertex.geometry.vectorTo(edge.startVertex.geometry)
-                    if vector.dotProduct(faceNormal) >= 0:
-                        continue
-                    if dbUtils.getAngleBetweenFaces(edge) > math.pi:
-                        continue
-
-                    activeEdgeName = edge.assemblyContext.name.split(':')[-1] if edge.assemblyContext else edge.body.name
-                    edgeId = str(edge.tempId)+':'+ activeEdgeName
-                    self.selectedEdges[edgeId] = SelectedEdge(edge, edgeId, activeEdgeName, edge.tempId, self)
-                    self.brepEdges.append(edge)
-                    dog.addingEdges = True
-                    self.commandInputsEdgeSelect.addSelection(edge)
-                    dog.addingEdges = False
-                    
-                    dog.selectedEdges[edgeId] = self.selectedEdges[edgeId] # can be used for reverse lookup of edge to face
-                except:
-                    dbUtils.messageBox('Failed at edge:\n{}'.format(traceback.format_exc()))
+                if edge.faces.item(0).geometry.objectType != adsk.core.Plane.classType():
+                    continue
+                if edge.faces.item(1).geometry.objectType != adsk.core.Plane.classType():
+                    continue              
+    
+                activeEdgeName = edge.assemblyContext.component.name if edge.assemblyContext else edge.body.name
+                edgeId = str(edge.tempId)+':'+ activeEdgeName
+                self.selectedEdges[edgeId] = SelectedEdge(edge, edgeId, activeEdgeName, edge.tempId, self)
+                self.brepEdges.append(edge)
+                dog.addingEdges = True
+                self.commandInputsEdgeSelect.addSelection(edge)
+                dog.addingEdges = False
+                
+                dog.selectedEdges[edgeId] = self.selectedEdges[edgeId] # can be used for reverse lookup of edge to face
+            except:
+                dbUtils.messageBox('Failed at edge:\n{}'.format(traceback.format_exc()))
 
     def selectAll(self, selection = True):
         self.selected = selection
@@ -975,11 +969,13 @@ class DogboneCommand(object):
         self.errorCount = 0
         if not self.design:
             raise RuntimeError('No active Fusion design')
-        holeInput = adsk.fusion.HoleFeatureInput.cast(None)
-        centreDistance = self.radius*(1+self.minimalPercent/100 if self.dbType == 'Minimal Dogbone' else  1)
+        minPercent = 1+self.minimalPercent/100 if self.dbType == 'Minimal Dogbone' else  1
         
         for occurrenceFace in self.selectedOccurrences.values():
             startTlMarker = self.design.timeline.markerPosition
+            bodyCollection = adsk.core.ObjectCollection.create()
+            tempBrepMgr = adsk.fusion.TemporaryBRepManager.get()
+            bodies = None
             
             if occurrenceFace[0].face.assemblyContext:
                 comp = occurrenceFace[0].face.assemblyContext.component
@@ -999,46 +995,27 @@ class DogboneCommand(object):
                 self.logger.info('Processing holes from top face - {}'.format(topFace.tempId))
                 self.debugFace(topFace)
                 
-                    
-                sketch = adsk.fusion.Sketch.cast(comp.sketches.add(topFace))  #used for fault finding
-                sketch.name = 'dogbone'
-                sketch.isComputeDeferred = True
-                self.logger.debug('Added topFace sketch - {}'.format(sketch.name))
-
             for selectedFace in occurrenceFace:
                 if len(selectedFace.selectedEdges.values()) <1:
                     self.logger.debug('Face has no edges')
                     continue 
-                face = makeNative(selectedFace.face)
+                face = selectedFace.face
 
-                if not face.isValid:
-                    self.logger.debug('Revalidating face')
-                    face = reValidateFace(comp, selectedFace.refPoint)
-                    self.logger.info('Processing Face = {}'.format(face.tempId))
-                    self.debugFace(face)
+#                if not face.isValid:
+#                    self.logger.debug('Revalidating face')
+#                    face = reValidateFace(comp, selectedFace.refPoint)
+#                    self.logger.info('Processing Face = {}'.format(face.tempId))
+#                    self.debugFace(face)
 
-                self.logger.info('processing face - {}'.format(face.tempId))
-                self.debugFace(face)
-                holeList = []                
+#                self.logger.info('processing face - {}'.format(face.tempId))
+#                self.debugFace(face)
 
                 comp = adsk.fusion.Component.cast(comp)
-                
 
                 if self.fromTop:
                     self.logger.debug('topFace type {}'.format(type(topFace)))
-                    if not topFace.isValid:
-                       self.logger.debug('revalidating topFace') 
-                       topFace = reValidateFace(comp, topFaceRefPoint)
-                       topFaceRefPoint = topFace.pointOnFace
-                       self.debugFace(topFace)
-                    self.logger.debug('topFace isValid = {}'.format(topFace.isValid))
                     transformVector = dbUtils.getTranslateVectorBetweenFaces(face, topFace)
                     self.logger.debug('creating transformVector to topFace = {} length = {}'.format(transformVector.asArray(), transformVector.length))
-                else:    
-                    sketch = adsk.fusion.Sketch.cast(comp.sketches.add(face))
-                    sketch.name = 'dogbone'
-                    sketch.isComputeDeferred = True
-                    self.logger.debug('creating face plane sketch - {}'.format(sketch.name))
                 
                 for selectedEdge in selectedFace.selectedEdges.values():
                     
@@ -1048,82 +1025,66 @@ class DogboneCommand(object):
                         self.logger.debug('  Not selected. Skipping...')
                         continue
 
-                    if not face.isValid:
-                        self.logger.debug('Revalidating face')
-                        face = reValidateFace(comp, selectedFace.refPoint)
-                        
                     if not selectedEdge.edge.isValid:
                         continue # edges that have been processed already will not be valid any more - at the moment this is easier than removing the 
     #                    affected edge from self.edges after having been processed
                     try:
-                        if not dbUtils.isEdgeAssociatedWithFace(face, makeNative(selectedEdge.edge)):
+                        if not dbUtils.isEdgeAssociatedWithFace(face, selectedEdge.edge):
                             continue  # skip if edge is not associated with the face currently being processed
                     except:
                         pass
 
-                    edge = makeNative(selectedEdge.edge)                    
-                    startVertex = adsk.fusion.BRepVertex.cast(dbUtils.getVertexAtFace(face, edge))
-                    centrePoint = startVertex.geometry.copy()
-                        
-                    selectedEdgeFaces = edge.faces
-                    
-                    if self.dbType == 'Mortise Dogbone':
-                        (edge0, edge1) = dbUtils.getCornerEdgesAtFace(face, edge)
-                        direction0 = dbUtils.correctedEdgeVector(edge0,startVertex) 
-                        direction1 = dbUtils.correctedEdgeVector(edge1,startVertex) 
-                        if self.longside:
-                            if (edge0.length > edge1.length):
-                                dirVect = direction0
-                            else:
-                                dirVect = direction1
-                        else:
-                            if (edge0.length > edge1.length):
-                                dirVect = direction1
-                            else:
-                                dirVect = direction0
+                    edge = selectedEdge.edge
+                    dbBody = dbUtils.createTempDogbone(edge = edge, toolDia = self.circVal, minimalPercent = minPercent)
+
+                    if not bodies:
+                        bodies = dbBody
                     else:
-                        dirVect = adsk.core.Vector3D.cast(dbUtils.getFaceNormal(makeNative(selectedEdgeFaces[0])).copy())
-                        dirVect.add(dbUtils.getFaceNormal(makeNative(selectedEdgeFaces[1])))
-                    dirVect.normalize()
-                    dirVect.scaleBy(centreDistance)  #ideally radius should be linked to parameters, 
-                                                          # but hole start point still is the right quadrant
-                    centrePoint.translateBy(dirVect)
-                    if self.fromTop:
-                        centrePoint.translateBy(transformVector)
-
-                    centrePoint = sketch.modelToSketchSpace(centrePoint)
+                        tempBrepMgr.booleanOperation(bodies, dbBody, adsk.fusion.BooleanTypes.UnionBooleanType)
                     
-                    sketchPoint = sketch.sketchPoints.add(centrePoint)  #as the centre is placed on midline endPoint, it automatically gets constrained
-                    length = (selectedEdge.edge.length + transformVector.length) if self.fromTop else makeNative(selectedEdge.edge).length
-                    holeList.append([length, sketchPoint])
-                    self.logger.info('hole added to list - length {}, {}'.format(length, sketchPoint.geometry.asArray()))
-                    
-                depthList = set(map(lambda x: x[0], holeList))  #create a unique set of depths - using this in the filter will automatically group depths
-
-                for depth in depthList:
-                    self.logger.debug('processing holes at depth {}'.format(depth))
-                    pointCollection = adsk.core.ObjectCollection.create()  #needed for the setPositionBySketchpoints
-                    holeCount = 0
-                    for hole in filter(lambda h: h[0] == depth, holeList):
-                        pointCollection.add(hole[1])
-                        holeCount+=1
-                    
-                    if not face.isValid:
-                        self.logger.debug('Revalidating face')
-                        face = reValidateFace(comp, selectedFace.refPoint)
-
-                    holes =  comp.features.holeFeatures
-                    holeInput = holes.createSimpleInput(adsk.core.ValueInput.createByReal(self.radius*2))
-                    holeInput.isDefaultDirection = True
-                    holeInput.tipAngle = adsk.core.ValueInput.createByString('180 deg')
-                    holeInput.participantBodies = [face.body]
-                    holeInput.setPositionBySketchPoints(pointCollection)
-                    holeInput.setDistanceExtent(adsk.core.ValueInput.createByReal(depth))
-
-                    holes.add(holeInput)
-                    self.logger.info('{} Holes added'.format(holeCount))
-            sketch.isComputeDeferred = False
-                    
+#                    if self.dbType == 'Mortise Dogbone':
+#                        (edge0, edge1) = dbUtils.getCornerEdgesAtFace(face, edge)
+#                        direction0 = dbUtils.correctedEdgeVector(edge0,startVertex) 
+#                        direction1 = dbUtils.correctedEdgeVector(edge1,startVertex) 
+#                        if self.longside:
+#                            if (edge0.length > edge1.length):
+#                                dirVect = direction0
+#                            else:
+#                                dirVect = direction1
+#                        else:
+#                            if (edge0.length > edge1.length):
+#                                dirVect = direction1
+#                            else:
+#                                dirVect = direction0
+#                    else:
+#                        dirVect = adsk.core.Vector3D.cast(dbUtils.getFaceNormal(makeNative(selectedEdgeFaces[0])).copy())
+#                        dirVect.add(dbUtils.getFaceNormal(makeNative(selectedEdgeFaces[1])))
+#                    dirVect.normalize()
+#                    dirVect.scaleBy(centreDistance)  #ideally radius should be linked to parameters, 
+#                                                          # but hole start point still is the right quadrant
+#                    centrePoint.translateBy(dirVect)
+#                    if self.fromTop:
+#                        centrePoint.translateBy(transformVector)
+#                    
+#                    length = (selectedEdge.edge.length + transformVector.length) if self.fromTop else makeNative(selectedEdge.edge).length
+            baseFeats = self.rootComp.features.baseFeatures
+            baseFeat = baseFeats.add()
+            baseFeat.startEdit()
+    
+            dbB = self.rootComp.bRepBodies.add(bodies, baseFeat)
+            dbB.name = 'dbHole'
+            baseFeat.finishEdit()
+            
+            targetBody = edge.body
+        
+            bodyCollection.add(baseFeat.bodies.item(0))
+            
+            combineInput = self.rootComp.features.combineFeatures.createInput(targetBody, bodyCollection)
+            combineInput.isKeepToolBodies = False
+            combineInput.operation = adsk.fusion.FeatureOperations.CutFeatureOperation
+            combine = self.rootComp.features.combineFeatures.add(combineInput)
+    
+                                            
             endTlMarker = self.design.timeline.markerPosition-1
             if endTlMarker - startTlMarker >0:
                 timelineGroup = self.design.timeline.timelineGroups.add(startTlMarker,endTlMarker)
