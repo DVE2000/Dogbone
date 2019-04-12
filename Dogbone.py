@@ -977,46 +977,31 @@ class DogboneCommand(object):
             tempBrepMgr = adsk.fusion.TemporaryBRepManager.get()
             bodies = None
             
-            if occurrenceFace[0].face.assemblyContext:
-                comp = occurrenceFace[0].face.assemblyContext.component
-                occ = occurrenceFace[0].face.assemblyContext
-                self.logger.info('processing component  = {}'.format(comp.name))
-                self.logger.info('processing occurrence  = {}'.format(occ.name))
+#            if occurrenceFace[0].face.assemblyContext:
+#                comp = occurrenceFace[0].face.assemblyContext.component
+#                occ = occurrenceFace[0].face.assemblyContext
+#                self.logger.info('processing component  = {}'.format(comp.name))
+#                self.logger.info('processing occurrence  = {}'.format(occ.name))
                 #entityName = occ.name.split(':')[-1]
-            else:
-               comp = self.rootComp
-               occ = None
-               self.logger.info('processing Rootcomponent')
+#            else:
+#               comp = self.rootComp
+#               occ = None
+#               self.logger.info('processing Rootcomponent')
                
-            
+            topPlane = None
             if self.fromTop:
-                (topFace, topFaceRefPoint) = dbUtils.getTopFace(makeNative(occurrenceFace[0].face))
-                self.logger.debug('topFace ref point: {}'.format(topFaceRefPoint.asArray()))
+                (topFace, topFaceRefPoint) = dbUtils.getTopFace(occurrenceFace[0].face)
+                topPlane = adsk.core.Plane.create(topFace.pointOnFace, dbUtils.getFaceNormal(topFace))
+#                self.logger.debug('topFace ref point: {}'.format(topFaceRefPoint.asArray()))
                 self.logger.info('Processing holes from top face - {}'.format(topFace.tempId))
-                self.debugFace(topFace)
+#                self.debugFace(topFace)
                 
             for selectedFace in occurrenceFace:
                 if len(selectedFace.selectedEdges.values()) <1:
                     self.logger.debug('Face has no edges')
                     continue 
                 face = selectedFace.face
-
-#                if not face.isValid:
-#                    self.logger.debug('Revalidating face')
-#                    face = reValidateFace(comp, selectedFace.refPoint)
-#                    self.logger.info('Processing Face = {}'.format(face.tempId))
-#                    self.debugFace(face)
-
-#                self.logger.info('processing face - {}'.format(face.tempId))
-#                self.debugFace(face)
-
-                comp = adsk.fusion.Component.cast(comp)
-
-                if self.fromTop:
-                    self.logger.debug('topFace type {}'.format(type(topFace)))
-                    transformVector = dbUtils.getTranslateVectorBetweenFaces(face, topFace)
-                    self.logger.debug('creating transformVector to topFace = {} length = {}'.format(transformVector.asArray(), transformVector.length))
-                
+              
                 for selectedEdge in selectedFace.selectedEdges.values():
                     
                     self.logger.debug('Processing edge - {}'.format(selectedEdge.edge.tempId))
@@ -1025,9 +1010,6 @@ class DogboneCommand(object):
                         self.logger.debug('  Not selected. Skipping...')
                         continue
 
-                    if not selectedEdge.edge.isValid:
-                        continue # edges that have been processed already will not be valid any more - at the moment this is easier than removing the 
-    #                    affected edge from self.edges after having been processed
                     try:
                         if not dbUtils.isEdgeAssociatedWithFace(face, selectedEdge.edge):
                             continue  # skip if edge is not associated with the face currently being processed
@@ -1035,38 +1017,13 @@ class DogboneCommand(object):
                         pass
 
                     edge = selectedEdge.edge
-                    dbBody = dbUtils.createTempDogbone(edge = edge, toolDia = self.circVal, minimalPercent = minPercent)
+                    dbBody = dbUtils.createTempDogbone(edge = edge, toolDia = self.circVal, minimalPercent = minPercent, topPlane = topPlane)
 
                     if not bodies:
                         bodies = dbBody
                     else:
                         tempBrepMgr.booleanOperation(bodies, dbBody, adsk.fusion.BooleanTypes.UnionBooleanType)
                     
-#                    if self.dbType == 'Mortise Dogbone':
-#                        (edge0, edge1) = dbUtils.getCornerEdgesAtFace(face, edge)
-#                        direction0 = dbUtils.correctedEdgeVector(edge0,startVertex) 
-#                        direction1 = dbUtils.correctedEdgeVector(edge1,startVertex) 
-#                        if self.longside:
-#                            if (edge0.length > edge1.length):
-#                                dirVect = direction0
-#                            else:
-#                                dirVect = direction1
-#                        else:
-#                            if (edge0.length > edge1.length):
-#                                dirVect = direction1
-#                            else:
-#                                dirVect = direction0
-#                    else:
-#                        dirVect = adsk.core.Vector3D.cast(dbUtils.getFaceNormal(makeNative(selectedEdgeFaces[0])).copy())
-#                        dirVect.add(dbUtils.getFaceNormal(makeNative(selectedEdgeFaces[1])))
-#                    dirVect.normalize()
-#                    dirVect.scaleBy(centreDistance)  #ideally radius should be linked to parameters, 
-#                                                          # but hole start point still is the right quadrant
-#                    centrePoint.translateBy(dirVect)
-#                    if self.fromTop:
-#                        centrePoint.translateBy(transformVector)
-#                    
-#                    length = (selectedEdge.edge.length + transformVector.length) if self.fromTop else makeNative(selectedEdge.edge).length
             baseFeats = self.rootComp.features.baseFeatures
             baseFeat = baseFeats.add()
             baseFeat.startEdit()
