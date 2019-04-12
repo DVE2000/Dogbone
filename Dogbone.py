@@ -83,7 +83,7 @@ class SelectedFace:
                 if edge.geometry.curveType != adsk.core.Curve3DTypes.Line3DCurveType:
                     continue
                 vector = edge.startVertex.geometry.vectorTo(edge.endVertex.geometry)
-                if vector.isPerpendicularTo(faceNormal):
+                if not vector.isParallelTo(faceNormal):
                     continue
                 if edge.faces.item(0).geometry.objectType != adsk.core.Plane.classType():
                     continue
@@ -976,18 +976,7 @@ class DogboneCommand(object):
             bodyCollection = adsk.core.ObjectCollection.create()
             tempBrepMgr = adsk.fusion.TemporaryBRepManager.get()
             bodies = None
-            
-#            if occurrenceFace[0].face.assemblyContext:
-#                comp = occurrenceFace[0].face.assemblyContext.component
-#                occ = occurrenceFace[0].face.assemblyContext
-#                self.logger.info('processing component  = {}'.format(comp.name))
-#                self.logger.info('processing occurrence  = {}'.format(occ.name))
-                #entityName = occ.name.split(':')[-1]
-#            else:
-#               comp = self.rootComp
-#               occ = None
-#               self.logger.info('processing Rootcomponent')
-               
+                           
             topPlane = None
             if self.fromTop:
                 (topFace, topFaceRefPoint) = dbUtils.getTopFace(occurrenceFace[0].face)
@@ -1017,7 +1006,7 @@ class DogboneCommand(object):
                         pass
 
                     edge = selectedEdge.edge
-                    dbBody = dbUtils.createTempDogbone(edge = edge, toolDia = self.circVal, minimalPercent = minPercent, topPlane = topPlane)
+                    dbBody = dbUtils.createTempDogbone(edge = edge, toolDia = self.circVal, minimalPercent = minPercent, topPlane = topPlane, dbType = self.dbType )
 
                     if not bodies:
                         bodies = dbBody
@@ -1047,7 +1036,7 @@ class DogboneCommand(object):
                 timelineGroup = self.design.timeline.timelineGroups.add(startTlMarker,endTlMarker)
                 timelineGroup.name = 'dogbone'
 #            self.logger.debug('doEvents - allowing fusion to refresh')
-#            adsk.doEvents()
+            adsk.doEvents()
             
         if self.errorCount >0:
             dbUtils.messageBox('Reported errors:{}\nYou may not need to do anything, \nbut check holes have been created'.format(self.errorCount))

@@ -107,17 +107,20 @@ def getAngleBetweenFaces(edge):
     return angle
 
     
-def createTempDogbone(edge, toolDia, minimalPercent, topPlane=None):
-    '''
+def createTempDogbone(edge, toolDia, minimalPercent, topPlane=None, dbType = None):
+    """
         returns temporary BRepBody - 
     
-    '''        
+    """ 
+#    if dbType == 'Mortise Dogbone':
+#        edgeFaces = edge.faces
+        
     toolRadius = toolDia/2
     
     points = adsk.fusion.BRepEdge.cast(None)
-    points = edge.evaluator.getEndPoints()
-    startPoint = points[1]
-    endPoint = points[2]
+    (rslt, startPoint, endPoint) = edge.evaluator.getEndPoints()
+#    startPoint = points[1]
+#    endPoint = points[2]
     topPoint = endPoint
     
     if topPlane:
