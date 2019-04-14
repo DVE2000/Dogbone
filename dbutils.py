@@ -24,29 +24,30 @@ logHandler.setLevel(10)
 
 
 def findInnerCorners(face):
-        face1 = adsk.fusion.BRepFace.cast(face)
-        if face1.objectType != adsk.fusion.BRepFace.classType():
-            return False
-        if face1.geometry.surfaceType != adsk.core.SurfaceTypes.PlaneSurfaceType:
-            return False
-        faceNormal = getFaceNormal(face)
-        edgeList = []
-        for loop in face1.loops:
-            for coEdge in loop.coEdges:
-                vertex = coEdge.edge.endVertex if coEdge.isOpposedToEdge else coEdge.edge.startVertex
+    logger.debug('find Inner Corners')
+    face1 = adsk.fusion.BRepFace.cast(face)
+    if face1.objectType != adsk.fusion.BRepFace.classType():
+        return False
+    if face1.geometry.surfaceType != adsk.core.SurfaceTypes.PlaneSurfaceType:
+        return False
+    faceNormal = getFaceNormal(face)
+    edgeList = []
+    for loop in face1.loops:
+        for coEdge in loop.coEdges:
+            vertex = coEdge.edge.endVertex if coEdge.isOpposedToEdge else coEdge.edge.startVertex
 
-                edges = vertex.edges
-                
-                edgeCandidates = list(filter(lambda x: x != coEdge.previous.edge and x != coEdge.edge, edges))
-                if not len(edgeCandidates):
-                    continue
+            edges = vertex.edges
+            
+            edgeCandidates = list(filter(lambda x: x != coEdge.previous.edge and x != coEdge.edge, edges))
+            if not len(edgeCandidates):
+                continue
 #                    if edges.count != 3:
 #                        break
-                dbEdge = getDbEdge(edgeCandidates, faceNormal, vertex)
-                if dbEdge:
-                    edgeList.append(dbEdge)
-                
-        return edgeList
+            dbEdge = getDbEdge(edgeCandidates, faceNormal, vertex)
+            if dbEdge:
+                edgeList.append(dbEdge)
+            
+    return edgeList
 
 def getDbEdge(edges, faceNormal, vertex, minAngle = 1/360*math.pi*2, maxAngle = 179/360*math.pi*2):
     """
@@ -60,6 +61,7 @@ def getDbEdge(edges, faceNormal, vertex, minAngle = 1/360*math.pi*2, maxAngle = 
         if edgeVector.angleTo(faceNormal) == 0:
             continue
         cornerAngle = getAngleBetweenFaces(edge)
+        logger.debug('corner angle = {}'.format(cornerAngle))
         return edge if cornerAngle < maxAngle and cornerAngle > minAngle else False
     return False
 
@@ -117,7 +119,7 @@ def createTempDogbone(edge, toolDia, minimalPercent, topPlane=None, dbType = Non
         
     toolRadius = toolDia/2
     
-    points = adsk.fusion.BRepEdge.cast(None)
+#    points = adsk.fusion.BRepEdge.cast(None)
     (rslt, startPoint, endPoint) = edge.evaluator.getEndPoints()
 #    startPoint = points[1]
 #    endPoint = points[2]

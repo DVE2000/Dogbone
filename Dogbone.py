@@ -73,6 +73,16 @@ class SelectedFace:
         faceNormal = dbUtils.getFaceNormal(face)
         
         edgeList = dbUtils.findInnerCorners(face)
+        
+        for command in self.commandInputsEdgeSelect.parentCommand.commandInputs:
+            if not command.hasFocus:
+                continue
+            activeCommand = command
+            break
+        
+        self.commandInputsEdgeSelect.hasFocus = True
+
+        allSelections = dog.ui.activeSelections.all
 
         for edge in edgeList:
             if edge.isDegenerate:
@@ -95,12 +105,18 @@ class SelectedFace:
                 self.selectedEdges[edgeId] = SelectedEdge(edge, edgeId, activeEdgeName, edge.tempId, self)
                 self.brepEdges.append(edge)
                 dog.addingEdges = True
-                self.commandInputsEdgeSelect.addSelection(edge)
+                if not allSelections.contains(edge):
+                    allSelections.add(edge)
+#                self.commandInputsEdgeSelect.addSelection(edge)
                 dog.addingEdges = False
                 
                 dog.selectedEdges[edgeId] = self.selectedEdges[edgeId] # can be used for reverse lookup of edge to face
             except:
                 dbUtils.messageBox('Failed at edge:\n{}'.format(traceback.format_exc()))
+                
+        dog.ui.activeSelections.all = allSelections
+        activeCommand.hasFocus = True
+                
 
     def selectAll(self, selection = True):
         self.selected = selection
@@ -1006,12 +1022,18 @@ class DogboneCommand(object):
                         pass
 
                     edge = selectedEdge.edge
-                    dbBody = dbUtils.createTempDogbone(edge = edge, toolDia = self.circVal, minimalPercent = minPercent, topPlane = topPlane, dbType = self.dbType )
+                    dbBody = dbUtils.createTempDogbone(edge = edge, 
+                                                       toolDia = self.circVal, 
+                                                       minimalPercent = minPercent, 
+                                                       topPlane = topPlane, 
+                                                       dbType = self.dbType )
 
                     if not bodies:
                         bodies = dbBody
                     else:
                         tempBrepMgr.booleanOperation(bodies, dbBody, adsk.fusion.BooleanTypes.UnionBooleanType)
+            if not bodies:
+                continue
                     
             baseFeats = self.rootComp.features.baseFeatures
             baseFeat = baseFeats.add()
