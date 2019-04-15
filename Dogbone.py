@@ -74,6 +74,7 @@ class SelectedFace:
         
         edgeList = dbUtils.findInnerCorners(face)
         
+#        Find and store which command Input has focus - so we can return it after updating edge selection        
         for command in self.commandInputsEdgeSelect.parentCommand.commandInputs:
             if not command.hasFocus:
                 continue
@@ -82,6 +83,7 @@ class SelectedFace:
         
         self.commandInputsEdgeSelect.hasFocus = True
 
+#        get all active selections - returns objectCollection
         allSelections = dog.ui.activeSelections.all
 
         for edge in edgeList:
@@ -105,6 +107,8 @@ class SelectedFace:
                 self.selectedEdges[edgeId] = SelectedEdge(edge, edgeId, activeEdgeName, edge.tempId, self)
                 self.brepEdges.append(edge)
                 dog.addingEdges = True
+                
+#                update selection objectCollection to include all edges in this face
                 if not allSelections.contains(edge):
                     allSelections.add(edge)
 #                self.commandInputsEdgeSelect.addSelection(edge)
@@ -120,15 +124,29 @@ class SelectedFace:
 
     def selectAll(self, selection = True):
         self.selected = selection
+        for command in self.commandInputsEdgeSelect.parentCommand.commandInputs:
+            if not command.hasFocus:
+                continue
+            activeCommand = command
+            break
+        
+        self.commandInputsEdgeSelect.hasFocus = True
+
+#        get all active selections - returns objectCollection
+        allSelections = dog.ui.activeSelections.all
+
         dog.addingEdges = True
         for edgeId, selectedEdge in self.selectedEdges.items():
             selectedEdge.select(selection)
             if selection:
                 #commandInputsEdgeSelect.addSelection(edge.edge) # Not working for re-adding.
-                dog.ui.activeSelections.add(selectedEdge.edge)
+                allSelections.add(selectedEdge.edge)
  
             else:
-                dog.ui.activeSelections.removeByEntity(selectedEdge.edge)
+                allSelections.removeByItem(selectedEdge.edge)
+
+        dog.ui.activeSelections.all = allSelections
+        activeCommand.hasFocus = True
         dog.addingEdges = False
 
 
