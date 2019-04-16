@@ -70,6 +70,9 @@ class SelectedFace:
         #==============================================================================
         #             this is where inside corner edges, dropping down from the face are processed
         #==============================================================================
+
+#        attr = face.attributes.add('dogbone', 'refFace', faceId )        
+        
         faceNormal = dbUtils.getFaceNormal(face)
         
         edgeList = dbUtils.findInnerCorners(face)
@@ -80,11 +83,13 @@ class SelectedFace:
                 continue
             activeCommand = command
             break
+        allSelections = dog.ui.activeSelections.all
+        
+        allSelections.add(face)
         
         self.commandInputsEdgeSelect.hasFocus = True
 
 #        get all active selections - returns objectCollection
-        allSelections = dog.ui.activeSelections.all
 
         for edge in edgeList:
             if edge.isDegenerate:
@@ -104,6 +109,7 @@ class SelectedFace:
     
                 activeEdgeName = edge.assemblyContext.component.name if edge.assemblyContext else edge.body.name
                 edgeId = str(edge.tempId)+':'+ activeEdgeName
+#                edgeAttr = edge.attributes.add('dogbone', 'edge', faceId)
                 self.selectedEdges[edgeId] = SelectedEdge(edge, edgeId, activeEdgeName, edge.tempId, self)
                 self.brepEdges.append(edge)
                 dog.addingEdges = True
@@ -316,6 +322,31 @@ class DogboneCommand(object):
             provides fast method of finding face that owns an edge
         """
         inputs = adsk.core.CommandCreatedEventArgs.cast(args)
+        
+#        activeSelections = adsk.core.ObjectCollection.create()
+#        
+#        for body in self.rootComp.bRepBodies:
+#            for face in body.faces:
+#                if face.attributes.itemByName('dogbone', 'refFace'):
+#                    self.logger.debug('{}'.format(face.attributes.itemByName('dogbone', 'edge')))
+#                    activeSelections.add(face)
+#                    for edge in body.edges:
+#                        if edge.attributes.itemByName('dogbone', 'edge'):
+#                            if edge.attributes.itemByName('dogbone', 'edge').value != calcId(face):
+#                                continue
+#                            self.logger.debug('{}'.format(edge.attributes.itemByName('dogbone', 'edge')))
+#                            activeSelections.add(edge)
+#        
+#        for occurrence in self.rootComp.allOccurrences:
+#            for body in occurrence.bRepBodies:
+#                for edge in body.edges:
+#                    if edge.attributes.itemByName('dogbone', 'edge'):
+#                        self.logger.debug('{}'.format(edge.attributes.itemByName('dogbone', 'edge')))
+#                        activeSelections.add(edge)
+#                            
+#        self.ui.activeSelections.all = activeSelections
+                
+            
         self.faces = []
         self.errorCount = 0
         self.faceSelections.clear()
