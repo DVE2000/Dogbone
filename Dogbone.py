@@ -28,6 +28,8 @@ from math import sqrt as sqrt
 
 #constants - to keep attribute group and names consistent
 DOGBONEGROUP = 'dogBoneGroup'
+DBEDGE = 'dbEdge'
+DBFACE = 'dbFace'
 FACE_ID = 'faceID'
 REV_ID = 'revId'
 ID = 'id'
@@ -39,6 +41,10 @@ DEBUGLEVEL = logging.NOTSET
 calcId = lambda x: str(x.tempId) + ':' + x.assemblyContext.name.split(':')[-1] if x.assemblyContext else str(x.tempId) + ':' + x.body.name
 makeNative = lambda x: x.nativeObject if x.nativeObject else x
 reValidateFace = lambda comp, x: comp.findBRepUsingPoint(x, adsk.fusion.BRepEntityTypes.BRepFaceEntityType,-1.0 ,False ).item(0)
+#faceSelections = lambda selectionObjects: [face for face in selectionObjects if face.objectType == adsk.fusion.BRepFace.classType()]
+#edgeSelections = lambda selectionObjects: [edge for edge in selectionObjects if edge.objectType == adsk.fusion.BRepEdge.classType()]
+faceSelections = lambda selectionObjects: list(filter(lambda face: face.objectType == adsk.fusion.BRepFace.classType(), selectionObjects))
+edgeSelections = lambda selectionObjects: list(filter(lambda edge: edge.objectType == adsk.fusion.BRepEdge.classType(), selectionObjects))
 
 
 class SelectedEdge:
@@ -83,12 +89,12 @@ class SelectedFace:
                 continue
             activeCommand = command
             break
-        allSelections = dog.ui.activeSelections.all
-        
-        allSelections.add(face)
-        
-        self.commandInputsEdgeSelect.hasFocus = True
-
+#        allSelections = dog.ui.activeSelections.all
+#        
+#        allSelections.add(face)
+#        
+#        self.commandInputsEdgeSelect.hasFocus = True
+#
 #        get all active selections - returns objectCollection
 
         for edge in edgeList:
@@ -115,8 +121,8 @@ class SelectedFace:
                 dog.addingEdges = True
                 
 #                update selection objectCollection to include all edges in this face
-                if not allSelections.contains(edge):
-                    allSelections.add(edge)
+#                if not allSelections.contains(edge):
+#                    allSelections.add(edge)
 #                self.commandInputsEdgeSelect.addSelection(edge)
                 dog.addingEdges = False
                 
@@ -124,24 +130,24 @@ class SelectedFace:
             except:
                 dbUtils.messageBox('Failed at edge:\n{}'.format(traceback.format_exc()))
                 
-        dog.ui.activeSelections.all = allSelections
+#        dog.ui.activeSelections.all = allSelections
         activeCommand.hasFocus = True
                 
 
     def selectAll(self, selection = True):
         self.selected = selection
-        for command in self.commandInputsEdgeSelect.parentCommand.commandInputs:
-            if not command.hasFocus:
-                continue
-            activeCommand = command
-            break
-        
-        self.commandInputsEdgeSelect.hasFocus = True
+#        for command in self.commandInputsEdgeSelect.parentCommand.commandInputs:
+#            if not command.hasFocus:
+#                continue
+#            activeCommand = command
+#            break
+#        
+#        self.commandInputsEdgeSelect.hasFocus = True
 
 #        get all active selections - returns objectCollection
-        allSelections = dog.ui.activeSelections.all
+#        allSelections = dog.ui.activeSelections.all
 
-        dog.addingEdges = True
+#        dog.addingEdges = True
         for edgeId, selectedEdge in self.selectedEdges.items():
             selectedEdge.select(selection)
             if selection:
@@ -151,9 +157,10 @@ class SelectedFace:
             else:
                 allSelections.removeByItem(selectedEdge.edge)
 
-        dog.ui.activeSelections.all = allSelections
+#        dog.ui.activeSelections.all = allSelections
         activeCommand.hasFocus = True
-        dog.addingEdges = False
+        return 
+#        dog.addingEdges = False
 
 
 class DogboneCommand(object):
@@ -354,6 +361,7 @@ class DogboneCommand(object):
         self.selectedOccurrences = {} 
         self.selectedFaces = {} 
         self.selectedEdges = {} 
+        self.registeredEntities = adsk.core.ObjectCollection.create()
         
         argsCmd = adsk.core.Command.cast(args)
         
@@ -462,6 +470,28 @@ class DogboneCommand(object):
             self.handlers.make_handler(adsk.core.ValidateInputsEventHandler, self.onValidate))
         cmd.inputChanged.add(
             self.handlers.make_handler(adsk.core.InputChangedEventHandler, self.onChange))
+            
+    def setSelections(self, selectionObjects, commandInputs, activeCommandInput):
+        collection = adsk.core.ObjectCollection.create()
+        
+        faces = faceSelections(selectionObjects)
+        edges = edgeSelections(selectionObjects)
+
+        commandInputs.itemById('select').hasFocus = True        
+        for face in faces:
+            collection.add(face)
+            
+        self.ui.activeSelections = collection
+    
+        commandInputs.itemById('edgeSelect').hasFocus = True        
+        
+        for edge in edges:
+            collection.add(edge)
+            
+        self.ui.activeSelections = collection
+        
+        activeCommandInput.hasFocus = True
+    
 
     #==============================================================================
     #  routine to process any changed selections
@@ -480,6 +510,8 @@ class DogboneCommand(object):
 
         if changedInput.id != 'select' and changedInput.id != 'edgeSelect':
             return
+            
+        activeSelections = self.ui.activeSelections.all #save active selections - selections are sensitive and fragile, any processing beyond just reading on live selections will destroy selection 
 
 #        self.logger.debug('input changed- {}'.format(changedInput.id))
         if changedInput.id == 'select':
@@ -487,67 +519,83 @@ class DogboneCommand(object):
             #==============================================================================
             #            processing changes to face selections
             #==============================================================================
-            numSelectedFaces = sum(1 for face in self.selectedFaces.values() if face.selected) 
-            if numSelectedFaces > changedInput.selectionCount:               
-                # a face has been removed
+            registeredObjects = adsk.core.ObjectCollection.create()
+            
+            faces = faceSelections(activeSelections)
+            edges = edgeSelections(activeSelections)
+            
+            registeredFaces = faceSelections(self.registeredEntities)
+            registeredEdges = edgeSelections(self.registeredEntities)
+            
+            removedFaces = [face for face in registeredFaces if face not in faces]
+            addedFaces = [face for face in faces if face not in registeredFaces]
+            
+            for face in removedFaces:
+                # faces have been removed
+                faceId = calcId(face)
+                faceObject = self.selectedFaces[faceId]
+                faceObject.selectAll(False)
+                self.registeredEntities.removeByItem(face)
                 
-                # If all faces are removed, just iterate through all
-                if changedInput.selectionCount == 0:                
-                    for face in self.selectedFaces.values():
-                        if face.selected:
-                            face.selectAll(False)
-                    changedInput.commandInputs.itemById('edgeSelect').clearSelection()
-                    changedInput.commandInputs.itemById('select').hasFocus = True                    
-                    changedInput.commandInputs.itemById('edgeSelect').isVisible = False   
-                    return
+#                changedInput.commandInputs.itemById('edgeSelect').clearSelection()
+#                changedInput.commandInputs.itemById('select').hasFocus = True                    
+#                changedInput.commandInputs.itemById('edgeSelect').isVisible = False   
                 
                 # Else find the missing face in selection
-                selectionList = [changedInput.selection(i).entity.tempId for i in range(changedInput.selectionCount)]
-                missingFace = {k for k, v in self.selectedFaces.items() if v.selected and v.tempId not in selectionList}.pop()
-                changedInput.commandInputs.itemById('edgeSelect').hasFocus = True
-                self.selectedFaces[missingFace].selectAll(False)
+#                selectionList = [changedInput.selection(i).entity.tempId for i in range(changedInput.selectionCount)]
+#                missingFace = {k for k, v in self.selectedFaces.items() if v.selected and v.tempId not in selectionList}.pop()
+#                changedInput.commandInputs.itemById('edgeSelect').hasFocus = True
+#                self.selectedFaces[missingFace].selectAll(False)
             
-                changedInput.commandInputs.itemById('select').hasFocus = True
-                return
+#                changedInput.commandInputs.itemById('select').hasFocus = True
+#                return
              
             #==============================================================================
             #             Face has been added - assume that the last selection entity is the one added
             #==============================================================================
-            face = adsk.fusion.BRepFace.cast(changedInput.selection(changedInput.selectionCount -1).entity)
-            changedInput.commandInputs.itemById('edgeSelect').isVisible = True  
+            for face in addedFaces:
             
-            changedEntity = face #changedInput.selection(changedInput.selectionCount-1).entity
-            if changedEntity.assemblyContext:
-                activeOccurrenceName = changedEntity.assemblyContext.name
-            else:
-                activeOccurrenceName = changedEntity.body.name
+#            face = adsk.fusion.BRepFace.cast(changedInput.selection(changedInput.selectionCount -1).entity)
+#            changedInput.commandInputs.itemById('edgeSelect').isVisible = True  
+            
+#                changedEntity = face #changedInput.selection(changedInput.selectionCount-1).entity
+                if face.assemblyContext:
+                    activeOccurrenceName = face.assemblyContext.name
+                else:
+                    activeOccurrenceName = face.body.name
+                    
+                if changedInput.selection(changedInput.selectionCount-1).entity.assemblyContext:
+                    changedEntityName = changedInput.selection(changedInput.selectionCount-1).entity.body.parentComponent.name
+                else:
+                    changedEntityName = changedEntity.body.name
+            
+                faceId = calcId(face) 
+#            if faceId in self.selectedFaces :
+#                changedInput.commandInputs.itemById('edgeSelect').hasFocus = True
+#                changedInput.commandInputs.itemById('select').hasFocus = True
+#                return
                 
-            if changedInput.selection(changedInput.selectionCount-1).entity.assemblyContext:
-                changedEntityName = changedInput.selection(changedInput.selectionCount-1).entity.assemblyContext.name.split(':')[-1]
-            else:
-                changedEntityName = changedEntity.body.name
-            
-            faceId = str(changedEntity.tempId) + ":" + changedEntityName 
-            if faceId in self.selectedFaces :
-                changedInput.commandInputs.itemById('edgeSelect').hasFocus = True
-                self.selectedFaces[faceId].selectAll(True) 
-                changedInput.commandInputs.itemById('select').hasFocus = True
-                return
-            newSelectedFace = SelectedFace(
-                                            self, 
-                                            face,
-                                            faceId,
-                                            changedEntity.tempId,
-                                            changedEntityName,
-                                            face.nativeObject.pointOnFace if face.assemblyContext else face.pointOnFace,
-                                            changedInput.commandInputs.itemById('edgeSelect')
-                                          )  # creates a collecton (of edges) associated with a faceId
-            faces = []
-            faces = self.selectedOccurrences.get(activeOccurrenceName, faces)
-            faces.append(newSelectedFace)
-            self.selectedOccurrences[activeOccurrenceName] = faces # adds a face to a list of faces associated with this occurrence
-            self.selectedFaces[faceId] = newSelectedFace
-
+                if not changedInput.commandInputs.itemById('edgeSelect').isVisible:
+                    changedInput.commandInputs.itemById('edgeSelect').isVisible = True
+                self.registeredEntities.add(face)
+                newSelectedFace = SelectedFace(
+                                                self, 
+                                                face,
+                                                faceId,
+                                                face.tempId,
+                                                changedEntityName,
+                                                face.nativeObject.pointOnFace if face.assemblyContext else face.pointOnFace,
+                                                changedInput.commandInputs.itemById('edgeSelect')
+                                              )  # creates a collecton (of edges) associated with a faceId
+                faces = []
+                faces = self.selectedOccurrences.get(activeOccurrenceName, faces)
+                faces.append(newSelectedFace)
+                self.selectedOccurrences[activeOccurrenceName] = faces # adds a face to a list of faces associated with this occurrence
+                self.selectedFaces[faceId] = newSelectedFace
+                
+                
+            self.setSelections(self.registeredEntities, changedInput.commandInputs, changedInput.commandInputs.itemById('select'))
+            return
 
                  #end of processing faces
         #==============================================================================
