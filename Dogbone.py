@@ -225,7 +225,7 @@ class DogboneCommand(object):
         self.selectedFaces = {} 
         self.selectedEdges = {} 
         self.registeredEntities = adsk.core.ObjectCollection.create()
-        self.feMgr = faceEdgeMgr()
+        self.registry = faceEdgeMgr()
 
         
         argsCmd = adsk.core.Command.cast(args)
@@ -405,7 +405,7 @@ class DogboneCommand(object):
             
             for face in removedFaces:
                 # faces have been removed
-                rslt =self.feMgr.deleteFace(face)
+                rslt =self.registry.deleteFace(face)
                 faceId = calcId(face)
                 faceObject = self.selectedFaces[faceId]
                 for edge in faceObject.edgesAsDict.values():
@@ -421,7 +421,7 @@ class DogboneCommand(object):
             #==============================================================================
             for face in addedFaces:
                 
-                self.feMgr.addFace(face)
+                self.registry.addFace(face)
             
 #                if face.assemblyContext:
 #                    activeOccurrenceName = face.assemblyContext.name
@@ -432,6 +432,7 @@ class DogboneCommand(object):
 #                    changedEntityName = changedInput.selection(changedInput.selectionCount-1).entity.assemblyContext.component.name
 #                else:
 #                    changedEntityName = changedInput.selection(changedInput.selectionCount-1).entity.body.name
+                    
                             
                 if not changedInput.commandInputs.itemById('edgeSelect').isVisible:
                     changedInput.commandInputs.itemById('edgeSelect').isVisible = True
@@ -450,7 +451,7 @@ class DogboneCommand(object):
 #                
 #                for edge in newSelectedFace.edgesAsDict.values():
 #                    self.registeredEntities.add(edge.edge)
-            self.setSelections(self.feMgr, changedInput.commandInputs, changedInput.commandInputs.itemById('select'))
+            self.setSelections(self.registry, changedInput.commandInputs, changedInput.commandInputs.itemById('select'))
             return
 
                  #end of processing faces
@@ -648,107 +649,109 @@ class DogboneCommand(object):
         activeIn = eventArgs.firingEvent.activeInput
         if activeIn.id != 'select' and activeIn.id != 'edgeSelect':
             return # jump out if not dealing with either of the two selection boxes
-
-        if activeIn.id == 'select':
-            #==============================================================================
-            # processing activities when faces are being selected
-            #        selection filter is limited to planar faces
-            #        makes sure only valid occurrences and components are selectable
-            #==============================================================================
-
-            if not len( self.selectedOccurrences ): #get out if the face selection list is empty
-                eventArgs.isSelectable = True
-                return
-            if not eventArgs.selection.entity.assemblyContext:
-                # dealing with a root component body
-
-                activeBodyName = eventArgs.selection.entity.body.name
-                try:            
-                    faces = self.selectedOccurrences[activeBodyName]
-                    for face in faces:
-                        if face.selected:
-                            primaryFace = face
-                            break
-                    else:
-                        eventArgs.isSelectable = True
-                        return
-                except (KeyError, IndexError) as e:
-                    return
-
-                primaryFaceNormal = dbUtils.getFaceNormal(primaryFace.face)
-                if primaryFaceNormal.isParallelTo(dbUtils.getFaceNormal(eventArgs.selection.entity)):
-                    eventArgs.isSelectable = True
-                    return
-                eventArgs.isSelectable = False
-                return
-            # End of root component face processing
-            
-            #==============================================================================
-            # Start of occurrence face processing              
-            #==============================================================================
-            activeOccurrence = eventArgs.selection.entity.assemblyContext
-            activeOccurrenceName = activeOccurrence.name
-            activeComponent = activeOccurrence.component
-            
-            # we got here because the face is either not in root or is on the existing selected list    
-            # at this point only need to check for duplicate component selection - Only one component allowed, to save on conflict checking
-            try:
-                selectedComponentList = [x[0].face.assemblyContext.component for x in self.selectedOccurrences.values() if x[0].face.assemblyContext]
-            except KeyError:
-               eventArgs.isSelectable = True
-               return
-
-            if activeComponent not in selectedComponentList:
-                    eventArgs.isSelectable = True
-                    return
-
-            if activeOccurrenceName not in self.selectedOccurrences:  #check if mouse is over a face that is not already selected
-                eventArgs.isSelectable = False
-                return
-                
-            try:            
-                faces = self.selectedOccurrences[activeOccurrenceName]
-                for face in faces:
-                    if face.selected:
-                        primaryFace = face
-                        break
-                    else:
-                        eventArgs.isSelectable = True
-                        return
-            except KeyError:
-                return
-            primaryFaceNormal = dbUtils.getFaceNormal(primaryFace.face)
-            if primaryFaceNormal.isParallelTo(dbUtils.getFaceNormal(eventArgs.selection.entity)):
-                eventArgs.isSelectable = True
-                return
-            eventArgs.isSelectable = False
-            return
-            # end selecting faces
-            
-        else:
-            #==============================================================================
-            #             processing edges associated with face - edges selection has focus
-            #==============================================================================
-#            if self.addingEdges:
+        eventArgs.isSelectable = self.registry.isSelectable(eventArgs.selection.entity)
+        return
+#        if activeIn.id == 'select':
+#            #==============================================================================
+#            # processing activities when faces are being selected
+#            #        selection filter is limited to planar faces
+#            #        makes sure only valid occurrences and components are selectable
+#            #==============================================================================
+#            eventArgs.isSelectable = self.registry.isSelectable()
+#
+##            if not len( self.selectedOccurrences ): #get out if the face selection list is empty
+##                eventArgs.isSelectable = True
+##                return
+##            if not eventArgs.selection.entity.assemblyContext:
+##                # dealing with a root component body
+##
+##                activeBodyName = eventArgs.selection.entity.body.name
+##                try:            
+##                    faces = self.selectedOccurrences[activeBodyName]
+##                    for face in faces:
+##                        if face.selected:
+##                            primaryFace = face
+##                            break
+##                    else:
+##                        eventArgs.isSelectable = True
+##                        return
+##                except (KeyError, IndexError) as e:
+##                    return
+##
+##                primaryFaceNormal = dbUtils.getFaceNormal(primaryFace.face)
+##                if primaryFaceNormal.isParallelTo(dbUtils.getFaceNormal(eventArgs.selection.entity)):
+##                    eventArgs.isSelectable = True
+##                    return
+##                eventArgs.isSelectable = False
+##                return
+##            # End of root component face processing
+##            
+##            #==============================================================================
+##            # Start of occurrence face processing              
+##            #==============================================================================
+##            activeOccurrence = eventArgs.selection.entity.assemblyContext
+##            activeOccurrenceName = activeOccurrence.name
+##            activeComponent = activeOccurrence.component
+##            
+##            # we got here because the face is either not in root or is on the existing selected list    
+##            # at this point only need to check for duplicate component selection - Only one component allowed, to save on conflict checking
+##            try:
+##                selectedComponentList = [x[0].face.assemblyContext.component for x in self.selectedOccurrences.values() if x[0].face.assemblyContext]
+##            except KeyError:
+##               eventArgs.isSelectable = True
+##               return
+##
+##            if activeComponent not in selectedComponentList:
+##                    eventArgs.isSelectable = True
+##                    return
+##
+##            if activeOccurrenceName not in self.selectedOccurrences:  #check if mouse is over a face that is not already selected
+##                eventArgs.isSelectable = False
+##                return
+##                
+##            try:            
+##                faces = self.selectedOccurrences[activeOccurrenceName]
+##                for face in faces:
+##                    if face.selected:
+##                        primaryFace = face
+##                        break
+##                    else:
+##                        eventArgs.isSelectable = True
+##                        return
+##            except KeyError:
+##                return
+##            primaryFaceNormal = dbUtils.getFaceNormal(primaryFace.face)
+##            if primaryFaceNormal.isParallelTo(dbUtils.getFaceNormal(eventArgs.selection.entity)):
+##                eventArgs.isSelectable = True
+##                return
+##            eventArgs.isSelectable = False
+##            return
+##            # end selecting faces
+#            
+#        else:
+#            #==============================================================================
+#            #             processing edges associated with face - edges selection has focus
+#            #==============================================================================
+##            if self.addingEdges:
+##                return
+#            selected = eventArgs.selection
+#            currentEdge = adsk.fusion.BRepEdge.cast(selected.entity)
+#            edgeId = calcId(currentEdge)
+#            if edgeId not in self.selectedEdges:
 #                return
-            selected = eventArgs.selection
-            currentEdge = adsk.fusion.BRepEdge.cast(selected.entity)
-            edgeId = calcId(currentEdge)
-            if edgeId not in self.selectedEdges:
-                return
-
-            activeOccurrence = eventArgs.selection.entity.assemblyContext
-            if eventArgs.selection.entity.assemblyContext:
-                activeOccurrenceName = activeOccurrence.name
-            else:
-                activeOccurrenceName = eventArgs.selection.entity.body.name 
-
-            occurrenceNumber = activeOccurrenceName.split(':')[-1]
-            if (edgeId in self.selectedEdges and self.selectedEdges[edgeId].selectedFace.selected):
-                eventArgs.isSelectable = True
-            else:
-                eventArgs.isSelectable = False
-            return
+#
+#            activeOccurrence = eventArgs.selection.entity.assemblyContext
+#            if eventArgs.selection.entity.assemblyContext:
+#                activeOccurrenceName = activeOccurrence.name
+#            else:
+#                activeOccurrenceName = eventArgs.selection.entity.body.name 
+#
+#            occurrenceNumber = activeOccurrenceName.split(':')[-1]
+#            if (edgeId in self.selectedEdges and self.selectedEdges[edgeId].selectedFace.selected):
+#                eventArgs.isSelectable = True
+#            else:
+#                eventArgs.isSelectable = False
+#            return
 
     @property
     def design(self):
@@ -939,52 +942,55 @@ class DogboneCommand(object):
         if not self.design:
             raise RuntimeError('No active Fusion design')
         minPercent = 1+self.minimalPercent/100 if self.dbType == 'Minimal Dogbone' else  1
-        
-        for occurrenceFace in self.selectedOccurrences.values():
-            startTlMarker = self.design.timeline.markerPosition
-            bodyCollection = adsk.core.ObjectCollection.create()
-            tempBrepMgr = adsk.fusion.TemporaryBRepManager.get()
-            bodies = None
-                           
+        occurrenceEdgeList = self.registry.selectedEdgesAsGroupList
+
+
+        for edgeGroup in occurrenceEdgeList:
             topPlane = None
             if self.fromTop:
-                (topFace, topFaceRefPoint) = dbUtils.getTopFace(occurrenceFace[0].face)
+                (topFace, topFaceRefPoint) = edgeGroup[0].parent.topFace
                 topPlane = adsk.core.Plane.create(topFace.pointOnFace, dbUtils.getFaceNormal(topFace))
-#                self.logger.debug('topFace ref point: {}'.format(topFaceRefPoint.asArray()))
                 self.logger.info('Processing holes from top face - {}'.format(topFace.tempId))
+
+            bodies = None
+                           
+            bodyCollection = adsk.core.ObjectCollection.create()
+            tempBrepMgr = adsk.fusion.TemporaryBRepManager.get()
+            startTlMarker = self.design.timeline.markerPosition
+
 #                self.debugFace(topFace)
                 
-            for selectedFace in occurrenceFace:
-                if len(selectedFace.selectedEdgesAsList) <1:
-                    self.logger.debug('Face has no edges')
-                    continue 
-                face = selectedFace.face
+#            for selectedEdge in occurrenceEdge:
+#                if len(selectedFace.selectedEdgesAsList) <1:
+#                    self.logger.debug('Face has no edges')
+#                    continue 
+#                face = selectedFace.face
               
-                for selectedEdge in selectedFace.selectedEdgesAsList:
-                    
-                    self.logger.debug('Processing edge - {}'.format(selectedEdge.edge.tempId))
+            for edgeObject in edgeGroup:
+                
+                self.logger.debug('Processing edge - {}'.format(edgeObject.edge.tempId))
 
-                    if not selectedEdge.selected:
-                        self.logger.debug('  Not selected. Skipping...')
-                        continue
+#                if not selectedEdge.selected:
+#                    self.logger.debug('  Not selected. Skipping...')
+#                    continue
+#
+#                try:
+#                    if not dbUtils.isEdgeAssociatedWithFace(face, selectedEdge.edge):
+#                        continue  # skip if edge is not associated with the face currently being processed
+#                except:
+#                    pass
 
-                    try:
-                        if not dbUtils.isEdgeAssociatedWithFace(face, selectedEdge.edge):
-                            continue  # skip if edge is not associated with the face currently being processed
-                    except:
-                        pass
+                edge = edgeObject.edge
+                dbBody = dbUtils.createTempDogbone(edge = edge, 
+                                                   toolDia = self.circVal, 
+                                                   minimalPercent = minPercent, 
+                                                   topPlane = topPlane, 
+                                                   dbType = self.dbType )
 
-                    edge = selectedEdge.edge
-                    dbBody = dbUtils.createTempDogbone(edge = edge, 
-                                                       toolDia = self.circVal, 
-                                                       minimalPercent = minPercent, 
-                                                       topPlane = topPlane, 
-                                                       dbType = self.dbType )
-
-                    if not bodies:
-                        bodies = dbBody
-                    else:
-                        tempBrepMgr.booleanOperation(bodies, dbBody, adsk.fusion.BooleanTypes.UnionBooleanType)
+                if not bodies:
+                    bodies = dbBody
+                else:
+                    tempBrepMgr.booleanOperation(bodies, dbBody, adsk.fusion.BooleanTypes.UnionBooleanType)
             if not bodies:
                 continue
                     
