@@ -224,8 +224,8 @@ class DogboneCommand(object):
         self.selectedOccurrences = {} 
         self.selectedFaces = {} 
         self.selectedEdges = {} 
-        self.registeredEntities = adsk.core.ObjectCollection.create()
-        self.registry = faceEdgeMgr()
+#        self.registeredEntities = adsk.core.ObjectCollection.create()
+        self.registry = FaceEdgeMgr()
 
         
         argsCmd = adsk.core.Command.cast(args)
@@ -388,8 +388,8 @@ class DogboneCommand(object):
         faces = faceSelections(activeSelections)
         edges = edgeSelections(activeSelections)
         
-        registeredFaces = faceSelections(self.registeredEntities)
-        registeredEdges = edgeSelections(self.registeredEntities)
+#        registeredFaces = faceSelections(self.registeredEntities)
+#        registeredEdges = edgeSelections(self.registeredEntities)
 
 
         if changedInput.id == 'select':
@@ -400,8 +400,8 @@ class DogboneCommand(object):
 #            self.registeredEntitied = adsk.core.ObjectCollection.create()
             
             
-            removedFaces = [face for face in registeredFaces if face not in faces]
-            addedFaces = [face for face in faces if face not in registeredFaces]
+            removedFaces = [face for face in self.registry.selectedFacesAsList if face not in faces]
+            addedFaces = [face for face in faces if face not in self.registry.selectedFacesAsList]
             
             for face in removedFaces:
                 # faces have been removed
@@ -461,8 +461,8 @@ class DogboneCommand(object):
         if changedInput.id != 'edgeSelect':
             return
             
-        removedEdges = [edge for edge in registeredEdges if edge not in edges]
-        addedEdges = [edge for edge in edges if edge not in registeredEdges]
+        removedEdges = [edge for edge in self.registry.registeredEdges if edge not in edges]
+        addedEdges = [edge for edge in edges if edge not in self.registry.registeredEdges]
 
             
             
@@ -968,7 +968,7 @@ class DogboneCommand(object):
               
             for edgeObject in edgeGroup:
                 
-                self.logger.debug('Processing edge - {}'.format(edgeObject.edge.tempId))
+                self.logger.debug('Processing edge - {}'.format(edgeObject.tempId))
 
 #                if not selectedEdge.selected:
 #                    self.logger.debug('  Not selected. Skipping...')

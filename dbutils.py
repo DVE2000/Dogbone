@@ -1,7 +1,8 @@
-import math, logging
+import logging
+from math import pi, tan
 import os
 import traceback
-import itertools
+#import itertools
 
 import adsk.core
 import adsk.fusion
@@ -49,7 +50,7 @@ def findInnerCorners(face):
             
     return edgeList
 
-def getDbEdge(edges, faceNormal, vertex, minAngle = 1/360*math.pi*2, maxAngle = 179/360*math.pi*2):
+def getDbEdge(edges, faceNormal, vertex, minAngle = 1/360*pi*2, maxAngle = 179/360*pi*2):
     """
     orders list of edges so all edgeVectors point out of startVertex
     returns: list of edgeVectors
@@ -101,10 +102,10 @@ def getAngleBetweenFaces(edge):
 
     # Check to see if the cross product is in the same or opposite direction
     # of the co-edge direction.  If it's opposed then it's a convex angle.
-    if edgeDir.angleTo(cross) > math.pi/2:
-        angle = (math.pi * 2) - (math.pi - normalAngle)
+    if edgeDir.angleTo(cross) > pi/2:
+        angle = (pi * 2) - (pi - normalAngle)
     else:
-        angle = math.pi - normalAngle
+        angle = pi - normalAngle
 
     return angle
 
@@ -136,7 +137,7 @@ def createTempDogbone(edge, toolDia, minimalPercent, topPlane=None, dbType = Non
     edgeVector = startPoint.vectorTo(endPoint)
 
     rotationMatrix = adsk.core.Matrix3D.create()
-    rotationMatrix.setToRotation(math.pi/2, edgeVector, startPoint)
+    rotationMatrix.setToRotation(pi/2, edgeVector, startPoint)
     
     face1 = edge.faces.item(0)
     face2 = edge.faces.item(1)
@@ -160,9 +161,9 @@ def createTempDogbone(edge, toolDia, minimalPercent, topPlane=None, dbType = Non
     dbBody = tempBrepMgr.createCylinderOrCone(startPoint, toolRadius, endPoint, toolRadius)
     cornerAngle = face1Normal.angleTo(face2Normal)/2
 #    cornerAngle = getAngleBetweenFaces(edge)/2
-    cornerTan = math.tan(cornerAngle)
+    cornerTan = tan(cornerAngle)
     dbBox = None
-    if cornerAngle != 0 and cornerAngle != math.pi/4:  # 0 means that the angle between faces is also 0 
+    if cornerAngle != 0 and cornerAngle != pi/4:  # 0 means that the angle between faces is also 0 
         boxLength = abs(toolRadius*cornerTan - toolRadius*minimalPercent)
         boxCentre = startPoint.copy()
         boxWidth = toolDia
