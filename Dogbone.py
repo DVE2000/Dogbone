@@ -405,16 +405,7 @@ class DogboneCommand(object):
             
             for face in removedFaces:
                 # faces have been removed
-                rslt =self.registry.deleteFace(face)
-                faceId = calcId(face)
-                faceObject = self.selectedFaces[faceId]
-                for edge in faceObject.edgesAsDict.values():
-                    registeredEdges.remove(edge.edge)
-                    self.registeredEntities.removeByItem(edge.edge)
-                    
-                del faceObject
-                self.registeredEntities.removeByItem(face)
-                    
+                self.registry.deleteFace(face)
                             
             #==============================================================================
             #             Face has been added - assume that the last selection entity is the one added
@@ -533,7 +524,9 @@ class DogboneCommand(object):
                 
     def initLogger(self):
         self.logger = logging.getLogger(__name__)
-        self.formatter = logging.Formatter('%(asctime)s ; %(name)s ; %(levelname)s ; %(lineno)d; %(message)s')
+        
+        self.formatter = logging.Formatter('%(lineno)s ; %(func)s ; %(levelname)s ; %(lineno)d; %(message)s')
+#        self.formatter = logging.Formatter('%(levelname)s ; %(asctime)s ; %(func)s ;  %(lineno)d; %(message)s')
 #        if not os.path.isfile(os.path.join(self.appPath, 'dogBone.log')):
 #            return
         self.logHandler = logging.FileHandler(os.path.join(self.appPath, 'dogbone.log'), mode='w')
@@ -542,9 +535,10 @@ class DogboneCommand(object):
         self.logger.addHandler(self.logHandler)
         
     def closeLogger(self):
-        for handler in self.logger.handlers:
-            handler.flush()
-            handler.close()
+        logging.shutdown()
+#        for handler in self.logger.handlers:
+#            handler.flush()
+#            handler.close()
 
     def onExecute(self, args):
         start = time.time()
@@ -619,7 +613,7 @@ class DogboneCommand(object):
         
         self.logger.info('all dogbones complete\n-------------------------------------------\n')
 
-        self.closeLogger()
+        logging.shutdown()
         
         if self.benchmark:
             dbUtils.messageBox("Benchmark: {:.02f} sec processing {} edges".format(
