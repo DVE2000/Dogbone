@@ -11,21 +11,21 @@ getFaceNormal = lambda face: face.evaluator.getNormalAtPoint(face.pointOnFace)[1
 edgeVector = lambda coEdge:  coEdge.edge.evaluator.getEndPoints()[2].vectorTo(coEdge.edge.evaluator.getEndPoints()[1]) if coEdge.isOpposedToEdge else coEdge.edge.evaluator.getEndPoints()[1].vectorTo(coEdge.edge.evaluator.getEndPoints()[2]) 
 
 
-logger = logging.getLogger(__name__)
-formatter = logging.Formatter('%(asctime)s ; %(name)s ; %(levelname)s ; %(lineno)d; %(message)s')
-#        if not os.path.isfile(os.path.join(self.appPath, 'dogBone.log')):
-#            return
-appPath = os.path.dirname(os.path.abspath(__file__))
-logHandler = logging.FileHandler(os.path.join(appPath, 'dogbone.log'), mode='w')
-logHandler.setFormatter(formatter)
-logHandler.flush()
-logger.addHandler(logHandler)
-logHandler.setLevel(10)
+#logger = logging.getLogger(__name__)
+#formatter = logging.Formatter('%(asctime)s ; %(name)s ; %(levelname)s ; %(lineno)d; %(message)s')
+##        if not os.path.isfile(os.path.join(self.appPath, 'dogBone.log')):
+##            return
+#appPath = os.path.dirname(os.path.abspath(__file__))
+#logHandler = logging.FileHandler(os.path.join(appPath, 'dogbone.log'), mode='w')
+#logHandler.setFormatter(formatter)
+#logHandler.flush()
+#logger.addHandler(logHandler)
+#logHandler.setLevel(10)
 
 
 
 def findInnerCorners(face):
-    logger.debug('find Inner Corners')
+#    logger.debug('find Inner Corners')
     face1 = adsk.fusion.BRepFace.cast(face)
     if face1.objectType != adsk.fusion.BRepFace.classType():
         return False
@@ -62,7 +62,7 @@ def getDbEdge(edges, faceNormal, vertex, minAngle = 1/360*pi*2, maxAngle = 179/3
         if edgeVector.angleTo(faceNormal) == 0:
             continue
         cornerAngle = getAngleBetweenFaces(edge)
-        logger.debug('corner angle = {}'.format(cornerAngle))
+#        logger.debug('corner angle = {}'.format(cornerAngle))
         return edge if cornerAngle < maxAngle and cornerAngle > minAngle else False
     return False
 
@@ -307,13 +307,13 @@ class HandlerHelper(object):
     def make_handler(self, handler_cls, notify_method, catch_exceptions=True):
         class _Handler(handler_cls):
             def notify(self, args):
-                self.logger = logging.getLogger(__name__)
+#                self.logger = logging.getLogger(__name__)
                 if catch_exceptions:
                     try:
                         notify_method(args)
                     except:
                         messageBox('Failed:\n{}'.format(traceback.format_exc()))
-                        self.logger.exception('error termination')
+#                        self.logger.exception('error termination')
                         for handler in self.logger.handlers:
                             handler.flush()
                             handler.close()

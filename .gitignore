@@ -19,7 +19,7 @@ $RECYCLE.BIN/
 
 # Dogbone files
 .spyderworkspace
-dogbone.log
+dogbone*.log
 defaults.dat
 __pycache__
 install

@@ -13,12 +13,12 @@
 # twice the offset (as the offset is applied to the radius) at each selected edge.
 
 import logging
- 
+import os
+
 from collections import defaultdict
 
 import adsk.core, adsk.fusion
 import traceback
-import os
 import json
 
 import time
@@ -36,6 +36,21 @@ REV_ID = 'revId'
 ID = 'id'
 DEBUGLEVEL = logging.NOTSET
 
+appPath = os.path.dirname(os.path.abspath(__file__))
+logger = logging.getLogger('dogbone')
+
+for handler in logger.handlers:
+    handler.flush()
+    handler.close()
+
+formatter = logging.Formatter('%(asctime)s; %(name)s; %(levelname)s; %(lineno)d; %(funcName)s ; %(message)s')
+#        self.formatter = logging.Formatter('%(levelname)s ; %(asctime)s ; %(func)s ;  %(lineno)d; %(message)s')
+#        if not os.path.isfile(os.path.join(self.appPath, 'dogBone.log')):
+#            return
+logHandler = logging.FileHandler(os.path.join(appPath, 'dogbone.log'), mode='w')
+logHandler.setFormatter(formatter)
+logHandler.flush()
+logger.addHandler(logHandler)
 
 
 # Generate an edgeId or faceId from object
@@ -56,6 +71,8 @@ class DogboneCommand(object):
 
 
     def __init__(self):
+        
+        self.logger = logging.getLogger('dogbone')
         self.app = adsk.core.Application.get()
         self.ui = self.app.userInterface
 
@@ -88,6 +105,8 @@ class DogboneCommand(object):
         self.appPath = os.path.dirname(os.path.abspath(__file__))
         self.registeredEntities = adsk.core.ObjectCollection.create()
         
+#        self.initLogger()
+        
 
     def writeDefaults(self):
         self.logger.info('config file write')
@@ -116,7 +135,7 @@ class DogboneCommand(object):
             #file.write('!maximumAngle:' = str(self.maximumAngle))
     
     def readDefaults(self): 
-#        self.logger.info('config file read')
+        self.logger.info('config file read')
         if not os.path.isfile(os.path.join(self.appPath, 'defaults.dat')):
             return
         json_file = open(os.path.join(self.appPath, 'defaults.dat'), 'r', encoding='UTF-8')
@@ -149,7 +168,7 @@ class DogboneCommand(object):
 
         except KeyError: 
         
-#            self.logger.error('Key error on read config file')
+            self.logger.error('Key error on read config file')
         #if there's a keyError - means file is corrupted - so, rewrite it with known existing defaultData - it will result in a valid dict, 
         # but contents may have extra, superfluous  data
             json_file = open(os.path.join(self.appPath, 'defaults.dat'), 'w', encoding='UTF-8')
@@ -384,7 +403,7 @@ class DogboneCommand(object):
             
         activeSelections = self.ui.activeSelections.all #save active selections - selections are sensitive and fragile, any processing beyond just reading on live selections will destroy selection 
 
-#        self.logger.debug('input changed- {}'.format(changedInput.id))
+        self.logger.debug('input changed- {}'.format(changedInput.id))
         faces = faceSelections(activeSelections)
         edges = edgeSelections(activeSelections)
         
@@ -479,9 +498,11 @@ class DogboneCommand(object):
            ==============================================================================
        '''
         inputs = {inp.id: inp for inp in inputs}
+        
+        self.logger = logging.getLogger('dogbone')
 
         self.logging = self.loggingLevels[inputs['logging'].selectedItem.name]
-        self.logHandler.setLevel(self.logging)
+        self.logger.level = self.logging
 
         self.logger.debug('Parsing inputs')
 
@@ -522,32 +543,33 @@ class DogboneCommand(object):
             if entity.objectType == adsk.fusion.BRepFace.classType():
                 self.faces.append(entity)
                 
-    def initLogger(self):
-        self.logger = logging.getLogger(__name__)
-        
-        self.formatter = logging.Formatter('%(lineno)s ; %(func)s ; %(levelname)s ; %(lineno)d; %(message)s')
-#        self.formatter = logging.Formatter('%(levelname)s ; %(asctime)s ; %(func)s ;  %(lineno)d; %(message)s')
-#        if not os.path.isfile(os.path.join(self.appPath, 'dogBone.log')):
-#            return
-        self.logHandler = logging.FileHandler(os.path.join(self.appPath, 'dogbone.log'), mode='w')
-        self.logHandler.setFormatter(self.formatter)
-        self.logHandler.flush()
-        self.logger.addHandler(self.logHandler)
+#    def initLogger(self):
+##        self.logger = logging.getLogger(__name__)
+#        self.logger = logging.getLogger('dogbone')
+#        
+#        self.formatter = logging.Formatter('%(lineno)s ; %(funcName)s ; %(levelname)s ; %(lineno)d; %(message)s')
+##        self.formatter = logging.Formatter('%(levelname)s ; %(asctime)s ; %(func)s ;  %(lineno)d; %(message)s')
+##        if not os.path.isfile(os.path.join(self.appPath, 'dogBone.log')):
+##            return
+#        self.logHandler = logging.FileHandler(os.path.join(self.appPath, 'dogbone.log'), mode='w')
+#        self.logHandler.setFormatter(self.formatter)
+#        self.logHandler.flush()
+#        self.logger.addHandler(self.logHandler)
         
     def closeLogger(self):
-        logging.shutdown()
-#        for handler in self.logger.handlers:
-#            handler.flush()
-#            handler.close()
+#        logging.shutdown()
+        for handler in self.logger.handlers:
+            handler.flush()
+            handler.close()
 
     def onExecute(self, args):
         start = time.time()
 
-        self.initLogger()
+#        self.initLogger()
         self.logger.log(0, 'logging Level = %(levelname)')
         self.parseInputs(args.firingEvent.sender.commandInputs)
-        self.logHandler.setLevel(self.logging)
-        self.logger.setLevel(self.logging)
+#        self.logger.level(self.logging)
+        self.logger.level =self.logging
 
         self.writeDefaults()
 
@@ -613,7 +635,8 @@ class DogboneCommand(object):
         
         self.logger.info('all dogbones complete\n-------------------------------------------\n')
 
-        logging.shutdown()
+#        logging.shutdown()
+        self.closeLogger()
         
         if self.benchmark:
             dbUtils.messageBox("Benchmark: {:.02f} sec processing {} edges".format(
