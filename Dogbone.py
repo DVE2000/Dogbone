@@ -73,6 +73,7 @@ class DogboneCommand(object):
     def __init__(self):
         
         self.logger = logging.getLogger('dogbone')
+
         self.app = adsk.core.Application.get()
         self.ui = self.app.userInterface
 
@@ -105,8 +106,10 @@ class DogboneCommand(object):
         self.appPath = os.path.dirname(os.path.abspath(__file__))
         self.registeredEntities = adsk.core.ObjectCollection.create()
         
-#        self.initLogger()
-        
+    def __del__(self):
+        for handler in self.logger.handlers:
+            handler.flush()
+            handler.close()
 
     def writeDefaults(self):
         self.logger.info('config file write')
@@ -235,6 +238,9 @@ class DogboneCommand(object):
         """
         inputs = adsk.core.CommandCreatedEventArgs.cast(args)
         
+        self.logger.info("============================================================================================")
+        self.logger.info("-----------------------------------dogbone started------------------------------------------")
+        self.logger.info("============================================================================================")
             
         self.faces = []
         self.errorCount = 0
@@ -245,8 +251,7 @@ class DogboneCommand(object):
         self.selectedEdges = {} 
 #        self.registeredEntities = adsk.core.ObjectCollection.create()
         self.registry = FaceEdgeMgr()
-
-        
+                
         argsCmd = adsk.core.Command.cast(args)
         
         if self.design.designType != adsk.fusion.DesignTypes.ParametricDesignType :
@@ -360,10 +365,8 @@ class DogboneCommand(object):
         self.ui.activeSelections.clear()
         
         
-        faces = feMgr.selectedFacesAsList
-#        faceSelections(selectionObjects)
-        edges = feMgr.selectedEdgesAsList
-#        edgeSelections(selectionObjects)
+        faces = map(lambda x: x.face, feMgr.selectedFaceObjectsAsList)
+        edges = map(lambda x: x.edge, feMgr.selectedEdgeObjectsAsList)
 
         commandInputs.itemById('select').hasFocus = True        
         for face in faces:
@@ -419,11 +422,12 @@ class DogboneCommand(object):
 #            self.registeredEntitied = adsk.core.ObjectCollection.create()
             
             
-            removedFaces = [face for face in self.registry.selectedFacesAsList if face not in faces]
-            addedFaces = [face for face in faces if face not in self.registry.selectedFacesAsList]
+            removedFaces = [face for face in map(lambda x: x.face, self.registry.selectedFaceObjectsAsList) if face not in faces]
+            addedFaces = [face for face in faces if face not in map(lambda x: x.face, self.registry.selectedFaceObjectsAsList)]
             
             for face in removedFaces:
                 # faces have been removed
+                self.logger.debug('face being removed {}'.format(calcId(face)))
                 self.registry.deleteFace(face)
                             
             #==============================================================================
@@ -431,6 +435,7 @@ class DogboneCommand(object):
             #==============================================================================
             for face in addedFaces:
                 
+                self.logger.debug('face being added {}'.format(calcId(face)))
                 self.registry.addFace(face)
             
 #                if face.assemblyContext:
@@ -471,8 +476,8 @@ class DogboneCommand(object):
         if changedInput.id != 'edgeSelect':
             return
             
-        removedEdges = [edge for edge in self.registry.registeredEdges if edge not in edges]
-        addedEdges = [edge for edge in edges if edge not in self.registry.registeredEdges]
+        removedEdges = [edge for edge in map(lambda x: x.edge, self.registry.selectedEdgeObjectsAsList) if edge not in edges]
+        addedEdges = [edge for edge in edges if edge not in map(lambda x: x.edge, self.registry.selectedEdgeObjectsAsList)]
 
             
             
@@ -482,14 +487,15 @@ class DogboneCommand(object):
             #==============================================================================
 
         for edge in removedEdges:
-            self.selectedEdges[edge].selected = False
+            self.registry.deleteEdge(edge)
 
         for edge in addedEdges:
             #==============================================================================
             #         Start of adding a selected edge
             #         Edge has been added - assume that the last selection entity is the one added
             #==============================================================================
-            self.selectedEdges[calcId(edge)].select = True # Get selectedFace then get selectedEdge, then call function
+            self.registry.addEdge(edge)
+        self.setSelections(self.registry, changedInput.commandInputs, changedInput.commandInputs.itemById('edgeSelect'))
 
 
     def parseInputs(self, inputs):
@@ -962,40 +968,23 @@ class DogboneCommand(object):
         occurrenceEdgeList = self.registry.selectedEdgesAsGroupList
 
 
-        for edgeGroup in occurrenceEdgeList:
+        for edgeGroup in occurrenceEdgeList.values():
             topPlane = None
+            if not edgeGroup:
+                continue
             if self.fromTop:
-                (topFace, topFaceRefPoint) = edgeGroup[0].parent.topFace
-                topPlane = adsk.core.Plane.create(topFace.pointOnFace, dbUtils.getFaceNormal(topFace))
-                self.logger.info('Processing holes from top face - {}'.format(topFace.tempId))
+                topPlane = edgeGroup[0].topFacePlane
+                self.logger.info('Processing holes from top face - {}'.format(edgeGroup[0].parent.faceHash))
 
             bodies = None
                            
             bodyCollection = adsk.core.ObjectCollection.create()
             tempBrepMgr = adsk.fusion.TemporaryBRepManager.get()
             startTlMarker = self.design.timeline.markerPosition
-
-#                self.debugFace(topFace)
-                
-#            for selectedEdge in occurrenceEdge:
-#                if len(selectedFace.selectedEdgesAsList) <1:
-#                    self.logger.debug('Face has no edges')
-#                    continue 
-#                face = selectedFace.face
               
             for edgeObject in edgeGroup:
                 
                 self.logger.debug('Processing edge - {}'.format(edgeObject.tempId))
-
-#                if not selectedEdge.selected:
-#                    self.logger.debug('  Not selected. Skipping...')
-#                    continue
-#
-#                try:
-#                    if not dbUtils.isEdgeAssociatedWithFace(face, selectedEdge.edge):
-#                        continue  # skip if edge is not associated with the face currently being processed
-#                except:
-#                    pass
 
                 edge = edgeObject.edge
                 dbBody = dbUtils.createTempDogbone(edge = edge, 
@@ -1003,7 +992,6 @@ class DogboneCommand(object):
                                                    minimalPercent = minPercent, 
                                                    topPlane = topPlane, 
                                                    dbType = self.dbType )
-
                 if not bodies:
                     bodies = dbBody
                 else:

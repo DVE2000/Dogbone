@@ -8,19 +8,17 @@ Created on Sun Apr 21 19:51:42 2019
 import logging
 from pprint import pformat
 
-import operator
+from sys import getrefcount as grc
 
 from collections import defaultdict
 
 import adsk.core, adsk.fusion
 import traceback
-import os
 import weakref
 from functools import reduce, lru_cache
 
-import time
 from . import dbutils as dbUtils
-from math import sqrt
+from math import sqrt, pi
 
 #constants - to keep attribute group and names consistent
 DOGBONEGROUP = 'dogBoneGroup'
@@ -32,51 +30,58 @@ ID = 'id'
 DEBUGLEVEL = logging.NOTSET
 
 
-# Generate an edgeHash or faceHash from object
-calcHash = lambda x: str(x.tempId) + ':' + x.assemblyContext.name.split(':')[-1] if x.assemblyContext else str(x.tempId) + ':' + x.body.name
 
 faceSelections = lambda selectionObjects: list(filter(lambda face: face.objectType == adsk.fusion.BRepFace.classType(), selectionObjects))
 edgeSelections = lambda selectionObjects: list(filter(lambda edge: edge.objectType == adsk.fusion.BRepEdge.classType(), selectionObjects))
-calcOccName = lambda x: x.assemblyContext.name if x.assemblyContext else x.body.name
+
+# Generate occurrence hash
+calcOccHash = lambda x: x.assemblyContext.name if x.assemblyContext else x.body.name
+
+# Generate an edgeHash or faceHash from object
+calcHash = lambda x: str(x.tempId) + ':' + x.assemblyContext.name.split(':')[-1] if x.assemblyContext else str(x.tempId) + ':' + x.body.name
 
 
 class FaceEdgeMgr:
 #    TODO: deleteFace, addEdge, deleteEdge
+
+
     def __init__(self):
         self.logger = logging.getLogger('dogbone.mgr')
         
         self.logger.info('---------------------------------{}---------------------------'.format('faceEdgeMgr'))
         self.logger.debug('faceEdgeMgr initiated')
-        self.registeredFaces = {} #key: occurrenceName value: faceObjects
-        self.registeredEdges = {} #key: faceHash value: edgeObjects
-        self.registeredComponents = [] #flat list of all components that have been registered
-        self.faces = []
-        self._topFaces = {} #key: occurrenceName value:topFace tuple
-        self.selectedOccurrences = {} #key: occurrenceName value: list of selected Faces
-        self.selectedFaces = {} #key: occurrenceName value: list of faceObjects
-        self.selectedEdges = {} #key: faceHash value: list of edgeObjects
+        self.registeredFaces = {} #key: occurrenceHash value: dict of key: facehash value: faceObjects
+        self.registeredEdges = {} #key: facehash value: dict of key:  edgehash value: edgeObjects
+#        self.faces = []
+        self.topFacePlanes = {} #key: occurrenceHash value:topFace plane
+        self.selectedFaces = {} #key: occurrenceHash value: dict of key: facehash value: faceObjects
+        self.selectedEdges = {} #key: facehash value: dict of key:  edgehash value: edgeObjects
         
     def addFace(self, face):
-        activeOccurrenceName = calcOccName(face)
+        self.logger.debug('registered Faces before = {}'.format(pformat(self.registeredFaces)))
+        self.logger.debug('selected Faces before = {}'.format(pformat(self.selectedFaces)))
+        self.logger.debug('registered Edges before = {}'.format(pformat(self.registeredEdges)))
+        self.logger.debug('selected Edges before = {}'.format(pformat(self.selectedEdges)))
             
-        faces = self.selectedOccurrences.setdefault(activeOccurrenceName, [])
+        faces = self.selectedFaces.setdefault(calcOccHash(face), {})
         self.logger.debug('cache cleared')
         self.completeEntityList.cache_clear()
-        if faces:
-            faceObject = self.selectedFaces[calcHash(face)]
-            faceObject.selected = True
 
+        if faces:
+            faceObject = self.registeredFaces[calcOccHash(face)][calcHash(face)]
+            faceObject.selected = True
             return
         
         body = face.body
         faceNormal = dbUtils.getFaceNormal(face)
-#        validFaces = {calcHash(face):SelectedFace(face, self) for face in body.faces if faceNormal.angleTo(dbUtils.getFaceNormal(face))==0}
-        
-#        validFaces = {}
         for face1 in body.faces:
             if faceNormal.angleTo(dbUtils.getFaceNormal(face1))== 0:
                 faceObject = SelectedFace(face1, self)
-        self._topFaces.update({activeOccurrenceName: dbUtils.getTopFace(face)})
+
+        self.logger.debug('registered Faces after = {}'.format(pformat(self.registeredFaces)))
+        self.logger.debug('selected Faces after = {}'.format(pformat(self.selectedFaces)))
+        self.logger.debug('registered Edges after = {}'.format(pformat(self.registeredEdges)))
+        self.logger.debug('selected Edges after = {}'.format(pformat(self.selectedEdges)))
         
     def deleteFace(self, face):
 #TODO:
@@ -84,96 +89,132 @@ class FaceEdgeMgr:
         self.logger.debug('selected Faces before = {}'.format(pformat(self.selectedFaces)))
         self.logger.debug('registered Edges before = {}'.format(pformat(self.registeredEdges)))
         self.logger.debug('selected Edges before = {}'.format(pformat(self.selectedEdges)))
-        occHash = calcOccName(face)
-        faceHash = calcHash(face)
-        faceObjectList = self.selectedFaces[occHash]
-        faceObject = list(filter(lambda x: x.faceHash == faceHash, faceObjectList))[0]
+        occHash = calcOccHash(face)
+        faceObject = self.registeredFaces[occHash][calcHash(face)]
         faceObject.selected = False
         if not self.selectedFaces[occHash]:
-            del self.selectedFaces[occHash]
-            self.registeredComponents.remove(occHash)
-            for faceObject in self.registeredFaces[occHash]:
-                del faceObject
+            self.remove(occHash)
         self.logger.debug('registered Faces after = {}'.format(pformat(self.registeredFaces)))
         self.logger.debug('selected Faces after = {}'.format(pformat(self.selectedFaces)))
         self.logger.debug('registered Edges after = {}'.format(pformat(self.registeredEdges)))
         self.logger.debug('selected Edges after = {}'.format(pformat(self.selectedEdges)))
         self.completeEntityList.cache_clear()
         self.logger.debug('cache cleared')
+        
+    def remove(self, occHash):
+        for faceObject in self.registeredFaces[occHash].values():
+            del self.registeredEdges[faceObject.faceHash]
+            del self.selectedEdges[faceObject.faceHash]
+        del self.registeredFaces[occHash]
+        del self.selectedFaces[occHash]
+ 
+    def addEdge(self, edge):
+        edgeHash = calcHash(edge)
+        for edgeList in self.registeredEdges.values():
+            if calcHash(edge) in edgeList:
+                edgeObject = edgeList[edgeHash]
+                break
+        self.logger.debug('cache cleared')
+        self.completeEntityList.cache_clear()
+        edgeObject.selected = True
+        edgeObject.parent.selected = (True, False)
+            
+        
+    def deleteEdge(self, edge):
+        edgeHash = calcHash(edge)
+        for edgeList in self.registeredEdges.values():
+            if calcHash(edge) in edgeList:
+                edgeObject = edgeList[edgeHash]
+                break
+        edgeObject.selected = False
+        if not edgeObject.selectedEdges:
+            edgeObject.parent.selected = (False, False)
+        if not edgeObject.parent.selectedFaces:
+            self.remove(calcOccHash(edge))
     
     @lru_cache(maxsize=128)
-    def completeEntityList(self, dummy):  #dummy is only there to fool the lru_cache - it needs hashable parameters in the arguments
-        self.logger.debug('registered Faces = {}'.format(len(list(self.registeredFacesAsList))))
-        self.logger.debug('registered Edges = {}'.format(len(list(self.registeredEdgesAsList))))
-        return not ((self._entity not in self.registeredFacesAsList) and (self._entity not in self.registeredEdgesAsList))
-            
+    def completeEntityList(self, entityHash):  #needs hashable parameters in the arguments for lru_cache to work
+        self.logger.debug('Entity Hash  = {}'.format(entityHash))
+        return  (entityHash in map(lambda x: x.faceHash, self.registeredFaceObjectsAsList)) or (entityHash in map(lambda x: x.edgeHash, self.registeredEdgeObjectsAsList))
 
     def isSelectable(self, entity):
         
         self._entity = entity
 
         if entity.assemblyContext:
-            self.activeOccurrenceName = entity.assemblyContext.component.name
+            self.activeoccurrenceHash = entity.assemblyContext.component.name
         else:
-            self.activeOccurrenceName = entity.body.name
-        if self.activeOccurrenceName not in self.registeredComponents:
+            self.activeoccurrenceHash = entity.body.name
+        if self.activeoccurrenceHash not in map(lambda x: x.split(":")[0], self.registeredFaces.keys()):
             return True
 
-        return self.completeEntityList(1)
+        return self.completeEntityList(calcHash(entity))
         
     @property        
-    def registeredEdgesAsList(self):
-        try:
-            return map(lambda edgeObjects: edgeObjects.edge, reduce(operator.iadd, self.registeredEdges.values()))
-        except:
-            return []
+    def registeredEdgeObjectsAsList(self):
+        edgeList = []
+        for comp in self.registeredEdges.values():
+            edgeList += comp.values()
+        return edgeList
 
     @property        
-    def registeredFacesAsList(self):
-        try:
-            return map(lambda faceObjects: faceObjects.face, reduce(operator.iadd, self.registeredFaces.values()))
-        except:
-            return []
+    def registeredFaceObjectsAsList(self):
+        faceList = []
+        for comp in self.registeredFaces.values():
+            faceList += comp.values()
+        return faceList
         
     @property
     def registeredEntitiesAsList(self):
-        try:
-            faceEntities = map(lambda faceObjects: faceObjects.face, reduce(operator.iadd, self.registeredFaces.values()))
-            edgeEntities = map(lambda edgeObjects: edgeObjects.edge, reduce(operator.iadd, self.registeredEdges.values()))
+        self.logger.debug('registeredEntitiesAsList')
+        edgeList = []
+        for comp in self.registeredEdges.values():
+            edgeList += comp
+        faceList = []
+        for comp in self.registeredFaces.values():
+            faceList += comp
+            faceEntities = map(lambda faceObjects: faceObjects.face, edgeList)
+            edgeEntities = map(lambda edgeObjects: edgeObjects.edge, faceList)
             return faceEntities + edgeEntities
-        except:
-            return []
+            
+#    @property 
+#    def selectedEdges(self):
+#        self.logger.debug('selectedEdges called')
+#        return self._selectedEdges
 
 
     @property
-    def selectedEdgesAsList(self):
-        try:
-            return map(lambda edgeObjects: edgeObjects.edge, reduce(operator.iadd, self.selectedEdges.values()))
-        except:
-            return []    
+    def selectedEdgeObjectsAsList(self):
+        self.logger.debug('selectedEdgesAsList')
+        edgeList = []
+        for comp in self.selectedEdges.values():
+            edgeList += comp.values()
+#            edges = copy.deepcopy(self.selectedEdges)
+#        x =  map(lambda edgeObject: edgeObject.edge, reduce(operator.iadd, list(self.selectedEdges.values())))
+        return edgeList
             
     @property        
-    def selectedFacesAsList(self):
-        if not self.registeredFaces.values():
-            return []
-        return map(lambda faceObjects: faceObjects.face, reduce(operator.iadd, self.selectedFaces.values()))
+    def selectedFaceObjectsAsList(self):
+        self.logger.debug('selectedFacesAsList')
+
+        faceList = []
+        for comp in self.selectedFaces.values():
+            faceList += comp.values()
+            
+#        x =  []+list(self.selectedFaces.values())
+#            edges = copy.deepcopy(self.selectedEdges)
+        return faceList
                      
     @property        
-    def selectedEdgesAsGroupList(self):
-        return self.selectedEdges
-
-        
-#    def addEdge(self, edge):
-#        occurrenceName = calcOccName(edge)
-#        faceHashes = self.selectedOccurrences[occurrenceName] #get list of face Ids associated with this occurrence
-#        edgeHash = calcHash(edge)
-#        for faceHash in faceHashes:
-#            if edgeHash not in self.selectedFaces[faceHash]:
-#                continue
-#            self.selectedEdges[edgeHash].select = True
-#            break
-#            return True
-#        return False
+    def selectedEdgesAsGroupList(self):  # Grouped by occurrence/component
+        self.logger.debug('registeredEdgeObjectsAsGroupList')
+        groupedEdges  = {}
+        for occurrence in self.selectedFaces:
+            edges = []
+            for faceHash in self.selectedFaces[occurrence]:
+                edges += self.selectedEdges[faceHash].values()
+            groupedEdges[occurrence] = edges
+        return groupedEdges
 
 class SelectedEdge:
     def __init__(self, edge, parentFace):
@@ -181,27 +222,23 @@ class SelectedEdge:
         self.logger.info('---------------------------------{}---------------------------'.format('creating edge'))
         self.edge = edge
         self.edgeHash = calcHash(edge)
-        self.edgeName = edge.assemblyContext.component.name if edge.assemblyContext else edge.body.name
         self.tempId = edge.tempId
         self.parent = weakref.ref(parentFace)()
         self.selectedEdges = self.parent.selectedEdges
-        self.registeredEdges = self.parent.registeredEdges.append(self)
+        self.selectedEdges[self.edgeHash] = self
+        self.registeredEdges = self.parent.registeredEdges
+        self.registeredEdges[self.edgeHash] = self
+        self._selected = True
         self.selected = True #invokes selected property
         self.logger.debug('{} - edge initiated'.format(self.edgeHash))
         
     def __del__(self):
         self.logger.debug('edge {} deleted'.format(self.edgeHash))
-#TODO:
-        self.registeredEdges.remove[self.edge]
+        del self.registeredEdges[self.edgeHash]
         self.logger.debug('{} - edge deleted'.format(self.edgeHash))
         if not self.registeredEdges:
             del self.parent.registeredEdges[self.parent.faceHash]
             self.logger.debug('{} - registered edge dict deleted'.format(self.edgeHash))
-
-
-    @property
-    def getFace(self):
-        return self.parentFace
         
     @property
     def selected(self):
@@ -210,23 +247,19 @@ class SelectedEdge:
     @selected.setter
     def selected(self, selected):
         self.logger.debug('{} - edge {}'.format(self.edgeHash, 'selected' if selected else 'deselected'))
-        self.logger.debug('before selected edge count for face {} = []'.format(self.parent.faceHash, len(self.selectedEdges)))
+        self.logger.debug('before selected edge count for face {} = {}'.format(self.parent.faceHash, len(self.selectedEdges)))
         if selected:
-            self.selectedEdges.append(self)
+            self.selectedEdges[self.edgeHash] = self
             self.logger.debug('{} - edge appended to selectedEdges'.format(self.edgeHash))
         else: 
-            self.selectedEdges.remove(self)
+            del self.selectedEdges[self.edgeHash]
             self.logger.debug('{} - edge removed from selectedEdges'.format(self.edgeHash))
-#            if not self.selectedEdges:  #if no edges left then deselect parent face
-#                self._selected = False
-#                self.parent.selected = False
-#                del self.parent.selectedEdges[self.parent.faceHash]
-#                logger.debug('{} - Face removed from selectedEdges'.format(self.parent.faceHash))
-#                del self.parent.selectedFaces[self.parent.faceHash]  #
         self._selected = selected
-        self.logger.debug('after selected edge count for face {} = []'.format(self.parent.faceHash, len(self.selectedEdges)))
+        self.logger.debug('after selected edge count for face {} = {}'.format(self.parent.faceHash, len(self.selectedEdges)))
         
-
+    @property
+    def topFacePlane(self):
+        return self.parent.topFacePlane
 
 class SelectedFace:
     """
@@ -254,50 +287,27 @@ class SelectedFace:
         self._selected = True # record of all valid faces are kept, but only ones that are selected==True are processed for dogbones???
         self.parent = weakref.ref(parent)()
 
-        self.occurrenceName = calcOccName(face)
+        self.occurrenceHash = calcOccHash(face)
+        self.topFacePlane = self.parent.topFacePlanes.setdefault(self.occurrenceHash, dbUtils.getTopFacePlane(face))
         
-        self.registeredFaces = self.parent.registeredFaces.setdefault(self.occurrenceName, [])#.append(self.face)
-        self.registeredFaces.append(self)
-        self.registeredEdges = self.parent.registeredEdges.setdefault(self.faceHash, [])
-        self.registeredComponents = self.parent.registeredComponents
+        self.registeredFaces = self.parent.registeredFaces.setdefault(self.occurrenceHash, {})#.append(self.face)
+        self.registeredFaces[self.faceHash] = self
+        self.registeredEdges = self.parent.registeredEdges.setdefault(self.faceHash, {})
         
-#        self._topFaces = self.parent._topFaces.setdefault(self.faceHash, [])
-
-        self.selectedOccurrences = self.parent.selectedOccurrences.setdefault(self.occurrenceName, [])
-        self.selectedFaces = self.parent.selectedFaces.setdefault(self.occurrenceName, [])
-#        self.selectedFaces.append(self)
-        
-        self.selectedEdges = self.parent.selectedEdges.setdefault(self.faceHash, [])
-        self.logger.debug('{} - face initiated'.format(self.faceHash))
-
-#        self.registeredFaces.append(face)
-        
-        if face.assemblyContext:
-            self.componentName = face.assemblyContext.component.name
-        else:
-            self.componentName = self.occurrenceName
-            
-        if self.componentName not in self.registeredComponents:
-
-            self.registeredComponents.append(self.componentName)
-
-#        self.registeredComponents = list(set(self.registeredComponents))  #clean up to ensure no duplicates - have to see if this adds too much overhead     
-#        self.validEdges = {} # Keyed with edgeHash
-#        self.edgeSelection = adsk.core.ObjectCollection.create()
+        self.selectedFaces = self.parent.selectedFaces.setdefault(self.occurrenceHash, {})
+        self.selectedEdges = self.parent.selectedEdges.setdefault(self.faceHash, {})
+        self.logger.debug('{} - face initiated'.format(self.faceHash))           
 
         #==============================================================================
         #             this is where inside corner edges, dropping down from the face are processed
         #==============================================================================
 
-#        faceNormal = dbUtils.getFaceNormal(face)
-
         self.brepEdges = dbUtils.findInnerCorners(face) #get all candidate edges associated with this face
-        self.logger.debug('{} - edges found on face creation'.format(len(self.brepEdges)))
         if not self.brepEdges:
-#            self.selected = False
-            self.logger.debug('no edges found on deselecting face '.format(self.faceHash))
+            self.logger.debug('no edges found on selected face '.format(self.faceHash))
             return
-        
+
+        self.logger.debug('{} - edges found on face creation'.format(len(self.brepEdges)))
         for edge in self.brepEdges:
             if edge.isDegenerate:
                 continue
@@ -306,21 +316,17 @@ class SelectedFace:
                 edgeObject = SelectedEdge(edge, self)
                 self.logger.debug(' {} - edge object added'.format(edgeObject.edgeHash))
     
-#                self.validEdges[edgeObject.edgeHash] = edgeObject
             except:
                 dbUtils.messageBox('Failed at edge:\n{}'.format(traceback.format_exc()))
-        self.selected = True #invokes selected property
-        self.logger.debug('registered component count = {}'.format(len(self.registeredComponents)))
-
-        
+        self.selected = True
+        self.logger.debug('registered component count = {}'.format(len(self.parent.registeredFaces.keys())))
                 
     def __del__(self):
         self.logger.debug("face {} deleted".format(self.faceHash))
-        self.registeredFaces.remove(self.face)
-#        self.parent.registeredComponents.remove(self.occurrenceName)
+        del self.registeredFaces[self.faceHash]
         del self.selectedFaces[self.faceHash]
         self.logger.debug(' {} - face key deleted from registeredFaces'.format(self.faceHash))
-        self.logger.debug('registered component count = {}'.format(len(self.registeredComponents)))
+        self.logger.debug('registered component count = {}'.format(len(self.parent.registeredFaces)))
         for edgeObject in self.registeredEdges.values():
             del edgeObject
             self.logger.debug(' {} - edge object deleted'.format(edgeObject.edgeHash))
@@ -329,17 +335,6 @@ class SelectedFace:
         self.logger.debug('selected Faces count = {}'.format(len(self.selectedFaces)))               
         self.logger.debug('registered edges count = {}'.format(len(self.registeredEdges)))               
         self.logger.debug('selected edges count = {}'.format(len(self.selectededEdges)))               
-    @property
-    def validEdgesAsDict(self):
-        return self.selectedEdges
-
-    @property
-    def validEdgesAsList(self):
-        return self.selectedEdges
-
-    @property
-    def edgeCount(self):
-        return len(self.selectedEdges)
 
     @property
     def selected(self):
@@ -347,46 +342,23 @@ class SelectedFace:
         
     @selected.setter
     def selected(self, selected):
+        allEdges = True
+        if isinstance(selected, tuple):
+            allEdges = selected[1]
+            selected = selected[0]
         if not selected:
-            self.selectedFaces.remove(self)
+            del self.selectedFaces[self.faceHash]
             self.logger.debug(' {} - face object removed from selectedFaces'.format(self.faceHash))
         else:
-            self.selectedFaces.append(self)
+            self.selectedFaces[self.faceHash] = self
             self.logger.debug(' {} - face object added to registeredFaces'.format(self.faceHash))
 
-        for edge in self.registeredEdges:
-            edge.selected = selected
-            self.logger.debug(' {} - edge object selected - {}'.format(edge.edgeHash, selected))
-#        if not self.selectedEdges:
-#            self.selectedFaces.remove(self)
-#            self._selected = False
-#            logger.debug(' {} - face object removed from selectedFaces'.format(self.faceHash))
-        else:    
-            self._selected = selected
-        
-    @property
-    def selectedEdgesAsList(self):
-        return self.selectedEdges
-        
-    @property
-    def selectedEdgesAsDict(self):
-        return self.selectedEdges
-
-    @property        
-    def selectedEdgesAsCollection(self):
-        collection = adsk.core.ObjectCollection.create()
-        for edge in self.selectedEdgesAsList:
-            collection.add(edge)
-        return collection
-        
-    @property
-    def topFace(self):
-        return dbUtils.getTopFace(self.face)
-        
-    def addEdge(self, edge):
-#        TODO:
-        edgeObject = SelectedEdge(edge)
-        self.validEdges[edgeObject.edgeHash] = edgeObject
-        self.selectedEdges.update(self.validEdges)
-        
-        return edgeObject.edgeHash, edgeObject
+        if allEdges:
+            self.logger.debug('{} all edges after face {}'.format('Selecting' if selected else 'Deselecting', 'Selected' if selected else 'Deselected'))
+            for edge in self.registeredEdges.values():
+                try:
+                    edge.selected = selected
+                except:
+                    continue
+            self.logger.debug(' {} - edge object {}'.format(edge.edgeHash, 'selected' if selected else 'deselected'))
+        self._selected = selected

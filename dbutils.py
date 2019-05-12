@@ -2,16 +2,31 @@ import logging
 from math import pi, tan
 import os
 import traceback
+from functools import wraps
+from pprint import pformat
+
 #import itertools
 
 import adsk.core
 import adsk.fusion
 
+def timer(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        startTime = time.time()
+        result = func(*args, **kwargs)
+        logger.debug('{}: time taken = {}'.format(func.__name__, time.time() - startTime))
+        return result
+    return wrapper
+
 getFaceNormal = lambda face: face.evaluator.getNormalAtPoint(face.pointOnFace)[1]
 edgeVector = lambda coEdge:  coEdge.edge.evaluator.getEndPoints()[2].vectorTo(coEdge.edge.evaluator.getEndPoints()[1]) if coEdge.isOpposedToEdge else coEdge.edge.evaluator.getEndPoints()[1].vectorTo(coEdge.edge.evaluator.getEndPoints()[2]) 
 
 
-#logger = logging.getLogger(__name__)
+logger = logging.getLogger('dogbone.utils')
+
+
+
 #formatter = logging.Formatter('%(asctime)s ; %(name)s ; %(levelname)s ; %(lineno)d; %(message)s')
 ##        if not os.path.isfile(os.path.join(self.appPath, 'dogBone.log')):
 ##            return
@@ -25,7 +40,7 @@ edgeVector = lambda coEdge:  coEdge.edge.evaluator.getEndPoints()[2].vectorTo(co
 
 
 def findInnerCorners(face):
-#    logger.debug('find Inner Corners')
+    logger.debug('find Inner Corners')
     face1 = adsk.fusion.BRepFace.cast(face)
     if face1.objectType != adsk.fusion.BRepFace.classType():
         return False
@@ -256,28 +271,28 @@ def messageBox(*args):
     adsk.core.Application.get().userInterface.messageBox(*args)
 
 
-def getTopFace(selectedFace):
-    normal = getFaceNormal(selectedFace)
-    refPlane = adsk.core.Plane.create(selectedFace.vertices.item(0).geometry, normal)
-    refLine = adsk.core.InfiniteLine3D.create(selectedFace.vertices.item(0).geometry, normal)
+def getTopFacePlane(faceEntity):
+    normal = getFaceNormal(faceEntity)
+    refPlane = adsk.core.Plane.create(faceEntity.vertices.item(0).geometry, normal)
+    refLine = adsk.core.InfiniteLine3D.create(faceEntity.vertices.item(0).geometry, normal)
     refPoint = refPlane.intersectWithLine(refLine)
     faceList = []
-    body = adsk.fusion.BRepBody.cast(selectedFace.body)
+    body = adsk.fusion.BRepBody.cast(faceEntity.body)
     for face in body.faces:
         if not normal.isParallelTo(getFaceNormal(face)):
             continue
         facePlane = adsk.core.Plane.create(face.vertices.item(0).geometry, normal)
         intersectionPoint = facePlane.intersectWithLine(refLine)
-#        distanceToRefPoint = refPoint.distanceTo(intersectionPoint)
         directionVector = refPoint.vectorTo(intersectionPoint)
         distance = directionVector.dotProduct(normal)
- #       distanceToRefPoint = distanceToRefPoint* (-1 if direction <0 else 1)
         faceList.append([face, distance])
     sortedFaceList = sorted(faceList, key = lambda x: x[1])
-    top = sortedFaceList[-1]
-    refPoint = top[0].nativeObject.pointOnFace if top[0].assemblyContext else top[0].pointOnFace
+    top = sortedFaceList[-1][0]
+    return adsk.core.Plane.create(top.pointOnFace, getFaceNormal(top))
+
+#    refPoint = top[0].nativeObject.pointOnFace if top[0].assemblyContext else top[0].pointOnFace
     
-    return (top[0], refPoint)
+#    return topPlane
  
 
 def getTranslateVectorBetweenFaces(fromFace, toFace):
@@ -307,13 +322,13 @@ class HandlerHelper(object):
     def make_handler(self, handler_cls, notify_method, catch_exceptions=True):
         class _Handler(handler_cls):
             def notify(self, args):
-#                self.logger = logging.getLogger(__name__)
+                self.logger = logging.getLogger('dogbone.utils.error')
                 if catch_exceptions:
                     try:
                         notify_method(args)
                     except:
                         messageBox('Failed:\n{}'.format(traceback.format_exc()))
-#                        self.logger.exception('error termination')
+                        self.logger.exception('error termination')
                         for handler in self.logger.handlers:
                             handler.flush()
                             handler.close()
