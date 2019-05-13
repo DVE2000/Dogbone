@@ -996,9 +996,10 @@ class DogboneCommand(object):
                     bodies = dbBody
                 else:
                     tempBrepMgr.booleanOperation(bodies, dbBody, adsk.fusion.BooleanTypes.UnionBooleanType)
+                    
             if not bodies:
                 continue
-                    
+
             baseFeats = self.rootComp.features.baseFeatures
             baseFeat = baseFeats.add()
             baseFeat.startEdit()
@@ -1006,16 +1007,17 @@ class DogboneCommand(object):
             dbB = self.rootComp.bRepBodies.add(bodies, baseFeat)
             dbB.name = 'dbHole'
             baseFeat.finishEdit()
+            baseFeat.name = 'dogBone'
             
             targetBody = edge.body
-        
+            
             bodyCollection.add(baseFeat.bodies.item(0))
             
             combineInput = self.rootComp.features.combineFeatures.createInput(targetBody, bodyCollection)
             combineInput.isKeepToolBodies = False
             combineInput.operation = adsk.fusion.FeatureOperations.CutFeatureOperation
             combine = self.rootComp.features.combineFeatures.add(combineInput)
-    
+            combine.name = 'dogbone'
                                             
             endTlMarker = self.design.timeline.markerPosition-1
             if endTlMarker - startTlMarker >0:
