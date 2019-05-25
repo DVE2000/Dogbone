@@ -759,6 +759,7 @@ class DogboneCommand(object):
 
         diaByStr = adsk.core.ValueInput.createByString(holeDiaExpr)
         offsetByStr = adsk.core.ValueInput.createByString(holeOffsetExpr)
+        suppressedHoles = []
         
         for occurrenceFace in self.selectedOccurrences.values():
             startTlMarker = self.design.timeline.markerPosition
@@ -900,11 +901,10 @@ class DogboneCommand(object):
                     holeFeature = holes.add(holeInput)
                     holeFeature.name = 'dogbone'
                     holeFeature.isSuppressed = True
+                    suppressedHoles.append(holeFeature)
                     
-                for hole in holes:
-                    if hole.name[:7] != 'dogbone':
-                        break
-                    hole.isSuppressed = False
+            for hole in suppressedHoles:
+                hole.isSuppressed = False
                     
             endTlMarker = self.design.timeline.markerPosition-1
             if endTlMarker - startTlMarker >0:
