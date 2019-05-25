@@ -56,6 +56,9 @@ class FaceEdgeMgr:
         self.topFacePlanes = {} #key: occurrenceHash value:topFace plane
         self.selectedFaces = {} #key: occurrenceHash value: dict of key: facehash value: faceObjects
         self.selectedEdges = {} #key: facehash value: dict of key:  edgehash value: edgeObjects
+        self.timeLineGroups = {} #key: occurrenceHash value: timelineGroup object
+        self.app = adsk.core.Application.get()
+        self.design = self.app.activeProduct
         
     def addFace(self, face):
         self.logger.debug('registered Faces before = {}'.format(pformat(self.registeredFaces)))
@@ -74,6 +77,7 @@ class FaceEdgeMgr:
         
         body = face.body
         faceNormal = dbUtils.getFaceNormal(face)
+        
         for face1 in body.faces:
             if faceNormal.angleTo(dbUtils.getFaceNormal(face1))== 0:
                 faceObject = SelectedFace(face1, self)
@@ -131,6 +135,46 @@ class FaceEdgeMgr:
             edgeObject.parent.selected = (False, False)
         if not edgeObject.parent.selectedFaces:
             self.remove(calcOccHash(edge))
+            
+            
+    def preLoad(self):
+        timelineGroups = self.design.timeline.timelineGroups
+        if not timelineGroups:
+            return False
+        combineFeatures = []
+        for tlGroup in timelineGroups:
+            if 'dogbone' not in tlGroup.name:
+                continue
+            tlGroup.isCollapsed = False
+            combineFeature = tlGroup.item(1).entity
+            tlGroup.item(1).rollTo(True)
+            combineFeatures.append(combineFeature)
+            targetBody = combineFeature.targetBody
+            targetComponent = targetBody.parentComponent
+            componentAttrib = targetComponent.attributes.itemByName('dbGroup', 'dbOccurrence')
+            if not componentAttrib:
+                continue
+            orientations = componentAttrib.split(':')
+            toolBody = combineFeature.toolBodies[0]
+            for orientation in orientations:
+                occurrence = targetComponent.allOccurrences.itemByName(targetComponent.name+':'+orientation) 
+                body = toolBody.createForAssemblyContext()
+            
+            for face in targetBody.faces:
+                if not face.attributes.itemByName('dbGroup','dbFace'):
+                    continue
+                self.addFace(face)
+                self.timeLineGroups[calcOccHash(face)] = tlGroup
+                combineFeature.isSuppressed = True
+                break
+            
+
+        return True
+            
+            
+            
+            
+        
     
     @lru_cache(maxsize=128)
     def completeEntityList(self, entityHash):  #needs hashable parameters in the arguments for lru_cache to work
@@ -245,15 +289,17 @@ class SelectedEdge:
         return self._selected
         
     @selected.setter
-    def selected(self, selected):
+    def selected(self, selected, dbType = 'Normal Dogbone'):
         self.logger.debug('{} - edge {}'.format(self.edgeHash, 'selected' if selected else 'deselected'))
         self.logger.debug('before selected edge count for face {} = {}'.format(self.parent.faceHash, len(self.selectedEdges)))
         if selected:
             self.selectedEdges[self.edgeHash] = self
             self.logger.debug('{} - edge appended to selectedEdges'.format(self.edgeHash))
+            attr = self.edge.attributes.add('dbGroup', 'dbEdge', dbType)
         else: 
             del self.selectedEdges[self.edgeHash]
             self.logger.debug('{} - edge removed from selectedEdges'.format(self.edgeHash))
+            self.edge.attributes.itemByName('dbGroup','dbEdge').deleteMe()
         self._selected = selected
         self.logger.debug('after selected edge count for face {} = {}'.format(self.parent.faceHash, len(self.selectedEdges)))
         
@@ -341,16 +387,19 @@ class SelectedFace:
         return self._selected
         
     @selected.setter
-    def selected(self, selected):
+    def selected(self, selected, dbType = 'Normal Dogbone'):
         allEdges = True
         if isinstance(selected, tuple):
             allEdges = selected[1]
             selected = selected[0]
         if not selected:
             del self.selectedFaces[self.faceHash]
+            attr = self.face.attributes.itemByName('dbGroup','dbFace').deleteMe()
+
             self.logger.debug(' {} - face object removed from selectedFaces'.format(self.faceHash))
         else:
             self.selectedFaces[self.faceHash] = self
+            attr = self.face.attributes.add('dbGroup', 'dbFace', dbType)
             self.logger.debug(' {} - face object added to registeredFaces'.format(self.faceHash))
 
         if allEdges:
