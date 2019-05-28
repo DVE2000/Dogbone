@@ -28,9 +28,9 @@ from .faceEdgeMgr import *
 #from .faceEdgeMgr import SelectedFace
 
 #constants - to keep attribute group and names consistent
-DOGBONEGROUP = 'dogBoneGroup'
-DBEDGE = 'dbEdge'
-DBFACE = 'dbFace'
+#DOGBONEGROUP = 'dogBoneGroup'
+#DBEDGE = 'dbEdge'
+#DBFACE = 'dbFace'
 FACE_ID = 'faceID'
 REV_ID = 'revId'
 ID = 'id'
@@ -676,107 +676,6 @@ class DogboneCommand(object):
             return # jump out if not dealing with either of the two selection boxes
         eventArgs.isSelectable = self.registry.isSelectable(eventArgs.selection.entity)
         return
-#        if activeIn.id == 'select':
-#            #==============================================================================
-#            # processing activities when faces are being selected
-#            #        selection filter is limited to planar faces
-#            #        makes sure only valid occurrences and components are selectable
-#            #==============================================================================
-#            eventArgs.isSelectable = self.registry.isSelectable()
-#
-##            if not len( self.selectedOccurrences ): #get out if the face selection list is empty
-##                eventArgs.isSelectable = True
-##                return
-##            if not eventArgs.selection.entity.assemblyContext:
-##                # dealing with a root component body
-##
-##                activeBodyName = eventArgs.selection.entity.body.name
-##                try:            
-##                    faces = self.selectedOccurrences[activeBodyName]
-##                    for face in faces:
-##                        if face.selected:
-##                            primaryFace = face
-##                            break
-##                    else:
-##                        eventArgs.isSelectable = True
-##                        return
-##                except (KeyError, IndexError) as e:
-##                    return
-##
-##                primaryFaceNormal = dbUtils.getFaceNormal(primaryFace.face)
-##                if primaryFaceNormal.isParallelTo(dbUtils.getFaceNormal(eventArgs.selection.entity)):
-##                    eventArgs.isSelectable = True
-##                    return
-##                eventArgs.isSelectable = False
-##                return
-##            # End of root component face processing
-##            
-##            #==============================================================================
-##            # Start of occurrence face processing              
-##            #==============================================================================
-##            activeOccurrence = eventArgs.selection.entity.assemblyContext
-##            activeOccurrenceName = activeOccurrence.name
-##            activeComponent = activeOccurrence.component
-##            
-##            # we got here because the face is either not in root or is on the existing selected list    
-##            # at this point only need to check for duplicate component selection - Only one component allowed, to save on conflict checking
-##            try:
-##                selectedComponentList = [x[0].face.assemblyContext.component for x in self.selectedOccurrences.values() if x[0].face.assemblyContext]
-##            except KeyError:
-##               eventArgs.isSelectable = True
-##               return
-##
-##            if activeComponent not in selectedComponentList:
-##                    eventArgs.isSelectable = True
-##                    return
-##
-##            if activeOccurrenceName not in self.selectedOccurrences:  #check if mouse is over a face that is not already selected
-##                eventArgs.isSelectable = False
-##                return
-##                
-##            try:            
-##                faces = self.selectedOccurrences[activeOccurrenceName]
-##                for face in faces:
-##                    if face.selected:
-##                        primaryFace = face
-##                        break
-##                    else:
-##                        eventArgs.isSelectable = True
-##                        return
-##            except KeyError:
-##                return
-##            primaryFaceNormal = dbUtils.getFaceNormal(primaryFace.face)
-##            if primaryFaceNormal.isParallelTo(dbUtils.getFaceNormal(eventArgs.selection.entity)):
-##                eventArgs.isSelectable = True
-##                return
-##            eventArgs.isSelectable = False
-##            return
-##            # end selecting faces
-#            
-#        else:
-#            #==============================================================================
-#            #             processing edges associated with face - edges selection has focus
-#            #==============================================================================
-##            if self.addingEdges:
-##                return
-#            selected = eventArgs.selection
-#            currentEdge = adsk.fusion.BRepEdge.cast(selected.entity)
-#            edgeId = calcId(currentEdge)
-#            if edgeId not in self.selectedEdges:
-#                return
-#
-#            activeOccurrence = eventArgs.selection.entity.assemblyContext
-#            if eventArgs.selection.entity.assemblyContext:
-#                activeOccurrenceName = activeOccurrence.name
-#            else:
-#                activeOccurrenceName = eventArgs.selection.entity.body.name 
-#
-#            occurrenceNumber = activeOccurrenceName.split(':')[-1]
-#            if (edgeId in self.selectedEdges and self.selectedEdges[edgeId].selectedFace.selected):
-#                eventArgs.isSelectable = True
-#            else:
-#                eventArgs.isSelectable = False
-#            return
 
     @property
     def design(self):
@@ -989,6 +888,7 @@ class DogboneCommand(object):
                 self.logger.debug('Processing edge - {}'.format(edgeObject.tempId))
 
                 edge = edgeObject.edge
+                edge.attributes.add(DBGROUP, DBEDGE_SELECTED, 'True')
                 dbBody = dbUtils.createTempDogbone(edge = edge, 
                                                    toolDia = self.circVal, 
                                                    minimalPercent = minPercent, 

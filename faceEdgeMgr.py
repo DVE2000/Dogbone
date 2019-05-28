@@ -21,9 +21,11 @@ from . import dbutils as dbUtils
 from math import sqrt, pi
 
 #constants - to keep attribute group and names consistent
-DOGBONEGROUP = 'dogBoneGroup'
-DBEDGE = 'dbEdge'
-DBFACE = 'dbFace'
+DBGROUP = 'dbGroup'
+DBEDGE_REGISTERED = 'dbEdgeRegistered'
+DBFACE_REGISTERED = 'dbFaceRegistered'
+DBEDGE_SELECTED = 'dbEdgeSelected'
+DBFACE_SELECTED = 'dbFaceSelected'
 FACE_ID = 'faceID'
 REV_ID = 'revId'
 ID = 'id'
@@ -94,6 +96,7 @@ class FaceEdgeMgr:
         self.logger.debug('registered Edges before = {}'.format(pformat(self.registeredEdges)))
         self.logger.debug('selected Edges before = {}'.format(pformat(self.selectedEdges)))
         occHash = calcOccHash(face)
+        face.attributes.itemByName(DBGROUP, DBFACE_REGISTERED).deleteMe()
         faceObject = self.registeredFaces[occHash][calcHash(face)]
         faceObject.selected = False
         if not self.selectedFaces[occHash]:
@@ -107,6 +110,7 @@ class FaceEdgeMgr:
         
     def remove(self, occHash):
         for faceObject in self.registeredFaces[occHash].values():
+            faceObject.face.attributes.itemByName(DBGROUP, DBFACE_REGISTERED).deleteMe()
             del self.registeredEdges[faceObject.faceHash]
             del self.selectedEdges[faceObject.faceHash]
         del self.registeredFaces[occHash]
@@ -126,6 +130,7 @@ class FaceEdgeMgr:
         
     def deleteEdge(self, edge):
         edgeHash = calcHash(edge)
+        edge.attributes.itemByName(DBGROUP, DBEDGE_REGISTERED).deleteMe()
         for edgeList in self.registeredEdges.values():
             if calcHash(edge) in edgeList:
                 edgeObject = edgeList[edgeHash]
@@ -136,8 +141,33 @@ class FaceEdgeMgr:
         if not edgeObject.parent.selectedFaces:
             self.remove(calcOccHash(edge))
             
+    def clearAttribs(self, name):  #not generally used - can be called manually during debugging
+        attribs = self.design.findAttributes(name, '')
+        for attrib in attribs:
+            attrib.deleteMe()
+            
             
     def preLoad(self):
+        registeredFacesAttribs = self.design.findAttributes(DBGROUP, DBFACE_REGISTERED)
+        registeredEdgesAttribs = self.design.findAttributes(DBGROUP, DBEDGE_REGISTERED)
+        if not registeredFacesAttribs:
+            return
+#        if not registeredEdgesAttribs:
+#            return
+        for registeredFaceAttrib in registeredFacesAttribs:
+            self.addFace(registeredFaceAttrib.parent)
+#        for registeredEdgeAttrib in registeredEdgesAttribs:
+#            self.addEdge(registeredFaceAttrib.parent)
+        selectedFacesAttribs = self.design.findAttributes(DBGROUP, DBFACE_SELECTED)
+        selectedEdgesAttribs = self.design.findAttributes(DBGROUP, DBEDGE_SELECTED)
+#        if not selectedFacesAttribs:
+#            return
+        if not selectedEdgesAttribs:
+            return
+#        for selectedFaceAttrib in selectedFacesAttribs:
+#            self.addFace(selectedFaceAttrib.parent)
+        for selectedEdgeAttrib in selectedEdgesAttribs:
+            self.addEdge(selectedEdgeAttrib.parent)            
         timelineGroups = self.design.timeline.timelineGroups
         if not timelineGroups:
             return False
@@ -151,17 +181,17 @@ class FaceEdgeMgr:
             combineFeatures.append(combineFeature)
             targetBody = combineFeature.targetBody
             targetComponent = targetBody.parentComponent
-            componentAttrib = targetComponent.attributes.itemByName('dbGroup', 'dbOccurrence')
-            if not componentAttrib:
-                continue
-            orientations = componentAttrib.split(':')
-            toolBody = combineFeature.toolBodies[0]
-            for orientation in orientations:
-                occurrence = targetComponent.allOccurrences.itemByName(targetComponent.name+':'+orientation) 
-                body = toolBody.createForAssemblyContext()
+#            componentAttrib = targetComponent.attributes.itemByName(DBGROUP, 'dbOccurrence')
+#            if not componentAttrib:
+#                continue
+#            orientations = componentAttrib.split(':')
+#            toolBody = combineFeature.toolBodies[0]
+#            for orientation in orientations:
+#                occurrence = targetComponent.allOccurrences.itemByName(targetComponent.name+':'+orientation) 
+#                body = toolBody.createForAssemblyContext()
             
             for face in targetBody.faces:
-                if not face.attributes.itemByName('dbGroup','dbFace'):
+                if not face.attributes.itemByName(DBGROUP, DBFACE_REGISTERED):
                     continue
                 self.addFace(face)
                 self.timeLineGroups[calcOccHash(face)] = tlGroup
@@ -274,6 +304,7 @@ class SelectedEdge:
         self.registeredEdges[self.edgeHash] = self
         self._selected = True
         self.selected = True #invokes selected property
+        self.edge.nativeObject.attributes.add(DBGROUP, DBEDGE_REGISTERED, 'True') if self.edge.assemblyContext else self.edge.add(DBGROUP, DBFACE_REGISTERED, 'True')
         self.logger.debug('{} - edge initiated'.format(self.edgeHash))
         
     def __del__(self):
@@ -295,11 +326,11 @@ class SelectedEdge:
         if selected:
             self.selectedEdges[self.edgeHash] = self
             self.logger.debug('{} - edge appended to selectedEdges'.format(self.edgeHash))
-            attr = self.edge.attributes.add('dbGroup', 'dbEdge', dbType)
+            attr = self.edge.attributes.add(DBGROUP, DBEDGE_SELECTED, dbType)
         else: 
             del self.selectedEdges[self.edgeHash]
             self.logger.debug('{} - edge removed from selectedEdges'.format(self.edgeHash))
-            self.edge.attributes.itemByName('dbGroup','dbEdge').deleteMe()
+            self.edge.attributes.itemByName(DBGROUP, DBEDGE_SELECTED).deleteMe()
         self._selected = selected
         self.logger.debug('after selected edge count for face {} = {}'.format(self.parent.faceHash, len(self.selectedEdges)))
         
@@ -339,6 +370,7 @@ class SelectedFace:
         self.registeredFaces = self.parent.registeredFaces.setdefault(self.occurrenceHash, {})#.append(self.face)
         self.registeredFaces[self.faceHash] = self
         self.registeredEdges = self.parent.registeredEdges.setdefault(self.faceHash, {})
+        attr = self.face.nativeObject.attributes.add(DBGROUP, DBFACE_REGISTERED, 'True') if self.face.assemblyContext else self.face.attributes.add(DBGROUP, DBFACE_REGISTERED, 'True')
         
         self.selectedFaces = self.parent.selectedFaces.setdefault(self.occurrenceHash, {})
         self.selectedEdges = self.parent.selectedEdges.setdefault(self.faceHash, {})
@@ -394,12 +426,12 @@ class SelectedFace:
             selected = selected[0]
         if not selected:
             del self.selectedFaces[self.faceHash]
-            attr = self.face.attributes.itemByName('dbGroup','dbFace').deleteMe()
+            attr = self.face.attributes.itemByName(DBGROUP, DBFACE_SELECTED).deleteMe()
 
             self.logger.debug(' {} - face object removed from selectedFaces'.format(self.faceHash))
         else:
             self.selectedFaces[self.faceHash] = self
-            attr = self.face.attributes.add('dbGroup', 'dbFace', dbType)
+            attr = self.face.attributes.add(DBGROUP, DBFACE_SELECTED, dbType)
             self.logger.debug(' {} - face object added to registeredFaces'.format(self.faceHash))
 
         if allEdges:
