@@ -42,11 +42,9 @@ logger = logging.getLogger('dogbone')
 for handler in logger.handlers:
     handler.flush()
     handler.close()
+    logger.removeHandler(handler)
 
 formatter = logging.Formatter('%(asctime)s; %(name)s; %(levelname)s; %(lineno)d; %(funcName)s ; %(message)s')
-#        self.formatter = logging.Formatter('%(levelname)s ; %(asctime)s ; %(func)s ;  %(lineno)d; %(message)s')
-#        if not os.path.isfile(os.path.join(self.appPath, 'dogBone.log')):
-#            return
 logHandler = logging.FileHandler(os.path.join(appPath, 'dogbone.log'), mode='w')
 logHandler.setFormatter(formatter)
 logHandler.flush()
@@ -54,11 +52,9 @@ logger.addHandler(logHandler)
 
 
 # Generate an edgeId or faceId from object
-calcId = lambda x: str(x.tempId) + ':' + x.assemblyContext.name.split(':')[-1] if x.assemblyContext else str(x.tempId) + ':' + x.body.name
+#calcId = lambda x: str(x.tempId) + ':' + x.assemblyContext.name.split(':')[-1] if x.assemblyContext else str(x.tempId) + ':' + x.body.name
 makeNative = lambda x: x.nativeObject if x.nativeObject else x
 reValidateFace = lambda comp, x: comp.findBRepUsingPoint(x, adsk.fusion.BRepEntityTypes.BRepFaceEntityType,-1.0 ,False ).item(0)
-#faceSelections = lambda selectionObjects: [face for face in selectionObjects if face.objectType == adsk.fusion.BRepFace.classType()]
-#edgeSelections = lambda selectionObjects: [edge for edge in selectionObjects if edge.objectType == adsk.fusion.BRepEdge.classType()]
 faceSelections = lambda selectionObjects: list(filter(lambda face: face.objectType == adsk.fusion.BRepFace.classType(), selectionObjects))
 edgeSelections = lambda selectionObjects: list(filter(lambda edge: edge.objectType == adsk.fusion.BRepEdge.classType(), selectionObjects))
 
@@ -361,6 +357,7 @@ class DogboneCommand(object):
             self.handlers.make_handler(adsk.core.ValidateInputsEventHandler, self.onValidate))
         cmd.inputChanged.add(
             self.handlers.make_handler(adsk.core.InputChangedEventHandler, self.onChange))
+        self.setSelections(self.registry, inputs, selInput0 )
             
     def setSelections(self, feMgr, commandInputs, activeCommandInput): #updates the selected entities on the UI
         collection = adsk.core.ObjectCollection.create()
@@ -429,7 +426,7 @@ class DogboneCommand(object):
             
             for face in removedFaces:
                 # faces have been removed
-                self.logger.debug('face being removed {}'.format(calcId(face)))
+                self.logger.debug('face being removed {}'.format(calcHash(face)))
                 self.registry.deleteFace(face)
                             
             #==============================================================================
@@ -437,7 +434,7 @@ class DogboneCommand(object):
             #==============================================================================
             for face in addedFaces:
                 
-                self.logger.debug('face being added {}'.format(calcId(face)))
+                self.logger.debug('face being added {}'.format(calcHash(face)))
                 self.registry.addFace(face)
             
 #                if face.assemblyContext:
@@ -550,33 +547,21 @@ class DogboneCommand(object):
             entity = inputs['select'].selection(i).entity
             if entity.objectType == adsk.fusion.BRepFace.classType():
                 self.faces.append(entity)
-                
-#    def initLogger(self):
-##        self.logger = logging.getLogger(__name__)
-#        self.logger = logging.getLogger('dogbone')
-#        
-#        self.formatter = logging.Formatter('%(lineno)s ; %(funcName)s ; %(levelname)s ; %(lineno)d; %(message)s')
-##        self.formatter = logging.Formatter('%(levelname)s ; %(asctime)s ; %(func)s ;  %(lineno)d; %(message)s')
-##        if not os.path.isfile(os.path.join(self.appPath, 'dogBone.log')):
-##            return
-#        self.logHandler = logging.FileHandler(os.path.join(self.appPath, 'dogbone.log'), mode='w')
-#        self.logHandler.setFormatter(self.formatter)
-#        self.logHandler.flush()
-#        self.logger.addHandler(self.logHandler)
         
     def closeLogger(self):
 #        logging.shutdown()
         for handler in self.logger.handlers:
             handler.flush()
             handler.close()
+            self.logger.removeHandler(handler)
 
     def onExecute(self, args):
         start = time.time()
+        
+        self.registry.refreshAttributes()
 
-#        self.initLogger()
         self.logger.log(0, 'logging Level = %(levelname)')
         self.parseInputs(args.firingEvent.sender.commandInputs)
-#        self.logger.level(self.logging)
         self.logger.level =self.logging
 
         self.writeDefaults()
@@ -643,7 +628,6 @@ class DogboneCommand(object):
         
         self.logger.info('all dogbones complete\n-------------------------------------------\n')
 
-#        logging.shutdown()
         self.closeLogger()
         
         if self.benchmark:
@@ -869,7 +853,7 @@ class DogboneCommand(object):
         occurrenceEdgeList = self.registry.selectedEdgesAsGroupList
 
 
-        for edgeGroup in occurrenceEdgeList.values():
+        for occGroupName, edgeGroup in occurrenceEdgeList.items():
             topPlane = None
             if not edgeGroup:
                 continue
@@ -888,7 +872,7 @@ class DogboneCommand(object):
                 self.logger.debug('Processing edge - {}'.format(edgeObject.tempId))
 
                 edge = edgeObject.edge
-                edge.attributes.add(DBGROUP, DBEDGE_SELECTED, 'True')
+#                edge.attributes.add(DBGROUP, DBEDGE_SELECTED, 'True')
                 dbBody = dbUtils.createTempDogbone(edge = edge, 
                                                    toolDia = self.circVal, 
                                                    minimalPercent = minPercent, 
@@ -909,7 +893,7 @@ class DogboneCommand(object):
             dbB = self.rootComp.bRepBodies.add(bodies, baseFeat)
             dbB.name = 'dbHole'
             baseFeat.finishEdit()
-            baseFeat.name = 'dogBone'
+            baseFeat.name = 'dbBaseFeat'
             
             targetBody = edge.body
             
@@ -919,12 +903,12 @@ class DogboneCommand(object):
             combineInput.isKeepToolBodies = False
             combineInput.operation = adsk.fusion.FeatureOperations.CutFeatureOperation
             combine = self.rootComp.features.combineFeatures.add(combineInput)
-            combine.name = 'dogbone'
+            combine.name = 'dbCombine'
                                             
             endTlMarker = self.design.timeline.markerPosition-1
             if endTlMarker - startTlMarker >0:
                 timelineGroup = self.design.timeline.timelineGroups.add(startTlMarker,endTlMarker)
-                timelineGroup.name = 'dogbone'
+                timelineGroup.name = 'db:' + occGroupName
 #            self.logger.debug('doEvents - allowing fusion to refresh')
             adsk.doEvents()
             
