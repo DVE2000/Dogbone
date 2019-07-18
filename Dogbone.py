@@ -13,7 +13,7 @@
 # twice the offset (as the offset is applied to the radius) at each selected edge.
 
 import logging
-import os
+import os, sys
 
 from collections import defaultdict
 
@@ -23,14 +23,11 @@ import json
 
 import time
 from . import dbutils as dbUtils
-from math import sqrt as sqrt
+from .dbutils import DbParams
+from math import sqrt
+from math import pi
 from .faceEdgeMgr import *
-#from .faceEdgeMgr import SelectedFace
 
-#constants - to keep attribute group and names consistent
-#DOGBONEGROUP = 'dogBoneGroup'
-#DBEDGE = 'dbEdge'
-#DBFACE = 'dbFace'
 FACE_ID = 'faceID'
 REV_ID = 'revId'
 ID = 'id'
@@ -73,22 +70,24 @@ class DogboneCommand(object):
         self.app = adsk.core.Application.get()
         self.ui = self.app.userInterface
 
-        self.offStr = "0"
-        self.offVal = None
-        self.circStr = "0.25 in"
-        self.circVal = None
+        self.dbParams = DbParams(offset = None,
+                                 toolDia = .25,
+                                 toolDiaOffset = 0,
+                                 fromTop = False,
+                                 dbType = 'Normal Dogbone',
+                                 longSide = True,
+                                 minimalPercent = 10.0,
+                                 minAngleLimit = pi/2,
+                                 maxAngleLimit = pi)
+        self.faceSelections = adsk.core.ObjectCollection.create()
+        self.offsetStr = "0"
+        self.toolDiaStr = str(self.dbParams.toolDia) + " in"
         self.edges = []
         self.benchmark = False
         self.errorCount = 0
-#        self.boneDirection = "top"
-        self.dbType = 'Normal Dogbone'
-        self.longside = True
-        self.minimalPercent = 10.0
-        self.faceSelections = adsk.core.ObjectCollection.create()
-        self.fromTop = False
 
         self.addingEdges = 0
-        self.parametric = True
+        self.parametric = False
         self.logging = 0
         self.loggingLevels = {'Notset':0,'Debug':10,'Info':20,'Warning':30,'Error':40}
 
@@ -110,19 +109,17 @@ class DogboneCommand(object):
     def writeDefaults(self):
         self.logger.info('config file write')
 
-        self.defaultData['offStr'] = self.offStr
-        self.defaultData['offVal'] = self.offVal
-        self.defaultData['circStr'] = self.circStr
-        self.defaultData['circVal'] = self.circVal
-            #self.defaultData['!outputUnconstrainedGeometry:' = str(self.outputUnconstrainedGeometry))
+        self.defaultData['toolDiaOffsetStr'] = self.toolDiaOffsetStr
+        self.defaultData['toolDiaOffset'] = self.dbParams.toolDiaOffset
+        self.defaultData['toolDiaStr'] = self.toolDiaStr
+        self.defaultData['toolDiaVal'] = self.dbParams.toolDia
         self.defaultData['benchmark'] = self.benchmark
-#        self.defaultData['boneDirection'] = self.boneDirection
-        self.defaultData['dbType'] = self.dbType
-        self.defaultData['minimalPercent'] = self.minimalPercent
-        self.defaultData['fromTop'] = self.fromTop
+        self.defaultData['dbType'] = self.dbParams.dbType
+        self.defaultData['minimalPercent'] = self.dbParams.minimalPercent
+        self.defaultData['fromTop'] = self.dbParams.fromTop
         self.defaultData['parametric'] = self.parametric
         self.defaultData['logging'] = self.logging
-        self.defaultData['mortiseType'] = self.longside
+        self.defaultData['mortiseType'] = self.dbParams.longSide
         self.defaultData['expandModeGroup'] = self.expandModeGroup
         self.defaultData['expandSettingsGroup'] = self.expandSettingsGroup
         
@@ -149,19 +146,21 @@ class DogboneCommand(object):
 
         json_file.close()
         try:
-            self.offStr = self.defaultData['offStr']
-            self.offVal = self.defaultData['offVal']
-            self.circStr = self.defaultData['circStr']
-            self.circVal = self.defaultData['circVal']
-                #elif var == 'outputUnconstrainedGeometry': self.outputUnconstrainedGeometry = val == 'True'
+            self.offsetStr = self.defaultData['offsetStr']
+            self.toolDiaStr = self.defaultData['tooDiaStr']
             self.benchmark = self.defaultData['benchmark']
-#            self.boneDirection = self.defaultData['boneDirection']
-            self.dbType = self.defaultData['dbType']
-            self.minimalPercent = self.defaultData['minimalPercent']
-            self.fromTop = self.defaultData['fromTop']
+
+            self.dbParams.offset = self.defaultData['offset']
+            self.dbParams.toolDia = self.defaultData['toolDia']
+            self.dbParams.dbType = self.defaultData['dbType']
+            self.dbParams.minimalPercent = self.defaultData['minimalPercent']
+            self.dbParams.fromTop = self.defaultData['fromTop']
+            self.dbParams.minAngleLimit = self.defaultData['minAngleLimit']
+            self.dbParams.maxAngleLimit = self.defaultData['maxAngleLimit']
+
             self.parametric = self.defaultData['parametric']
             self.logging = self.defaultData['logging']
-            self.longside = self.defaultData['mortiseType']
+            self.dbParams.longside = self.defaultData['mortiseType']
             self.expandModeGroup = self.defaultData['expandModeGroup']
             self.expandSettingsGroup = self.defaultData['expandSettingsGroup']
 
@@ -193,9 +192,14 @@ class DogboneCommand(object):
         # add add-in to UI
         buttonDogbone = self.ui.commandDefinitions.addButtonDefinition(
             self.COMMAND_ID, 'Dogbone', 'Creates dogbones at all inside corners of a face', 'Resources')
-
+#            
         buttonDogbone.commandCreated.add(self.handlers.make_handler(adsk.core.CommandCreatedEventHandler,
                                                                     self.onCreate))
+#                                                                    
+#        for cmd in self.ui.commandDefinitions:
+#            self.logger.info(cmd.name)
+
+#        commandStarting = self.ui.commandStarting.add(self.handlers.make_handler(adsk.core.KeyboardEventHandler, self.keyboard))
 
         createPanel = self.ui.allToolbarPanels.itemById('SolidCreatePanel')
         buttonControl = createPanel.controls.addCommand(buttonDogbone, 'dogboneBtn')
@@ -203,6 +207,10 @@ class DogboneCommand(object):
         # Make the button available in the panel.
         buttonControl.isPromotedByDefault = True
         buttonControl.isPromoted = True
+        
+    def keyboard(self, args):
+        kbEventArgs = adsk.core.KeyboardEventArgs.cast(args)
+        
 
     def removeButton(self):
         cmdDef = self.ui.commandDefinitions.itemById(self.COMMAND_ID)
@@ -279,13 +287,13 @@ class DogboneCommand(object):
         selInput1.isVisible = False
                 
         inp = inputs.addValueInput(
-            'circDiameter', 'Tool Diameter               ', self.design.unitsManager.defaultLengthUnits,
-            adsk.core.ValueInput.createByString(self.circStr))
+            'toolDia', 'Tool Diameter               ', self.design.unitsManager.defaultLengthUnits,
+            adsk.core.ValueInput.createByString(self.toolDiaStr))
         inp.tooltip = "Size of the tool with which you'll cut the dogbone."
         
         offsetInp = inputs.addValueInput(
-            'offset', 'Tool diameter offset', self.design.unitsManager.defaultLengthUnits,
-            adsk.core.ValueInput.createByString(self.offStr))
+            'toolDiaOffset', 'Tool diameter offset', self.design.unitsManager.defaultLengthUnits,
+            adsk.core.ValueInput.createByString(self.offsetStr))
         offsetInp.tooltip = "Increases the tool diameter"
         offsetInp.tooltipDescription = "Use this to create an oversized dogbone.\n"\
                                         "Normally set to 0.  \n"\
@@ -304,31 +312,31 @@ class DogboneCommand(object):
                                 "Geometry changes must be made via the parametric dialog.\nFusion has more issues/bugs with these!"
         
         typeRowInput = adsk.core.ButtonRowCommandInput.cast(modeGroupChildInputs.addButtonRowCommandInput('dogboneType', 'Type', False))
-        typeRowInput.listItems.add('Normal Dogbone', self.dbType == 'Normal Dogbone', 'resources/normal' )
-        typeRowInput.listItems.add('Minimal Dogbone', self.dbType == 'Minimal Dogbone', 'resources/minimal' )
-        typeRowInput.listItems.add('Mortise Dogbone', self.dbType == 'Mortise Dogbone', 'resources/hidden' )
+        typeRowInput.listItems.add('Normal Dogbone', self.dbParams.dbType == 'Normal Dogbone', 'resources/normal' )
+        typeRowInput.listItems.add('Minimal Dogbone', self.dbParams.dbType == 'Minimal Dogbone', 'resources/minimal' )
+        typeRowInput.listItems.add('Mortise Dogbone', self.dbParams.dbType == 'Mortise Dogbone', 'resources/hidden' )
         typeRowInput.tooltipDescription = "Minimal dogbones creates visually less prominent dogbones, but results in an interference fit " \
                                             "that, for example, will require a larger force to insert a tenon into a mortise.\n" \
                                             "\nMortise dogbones create dogbones on the shortest sides, or the longest sides.\n" \
                                             "A piece with a tenon can be used to hide them if they're not cut all the way through the workpiece."
         
         mortiseRowInput = adsk.core.ButtonRowCommandInput.cast(modeGroupChildInputs.addButtonRowCommandInput('mortiseType', 'Mortise Type', False))
-        mortiseRowInput.listItems.add('On Long Side', self.longside, 'resources/hidden/longside' )
-        mortiseRowInput.listItems.add('On Short Side', not self.longside, 'resources/hidden/shortside' )
+        mortiseRowInput.listItems.add('On Long Side', self.dbParams.longSide, 'resources/hidden/longside' )
+        mortiseRowInput.listItems.add('On Short Side', not self.dbParams.longSide, 'resources/hidden/shortside' )
         mortiseRowInput.tooltipDescription = "Along Longest will have the dogbones cut into the longer sides." \
                                              "\nAlong Shortest will have the dogbones cut into the shorter sides."
-        mortiseRowInput.isVisible = self.dbType == 'Mortise Dogbone'
+        mortiseRowInput.isVisible = self.dbParams.dbType == 'Mortise Dogbone'
 
         minPercentInp = modeGroupChildInputs.addValueInput(
             'minimalPercent', 'Percentage Reduction', '',
-            adsk.core.ValueInput.createByReal(self.minimalPercent))
+            adsk.core.ValueInput.createByReal(self.dbParams.minimalPercent))
         minPercentInp.tooltip = "Percentage of tool radius added to dogBone offset."
         minPercentInp.tooltipDescription = "This should typically be left at 10%, but if the fit is too tight, it should be reduced"
-        minPercentInp.isVisible = self.dbType == 'Minimal Dogbone'
+        minPercentInp.isVisible = self.dbParams.dbType == 'Minimal Dogbone'
 
         depthRowInput = adsk.core.ButtonRowCommandInput.cast(modeGroupChildInputs.addButtonRowCommandInput('depthExtent', 'Depth Extent', False))
-        depthRowInput.listItems.add('From Selected Face', not self.fromTop, 'resources/fromFace' )
-        depthRowInput.listItems.add('From Top Face', self.fromTop, 'resources/fromTop' )
+        depthRowInput.listItems.add('From Selected Face', not self.dbParams.fromTop, 'resources/fromFace' )
+        depthRowInput.listItems.add('From Top Face', self.dbParams.fromTop, 'resources/fromTop' )
         depthRowInput.tooltipDescription = "When \"From Top Face\" is selected, all dogbones will be extended to the top most face\n"\
                                             "\nThis is typically chosen when you don't want to, or can't do, double sided machining."
  
@@ -383,7 +391,6 @@ class DogboneCommand(object):
         self.ui.activeSelections.all = collection
         
         activeCommandInput.hasFocus = True
-    
 
     #==============================================================================
     #  routine to process any changed selections
@@ -393,7 +400,6 @@ class DogboneCommand(object):
     def onChange(self, args:adsk.core.InputChangedEventArgs):
         
         changedInput = adsk.core.CommandInput.cast(args.input)
-#        self.logger.debug('input changed- {}'.format(changedInput.id))
 
         if changedInput.id == 'dogboneType':
             changedInput.commandInputs.itemById('minimalPercent').isVisible = (changedInput.commandInputs.itemById('dogboneType').selectedItem.name == 'Minimal Dogbone')
@@ -409,17 +415,11 @@ class DogboneCommand(object):
         faces = faceSelections(activeSelections)
         edges = edgeSelections(activeSelections)
         
-#        registeredFaces = faceSelections(self.registeredEntities)
-#        registeredEdges = edgeSelections(self.registeredEntities)
-
-
         if changedInput.id == 'select':
 
             #==============================================================================
             #            processing changes to face selections
-            #==============================================================================
-#            self.registeredEntitied = adsk.core.ObjectCollection.create()
-            
+            #==============================================================================            
             
             removedFaces = [face for face in map(lambda x: x.face, self.registry.selectedFaceObjectsAsList) if face not in faces]
             addedFaces = [face for face in faces if face not in map(lambda x: x.face, self.registry.selectedFaceObjectsAsList)]
@@ -436,36 +436,10 @@ class DogboneCommand(object):
                 
                 self.logger.debug('face being added {}'.format(calcHash(face)))
                 self.registry.addFace(face)
-            
-#                if face.assemblyContext:
-#                    activeOccurrenceName = face.assemblyContext.name
-#                else:
-#                    activeOccurrenceName = face.body.name
-                    
-#                if changedInput.selection(changedInput.selectionCount-1).entity.assemblyContext:
-#                    changedEntityName = changedInput.selection(changedInput.selectionCount-1).entity.assemblyContext.component.name
-#                else:
-#                    changedEntityName = changedInput.selection(changedInput.selectionCount-1).entity.body.name
-                    
                             
                 if not changedInput.commandInputs.itemById('edgeSelect').isVisible:
                     changedInput.commandInputs.itemById('edgeSelect').isVisible = True
-#                self.registeredEntities.add(face)
-#                newSelectedFace = SelectedFace(
-##                                                self, 
-#                                                face,
-#                                                changedInput.commandInputs.itemById('edgeSelect')
-#                                              )  # creates a collecton (of edges) associated with a faceId
-#                faces = []
-#                faces = self.selectedOccurrences.get(activeOccurrenceName, faces)
-#                faces.append(newSelectedFace)
-#                self.selectedOccurrences[activeOccurrenceName] = faces # adds a face to a list of faces associated with this occurrence
-#                self.selectedFaces[newSelectedFace.faceId] = newSelectedFace
-#                self.selectedEdges.update(newSelectedFace.edgesAsDict)
-#                
-#                for edge in newSelectedFace.edgesAsDict.values():
-#                    self.registeredEntities.add(edge.edge)
-            self.setSelections(self.registry, changedInput.commandInputs, changedInput.commandInputs.itemById('select'))
+            self.setSelections(self.registry, changedInput.commandInputs, changedInput.commandInputs.itemById('select')) #update selections
             return
 
                  #end of processing faces
@@ -494,6 +468,8 @@ class DogboneCommand(object):
             #         Edge has been added - assume that the last selection entity is the one added
             #==============================================================================
             self.registry.addEdge(edge)
+            edge.dbParams = self.dbParams
+            
         self.setSelections(self.registry, changedInput.commandInputs, changedInput.commandInputs.itemById('edgeSelect'))
 
 
@@ -511,28 +487,28 @@ class DogboneCommand(object):
 
         self.logger.debug('Parsing inputs')
 
-        self.circStr = inputs['circDiameter'].expression
-        self.circVal = inputs['circDiameter'].value
-        self.offStr = inputs['offset'].expression
-        self.offVal = inputs['offset'].value
+        self.toolDiaStr = inputs['toolDia'].expression
+        self.dbParams._replace(toolDia = inputs['toolDia'].value)
+        self.toolDiaOffsetStr = inputs['toolDiaOffset'].expression
+        self.dbParams._replace(toolDiaOffset = inputs['toolDiaOffset'].value)
         self.benchmark = inputs['benchmark'].value
-        self.dbType = inputs['dogboneType'].selectedItem.name
-        self.minimalPercent = inputs['minimalPercent'].value
-        self.fromTop = (inputs['depthExtent'].selectedItem.name == 'From Top Face')
+        self.dbParams._replace(dbType = inputs['dogboneType'].selectedItem.name)
+        self.dbParams._replace(minimalPercent = inputs['minimalPercent'].value)
+        self.dbParams._replace(fromTop = (inputs['depthExtent'].selectedItem.name == 'From Top Face'))
         self.parametric = (inputs['modeRow'].selectedItem.name == 'Parametric')
-        self.longside = (inputs['mortiseType'].selectedItem.name == 'On Long Side')
+        self.dbParams._replace(longSide = (inputs['mortiseType'].selectedItem.name == 'On Long Side'))
         self.expandModeGroup = (inputs['modeGroup']).isExpanded
         self.expandSettingsGroup = (inputs['settingsGroup']).isExpanded
 
-        self.logger.debug('self.fromTop = {}'.format(self.fromTop))
-        self.logger.debug('self.dbType = {}'.format(self.dbType))
+        self.logger.debug('self.fromTop = {}'.format(self.dbParams.fromTop))
+        self.logger.debug('self.dbType = {}'.format(self.dbParams.dbType))
         self.logger.debug('self.parametric = {}'.format(self.parametric))
-        self.logger.debug('self.circStr = {}'.format(self.circStr))
-        self.logger.debug('self.circDiameter = {}'.format(self.circVal))
-        self.logger.debug('self.offStr = {}'.format(self.offStr))
-        self.logger.debug('self.offVal = {}'.format(self.offVal))
+        self.logger.debug('self.toolDiaStr = {}'.format(self.toolDiaStr))
+        self.logger.debug('self.toolDia = {}'.format(self.dbParams.toolDia))
+        self.logger.debug('self.toolDiaOffsetStr = {}'.format(self.toolDiaOffsetStr))
+        self.logger.debug('self.toolDiaOffset = {}'.format(self.dbParams.toolDiaOffset))
         self.logger.debug('self.benchmark = {}'.format(self.benchmark))
-        self.logger.debug('self.mortiseType = {}'.format(self.longside))
+        self.logger.debug('self.mortiseType = {}'.format(self.dbParams.longSide))
         self.logger.debug('self.expandModeGroup = {}'.format(self.expandModeGroup))
         self.logger.debug('self.expandSettingsGroup = {}'.format(self.expandSettingsGroup))
         
@@ -558,7 +534,7 @@ class DogboneCommand(object):
     def onExecute(self, args):
         start = time.time()
         
-        self.registry.refreshAttributes()
+#        self.registry.refreshAttributes()
 
         self.logger.log(0, 'logging Level = %(levelname)')
         self.parseInputs(args.firingEvent.sender.commandInputs)
@@ -571,20 +547,20 @@ class DogboneCommand(object):
             
             #set up parameters, so that changes can be easily made after dogbones have been inserted
             if not userParams.itemByName('dbToolDia'):
-                dValIn = adsk.core.ValueInput.createByString(self.circStr)
+                dValIn = adsk.core.ValueInput.createByString(self.toolDiaStr)
                 dParameter = userParams.add('dbToolDia', dValIn, self.design.unitsManager.defaultLengthUnits, '')
                 dParameter.isFavorite = True
             else:
                 uParam = userParams.itemByName('dbToolDia')
-                uParam.expression = self.circStr
+                uParam.expression = self.toolDiaStr
                 uParam.isFavorite = True
                 
             if not userParams.itemByName('dbOffset'):
-                rValIn = adsk.core.ValueInput.createByString(self.offStr)
+                rValIn = adsk.core.ValueInput.createByString(self.toolDiaOffsetStr)
                 rParameter = userParams.add('dbOffset',rValIn, self.design.unitsManager.defaultLengthUnits, 'Do NOT change formula')
             else:
                 uParam = userParams.itemByName('dbOffset')
-                uParam.expression = self.offStr
+                uParam.expression = self.toolDiaOffsetStr
                 uParam.comment = 'Do NOT change formula'
 
             if not userParams.itemByName('dbRadius'):
@@ -596,21 +572,21 @@ class DogboneCommand(object):
                 uParam.comment = 'Do NOT change formula'
 
             if not userParams.itemByName('dbMinPercent'):
-                rValIn = adsk.core.ValueInput.createByReal(self.minimalPercent)
+                rValIn = adsk.core.ValueInput.createByReal(self.dbParams.minimalPercent)
                 rParameter = userParams.add('dbMinPercent',rValIn, '', '')
                 rParameter.isFavorite = True
             else:
                 uParam = userParams.itemByName('dbMinPercent')
-                uParam.value = self.minimalPercent
+                uParam.value = self.dbParams.minimalPercent
                 uParam.comment = ''
                 uParam.isFavorite = True
 
             if not userParams.itemByName('dbHoleOffset'):
-                oValIn = adsk.core.ValueInput.createByString('dbRadius / sqrt(2)' + (' * (1 + dbMinPercent/100)') if self.dbType == 'Minimal Dogbone' else 'dbRadius' if self.dbType == 'Mortise Dogbone' else 'dbRadius / sqrt(2)')
+                oValIn = adsk.core.ValueInput.createByString('dbRadius / sqrt(2)' + (' * (1 + dbMinPercent/100)') if self.dbParams.dbType == 'Minimal Dogbone' else 'dbRadius' if self.dbParams.dbType == 'Mortise Dogbone' else 'dbRadius / sqrt(2)')
                 oParameter = userParams.add('dbHoleOffset', oValIn, self.design.unitsManager.defaultLengthUnits, 'Do NOT change formula')
             else:
                 uParam = userParams.itemByName('dbHoleOffset')
-                uParam.expression = 'dbRadius / sqrt(2)' + (' * (1 + dbMinPercent/100)') if self.dbType == 'Minimal Dogbone' else 'dbRadius' if self.dbType == 'Mortise Dogbone' else 'dbRadius / sqrt(2)'
+                uParam.expression = 'dbRadius / sqrt(2)' + (' * (1 + dbMinPercent/100)') if self.dbParams.dbType == 'Minimal Dogbone' else 'dbRadius' if self.dbParams.dbType == 'Mortise Dogbone' else 'dbRadius / sqrt(2)'
                 uParam.comment = 'Do NOT change formula'
 
             self.radius = userParams.itemByName('dbRadius').value
@@ -621,8 +597,8 @@ class DogboneCommand(object):
 
         else: #Static dogbones
 
-            self.radius = (self.circVal + self.offVal) / 2
-            self.offset = self.radius / sqrt(2)  * (1 + self.minimalPercent/100) if self.dbType == 'Minimal Dogbone' else self.radius if self.dbType == 'Mortise Dogbone' else self.radius / sqrt(2)
+            self.radius = (self.dbParams.toolDia + self.dbParams.toolDiaOffset) / 2
+            self.offset = self.radius / sqrt(2)  * (1 + self.dbParams.minimalPercent/100) if self.dbParams.dbType == 'Minimal Dogbone' else self.radius if self.dbParams.dbType == 'Mortise Dogbone' else self.radius / sqrt(2)
             
             self.createStaticDogbones()
         
@@ -849,15 +825,16 @@ class DogboneCommand(object):
         self.errorCount = 0
         if not self.design:
             raise RuntimeError('No active Fusion design')
-        minPercent = 1+self.minimalPercent/100 if self.dbType == 'Minimal Dogbone' else  1
+        minPercent = 1+self.dbParams.minimalPercent/100 if self.dbParams.dbType == 'Minimal Dogbone' else  1
         occurrenceEdgeList = self.registry.selectedEdgesAsGroupList
 
 
         for occGroupName, edgeGroup in occurrenceEdgeList.items():
             topPlane = None
+                
             if not edgeGroup:
                 continue
-            if self.fromTop:
+            if self.dbParams.fromTop:
                 topPlane = edgeGroup[0].topFacePlane
                 self.logger.info('Processing holes from top face - {}'.format(edgeGroup[0].parent.faceHash))
 
@@ -872,20 +849,23 @@ class DogboneCommand(object):
                 self.logger.debug('Processing edge - {}'.format(edgeObject.tempId))
 
                 edge = edgeObject.edge
-#                edge.attributes.add(DBGROUP, DBEDGE_SELECTED, 'True')
-                dbBody = dbUtils.createTempDogbone(edge = edge, 
-                                                   toolDia = self.circVal, 
-                                                   minimalPercent = minPercent, 
-                                                   topPlane = topPlane, 
-                                                   dbType = self.dbType )
+                dbToolBody = edgeObject.getdbTool()
                 if not bodies:
-                    bodies = dbBody
+                    bodies = dbToolBody
                 else:
                     tempBrepMgr.booleanOperation(bodies, dbBody, adsk.fusion.BooleanTypes.UnionBooleanType)
                     
             if not bodies:
                 continue
 
+            timelineGroup = self.registry.timeLineGroups.get(occGroupName, False)
+            if timelineGroup:
+                timelineGroup.isCollapsed = False
+                oldBaseFeats = timelineGroup.item(0)
+                oldBaseFeats.isSuppressed = False
+                oldBaseFeats.rollTo(False)
+#                oldBaseFeats.entity.deleteMe()
+                
             baseFeats = self.rootComp.features.baseFeatures
             baseFeat = baseFeats.add()
             baseFeat.startEdit()
@@ -897,13 +877,20 @@ class DogboneCommand(object):
             
             targetBody = edge.body
             
+                
             bodyCollection.add(baseFeat.bodies.item(0))
             
-            combineInput = self.rootComp.features.combineFeatures.createInput(targetBody, bodyCollection)
-            combineInput.isKeepToolBodies = False
-            combineInput.operation = adsk.fusion.FeatureOperations.CutFeatureOperation
-            combine = self.rootComp.features.combineFeatures.add(combineInput)
-            combine.name = 'dbCombine'
+            if timelineGroup:
+                combine = timelineGroup.item(2).entity
+                combine.toolBodies = bodyCollection
+                oldBaseFeats.entity.deleteMe()
+            else:
+                
+                combineInput = self.rootComp.features.combineFeatures.createInput(targetBody, bodyCollection)
+                combineInput.isKeepToolBodies = False
+                combineInput.operation = adsk.fusion.FeatureOperations.CutFeatureOperation
+                combine = self.rootComp.features.combineFeatures.add(combineInput)
+                combine.name = 'dbCombine'
                                             
             endTlMarker = self.design.timeline.markerPosition-1
             if endTlMarker - startTlMarker >0:

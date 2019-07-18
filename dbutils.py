@@ -1,9 +1,12 @@
 import logging
+import time
 from math import pi, tan
 import os
 import traceback
 from functools import wraps
 from pprint import pformat
+from collections import defaultdict, namedtuple
+
 
 #import itertools
 
@@ -22,22 +25,8 @@ def timer(func):
 getFaceNormal = lambda face: face.evaluator.getNormalAtPoint(face.pointOnFace)[1]
 edgeVector = lambda coEdge:  coEdge.edge.evaluator.getEndPoints()[2].vectorTo(coEdge.edge.evaluator.getEndPoints()[1]) if coEdge.isOpposedToEdge else coEdge.edge.evaluator.getEndPoints()[1].vectorTo(coEdge.edge.evaluator.getEndPoints()[2]) 
 
-
+DbParams = namedtuple('DbParams', ['toolDia','dbType', 'fromTop', 'toolDiaOffset', 'offset', 'minimalPercent', 'longSide', 'minAngleLimit', 'maxAngleLimit' ])
 logger = logging.getLogger('dogbone.utils')
-
-
-
-#formatter = logging.Formatter('%(asctime)s ; %(name)s ; %(levelname)s ; %(lineno)d; %(message)s')
-##        if not os.path.isfile(os.path.join(self.appPath, 'dogBone.log')):
-##            return
-#appPath = os.path.dirname(os.path.abspath(__file__))
-#logHandler = logging.FileHandler(os.path.join(appPath, 'dogbone.log'), mode='w')
-#logHandler.setFormatter(formatter)
-#logHandler.flush()
-#logger.addHandler(logHandler)
-#logHandler.setLevel(10)
-
-
 
 def findInnerCorners(face):
     logger.debug('find Inner Corners')
@@ -125,85 +114,11 @@ def getAngleBetweenFaces(edge):
     return angle
 
     
-def createTempDogbone(edge, toolDia, minimalPercent, topPlane=None, dbType = None):
+def createDogboneTool(edge, dbParams, topPlane = None):
     """
         returns temporary BRepBody - 
     
-    """ 
-#    if dbType == 'Mortise Dogbone':
-#        edgeFaces = edge.faces
-        
-    toolRadius = toolDia/2
-    
-#    points = adsk.fusion.BRepEdge.cast(None)
-    (rslt, startPoint, endPoint) = edge.evaluator.getEndPoints()
-#    startPoint = points[1]
-#    endPoint = points[2]
-    topPoint = endPoint
-    
-    if topPlane:
-        cylinderAxisVector = startPoint.vectorTo(topPoint)
-        infiniteLine = adsk.core.InfiniteLine3D.create(endPoint, cylinderAxisVector)
-        topPoint = topPlane.intersectWithLine(infiniteLine)
-        if startPoint.distanceTo(topPoint) < endPoint.distanceTo(topPoint):
-            startPoint = endPoint
-        endPoint = topPoint
-    
-    edgeVector = startPoint.vectorTo(endPoint)
-
-    rotationMatrix = adsk.core.Matrix3D.create()
-    rotationMatrix.setToRotation(pi/2, edgeVector, startPoint)
-    
-    face1 = edge.faces.item(0)
-    face2 = edge.faces.item(1)
-    
-    face1Normal = face1.evaluator.getNormalAtPoint(face1.pointOnFace)[1]
-    face2Normal = face2.evaluator.getNormalAtPoint(face2.pointOnFace)[1]
-
-    centreLineVector = face1Normal.copy()
-    centreLineVector.add(face2Normal)
-    centreLineVector.normalize()
-    orthogonalToCentreLine = centreLineVector.copy()
-    
-    orthogonalToCentreLine.transformBy(rotationMatrix)
-    centreLineVector.scaleBy(toolRadius*minimalPercent)
-    orthogonalToCentreLine.scaleBy(toolRadius)
-    
-    startPoint.translateBy(centreLineVector)
-    endPoint.translateBy(centreLineVector)
-   
-    tempBrepMgr = adsk.fusion.TemporaryBRepManager.get()
-    dbBody = tempBrepMgr.createCylinderOrCone(startPoint, toolRadius, endPoint, toolRadius)
-    cornerAngle = face1Normal.angleTo(face2Normal)/2
-#    cornerAngle = getAngleBetweenFaces(edge)/2
-    cornerTan = tan(cornerAngle)
-    dbBox = None
-    if cornerAngle != 0 and cornerAngle != pi/4:  # 0 means that the angle between faces is also 0 
-        boxLength = abs(toolRadius*cornerTan - toolRadius*minimalPercent)
-        boxCentre = startPoint.copy()
-        boxWidth = toolDia
-        
-        boxCentreVector = centreLineVector.copy()
-        boxCentreVector.normalize()
-        boxCentreVector.scaleBy(boxLength/2)
-        
-        boxCentreVertVect = edgeVector.copy()
-        boxCentreVertVect.normalize()
-        boxHeight = startPoint.distanceTo(endPoint)
-        boxCentreVertVect.scaleBy(boxHeight/2)
-        
-        boxCentre.translateBy(boxCentreVector)
-        boxCentre.translateBy(boxCentreVertVect)
-
-        if (boxLength < 0.001):
-            boxLength = .001 
-        
-        boundaryBox = adsk.core.OrientedBoundingBox3D.create(boxCentre, centreLineVector, orthogonalToCentreLine, boxLength, boxWidth, boxHeight)
-        
-        dbBox = tempBrepMgr.createBox(boundaryBox)
-        tempBrepMgr.booleanOperation(dbBody, dbBox, adsk.fusion.BooleanTypes.UnionBooleanType)
-        
-    return dbBody  #temporary body ready to be unioned to other bodies
+    """         
 
 def findExtent(face, edge):
     
