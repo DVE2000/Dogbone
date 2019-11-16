@@ -432,11 +432,18 @@ class DogboneCommand(object):
 
         rowCount = 0
         for faceObject in self.registry.registeredFaceObjectsAsList:
-            occurrenceTable.addCommandInput(inputs.addImageCommandInput(faceObject.occurrenceHash, 
+            occurrenceTable.addCommandInput(inputs.addImageCommandInput(f"row{rowCount}", 
                                                                         faceObject.occurrenceHash, 
-                                                                        "resources/fromTop"),
+                                                                        'resources/tableBody/16x16-normal.png'),
                                                                         rowCount,
                                                                         0)
+            occurrenceTable.addCommandInput(inputs.addTextBoxCommandInput(f"row{rowCount}Name",
+                                                                        "          ",
+                                                                        faceObject.face.body.name,
+                                                                        1,
+                                                                        True),
+                                                                        rowCount,
+                                                                        1)
             rowCount+=1
 
 
