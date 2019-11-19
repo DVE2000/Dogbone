@@ -21,6 +21,7 @@ from functools import reduce, lru_cache
 
 from . import dbutils as dbUtils
 from . import DbParams
+from . import dbFaces
 from math import sqrt, pi
 
 #==============================================================================
@@ -234,6 +235,10 @@ class dbGroup:
         self.logger = logging.getLogger('dogbone.mgr.dbGroup')
 
         self.logger.info('---------------------------------{}---------------------------'.format('creating group'))
+
+        self.timeLineGroup
+
+        self._dbParams = {}
         
         self.face = face # BrepFace
         self.faceNormal = dbUtils.getFaceNormal(self.face)
@@ -243,17 +248,20 @@ class dbGroup:
 
         self.tempId = face.tempId if not preload else preload.faceHash.split(':')[0]
         self._selected = True # record of all valid faces are kept, but only ones that are selected==True are processed for dogbones???
-        self.parent = weakref.ref(parent)()
+        self.registry = weakref.ref(parent)()
+
+        self.groupHash = 
+        self.groups = self.registry.groups.setdefault(self.groupHash,{} )
 
         self.occurrenceHash = calcOccHash(face) if not preload else preload.occHash
         self.topFacePlane = self.parent.topFacePlanes.setdefault(self.occurrenceHash, dbUtils.getTopFacePlane(face))
         
-        self.registeredFaces = self.parent.registeredFaces.setdefault(self.occurrenceHash, {})
+        self.registeredFaces = self.registry.registeredFaces.setdefault(self.occurrenceHash, {})
         self.registeredFaces[self.faceHash] = self
-        self.registeredEdges = self.parent.registeredEdges.setdefault(self.faceHash, {})
+        self.registeredEdges = self.registry.registeredEdges.setdefault(self.faceHash, {})
         
-        self.selectedFaces = self.parent.selectedFaces.setdefault(self.occurrenceHash, {})
-        self.selectedEdges = self.parent.selectedEdges.setdefault(self.faceHash, {})
+        self.selectedFaces = self.registry.selectedFaces.setdefault(self.occurrenceHash, {})
+        self.selectedEdges = self.registry.selectedEdges.setdefault(self.faceHash, {})
         self.logger.debug('{} - face initiated'.format(self.faceHash))       
 
     def addFace(self, face):
@@ -337,306 +345,3 @@ class dbGroup:
         if not edgeObject.parent.selectedFaces:
             self.remove(calcOccHash(edge))
 
-class SelectedEdge:
-    _dbParams = {}
-    def __init__(self, edge, parentFace, mode = 0x0, attributes = False):
-        self.logger = logging.getLogger('dogbone.mgr.edge')
-        self.logger.info('---------------------------------{}---------------------------'.format('creating edge'))
-        self.edge = edge
-        self.edgeHash = calcHash(edge) if not attributes else attributes.edgeHash
-        self.tempId = edge.tempId if not attributes else attributes.edgeHash.split(':')[0]
-        self.parent = weakref.ref(parentFace)()
-        self.selectedEdges = self.parent.selectedEdges
-        self.selectedEdges[self.edgeHash] = self
-        self.registeredEdges = self.parent.registeredEdges
-        self.registeredEdges[self.edgeHash] = self
-        self._selected = True 
-        self.mode = mode
-        self.selected = True if attributes else False#invokes selected property
-        #   self.edge.attributes.add(DBGROUP, DBEDGE_REGISTERED, 'True')
-        self.logger.debug('{} - edge initiated'.format(self.edgeHash))
-        self.topPlane = self.parent.topFacePlane
-        
-    def __del__(self):
-        self.logger.debug('edge {} deleted'.format(self.edgeHash))
-        del self.registeredEdges[self.edgeHash]
-        self.logger.debug('{} - edge deleted'.format(self.edgeHash))
-        if not self.registeredEdges:
-            del self.parent.registeredEdges[self.parent.faceHash]
-            self.logger.debug('{} - registered edge dict deleted'.format(self.edgeHash))
-            
-    def updateAttributes(self):
-        dbParamsJson = self._dbParams.jsonStr
-        attr = self.edge.attributes.add(DBGROUP, 'edgeId:'+self.edgeHash, dbParamsJson)
-
-    @property
-    def dbParams(self):
-        return self._dbParams
-        
-    @dbParams.setter
-    def dbParams(self, dbParameters):
-        self._dbParams = dbParameters
-        self.updateAttributes()
-
-    def getdbTool(self):  
-        '''
-        calculates and returns temp Brep tool body for the specific dogbone at this edge
-        
-        '''
-        toolRadius = self.dbParameters.toolDia/2
-        minPercent = 1+self.dbParameters.minimalPercent/100 if self.dbParameters.dbType == 'Minimal Dogbone' else  1
-        
-            
-        (rslt, startPoint, endPoint) = self.dbParamsedge.evaluator.getEndPoints()
-        topPoint = endPoint
-        
-        if self.dbParameters.topPlane:
-            cylinderAxisVector = startPoint.vectorTo(self.topPoint)
-            infiniteLine = adsk.core.InfiniteLine3D.create(endPoint, cylinderAxisVector)
-            topPoint = self.parent.topFacePlane.intersectWithLine(infiniteLine)
-            if startPoint.distanceTo(topPoint) < endPoint.distanceTo(topPoint):
-                startPoint = endPoint
-            endPoint = topPoint
-        
-        edgeVector = startPoint.vectorTo(endPoint)
-    
-        #   get the two faces associated with the edge
-        
-        face1 = self.edge.faces.item(0)
-        face2 = self.edge.faces.item(1)
-        
-        face1Normal = face1.evaluator.getNormalAtPoint(face1.pointOnFace)[1]
-        face2Normal = face2.evaluator.getNormalAtPoint(face2.pointOnFace)[1]
-        
-        #   find the vector the goes down the middle of the two faces - vector A + vector B
-        if self.dbParams.type == 'Mortise Dogbone':
-            (edge1, edge2) = dbUtils.getCornerEdgesAtFace(self.parent.face, self.edge)
-                        
-            if self.longside:
-                if (edge1.length > edge2.length):
-                    centreLineVector = face1Normal
-                else:
-                    centreLineVector = face2Normal
-            else:
-                if (edge1.length > edge2.length):
-                    centreLineVector = face2Normal
-                else:
-                    centreLineVector = face1Normal
-        else:
-            centreLineVector = face1Normal.copy()
-            centreLineVector.add(face2Normal)
-            centreLineVector.normalize()
-        
-        startPoint.translateBy(centreLineVector)
-        endPoint.translateBy(centreLineVector)
-       
-        tempBrepMgr = adsk.fusion.TemporaryBRepManager.get()
-        dbBody = tempBrepMgr.createCylinderOrCone(startPoint, toolRadius, endPoint, toolRadius)
-        cornerAngle = face1Normal.angleTo(face2Normal)/2
-        cornerTan = tan(cornerAngle)
-        
-        dbBox = None  #initialize temp brep box, ncase it's going to be used - might not be needed
-        #   TODO
-        if cornerAngle != 0 and cornerAngle != pi/4:  # 0 means that the angle between faces is also 0 
-
-            #   find the orthogonal vector of the centreLine = make a copy then rotate by 90degrees
-        
-            orthogonalToCentreLine = centreLineVector.copy()
-    
-            rotationMatrix = adsk.core.Matrix3D.create()
-            rotationMatrix.setToRotation(pi/2, edgeVector, startPoint)
-            
-            orthogonalToCentreLine.transformBy(rotationMatrix)
-            centreLineVector.scaleBy(toolRadius*minPercent)
-            orthogonalToCentreLine.scaleBy(toolRadius)
-        
-            boxLength = abs(toolRadius*cornerTan - toolRadius*minPercent)
-            boxCentre = startPoint.copy()
-            boxWidth = self.dbParams.toolDia
-            
-            boxCentreVector = centreLineVector.copy()
-            boxCentreVector.normalize()
-            boxCentreVector.scaleBy(boxLength/2)
-            
-            boxCentreVertVect = edgeVector.copy()
-            boxCentreVertVect.normalize()
-            boxHeight = startPoint.distanceTo(endPoint)
-            boxCentreVertVect.scaleBy(boxHeight/2)
-            
-            boxCentre.translateBy(boxCentreVector)
-            boxCentre.translateBy(boxCentreVertVect)
-    
-            if (boxLength < 0.001):
-                boxLength = .001 
-            
-            boundaryBox = adsk.core.OrientedBoundingBox3D.create(boxCentre, centreLineVector, orthogonalToCentreLine, boxLength, boxWidth, boxHeight)
-            
-            dbBox = tempBrepMgr.createBox(boundaryBox)
-            tempBrepMgr.booleanOperation(dbBody, dbBox, adsk.fusion.BooleanTypes.UnionBooleanType)
-            
-        return dbBody  #temporary body ready to be unioned to other bodies
-
-        
-    @property
-    def selected(self):
-        return self._selected
-        
-    @selected.setter
-    def selected(self, selected):
-        self.logger.debug('{} - edge {}'.format(self.edgeHash, 'selected' if selected else 'deselected'))
-        self.logger.debug('before selected edge count for face {} = {}'.format(self.parent.faceHash, len(self.selectedEdges)))
-        if selected:
-            self.selectedEdges[self.edgeHash] = self
-            self.logger.debug('{} - edge appended to selectedEdges'.format(self.edgeHash))
-        else: 
-            del self.selectedEdges[self.edgeHash]
-            self.logger.debug('{} - edge removed from selectedEdges'.format(self.edgeHash))
-            self.edge.attributes.itemByName(DBGROUP, DBEDGE_SELECTED).deleteMe()
-        self._selected = selected
-        self.logger.debug('after selected edge count for face {} = {}'.format(self.parent.faceHash, len(self.selectedEdges)))
-        
-    def getAttributeValue(self):
-        return self.face.attributes.itemByName(DBGROUP, 'edgeId:'+self.parent.faceHash).value
-
-    def setAttributeValue(self, value):
-        self.face.attributes.add(DBGROUP, 'edgeId:'+self.parent.faceHash, value)
-        
-    @property
-    def topFacePlane(self):
-        return self.parent.topFacePlane
-        
-class SelectedFace:
-    """
-    This class manages a single Face:
-    keeps a record of the viable edges, whether selected or not
-    principle of operation: the first face added to a body/occurrence entity will find all other same facing faces, automatically finding eligible edges - they will all be selected by default.
-    edges and faces have to be selected to be selected in the UI
-    when all edges of a face have been deselected, the face becomes deselected
-    when all faces of a body/entity have been deselected - the occurrence and all associated face and edge objects will be deleted and GC'd
-    manages edges:
-        edges can be selected or deselected individually
-        faces can be selected or deselected individually
-        first face selection will cause all other appropriate faces and corresponding edges on the body to be selected
-        validEdges dict makes lists of candidate edges available
-        each face or edge selection that is changed will reflect in the parent management object selectedOccurrences, selectedFaces and selectedEdges
-    """
-
-    def __init__(self, face, parent, preload = False):  #preload is used when faces are created from attributes.  preload will be a namedtuple of faceHash and occHash
-        self.logger = logging.getLogger('dogbone.mgr.edge')
-
-        self.logger.info('---------------------------------{}---------------------------'.format('creating face'))
-        
-        self.face = face # BrepFace
-        self.faceNormal = dbUtils.getFaceNormal(self.face)
-        
-        self.faceHash = calcHash(face) if not preload else preload.faceHash
-
-
-        self.tempId = face.tempId if not preload else preload.faceHash.split(':')[0]
-        self._selected = True # record of all valid faces are kept, but only ones that are selected==True are processed for dogbones???
-        self.parent = weakref.ref(parent)()
-
-        self.occurrenceHash = calcOccHash(face) if not preload else preload.occHash
-        self.topFacePlane = self.parent.topFacePlanes.setdefault(self.occurrenceHash, dbUtils.getTopFacePlane(face))
-        
-        self.registeredFaces = self.parent.registeredFaces.setdefault(self.occurrenceHash, {})
-        self.registeredFaces[self.faceHash] = self
-        self.registeredEdges = self.parent.registeredEdges.setdefault(self.faceHash, {})
-        
-        self.selectedFaces = self.parent.selectedFaces.setdefault(self.occurrenceHash, {})
-        self.selectedEdges = self.parent.selectedEdges.setdefault(self.faceHash, {})
-        self.logger.debug('{} - face initiated'.format(self.faceHash))           
-
-        #==============================================================================
-        #             this is where inside corner edges, dropping down from the face are processed
-        #==============================================================================
-        
-        if preload:
-            faceAttribute = self.face.attributes.itemByName(DBGROUP, 'faceId:'+self.faceHash)
-            edgeHashes = json.loads(faceAttribute.value)
-            for edgeHash in edgeHashes:
-                edgeAttributes = parent.design.findAttributes(DBGROUP, 'edgeId:'+edgeHash)
-                self.selected = (True, False) if len(edgeAttributes)>0 else (False, False)
-                for edgeAttribute in edgeAttributes:
-                    edge = edgeAttribute.parent
-                    edgeObject = SelectedEdge(edge, self, attributes = EdgeParams(edgeHash, edgeAttribute.value))
-            return
-            
-        
-        self.brepEdges = dbUtils.findInnerCorners(face) #get all candidate edges associated with this face
-        if not self.brepEdges:
-            self.logger.debug('no edges found on selected face '.format(self.faceHash))
-            self._selected = False
-            return
-
-        self.logger.debug('{} - edges found on face creation'.format(len(self.brepEdges)))
-        for edge in self.brepEdges:
-            if edge.isDegenerate:
-                continue
-            try:
-                
-                edgeObject = SelectedEdge(edge, self)
-                self.logger.debug(' {} - edge object added'.format(edgeObject.edgeHash))
-    
-            except:
-                dbUtils.messageBox('Failed at edge:\n{}'.format(traceback.format_exc()))
-        self.selected = True
-        self.logger.debug('registered component count = {}'.format(len(self.parent.registeredFaces.keys())))
-                
-    def __del__(self):
-        self.logger.debug("face {} deleted".format(self.faceHash))
-        del self.registeredFaces[self.faceHash]
-        del self.selectedFaces[self.faceHash]
-        self.logger.debug(' {} - face key deleted from registeredFaces'.format(self.faceHash))
-        self.logger.debug('registered component count = {}'.format(len(self.parent.registeredFaces)))
-        for edgeObject in self.registeredEdges.values():
-            del edgeObject
-            self.logger.debug(' {} - edge object deleted'.format(edgeObject.edgeHash))
-        del self.parent.registeredEdges[self.faceHash]
-        self.logger.debug('registered Faces count = {}'.format(len(self.registeredFaces)))               
-        self.logger.debug('selected Faces count = {}'.format(len(self.selectedFaces)))               
-        self.logger.debug('registered edges count = {}'.format(len(self.registeredEdges)))               
-        self.logger.debug('selected edges count = {}'.format(len(self.selectededEdges)))
-        
-    def refreshAttributes(self):
-        self.face.attributes.add(DBGROUP, 'faceId:'+self.faceHash, json.dumps(list(self.registeredEdges.keys())) if self.selected else '')
-        for edgeObject in self.registeredEdges.values():
-            edgeObject.refreshAttributes()
-
-    def getAttributeValue(self):
-        return self.face.attributes.itemByName(DBGROUP, 'faceId:'+self.occurrenceHash).value
-
-    def setAttributeValue(self):
-        
-        self.face.attributes.add(DBGROUP, 'faceId:'+self.occurrenceHash, value)
-
-    @property
-    def selected(self):
-        return self._selected
-        
-    @selected.setter
-    def selected(self, selected):  #property setter only accepts a single argument - so multiple argments are passed via a tuple - which if exists, will carry allEdges and selected flags separately
-        allEdges = True
-        if isinstance(selected, tuple):
-            allEdges = selected[1]
-            selected = selected[0]
-        self._selected = selected
-        if not selected:
-            del self.selectedFaces[self.faceHash]
-            attr = self.face.attributes.itemByName(DBGROUP, DBFACE_SELECTED).deleteMe()
-
-            self.logger.debug(' {} - face object removed from selectedFaces'.format(self.faceHash))
-        else:
-            self.selectedFaces[self.faceHash] = self
-            #   attr = self.face.attributes.add(DBGROUP, DBFACE_SELECTED, dbType)
-            self.logger.debug(' {} - face object added to registeredFaces'.format(self.faceHash))
-
-        if allEdges:
-            self.logger.debug('{} all edges after face {}'.format('Selecting' if selected else 'Deselecting', 'Selected' if selected else 'Deselected'))
-            for edge in self.registeredEdges.values():
-                try:
-                    edge.selected = selected
-                except:
-                    continue
-            self.logger.debug(' {} - edge object {}'.format(edge.edgeHash, 'selected' if selected else 'deselected'))
-        self._selected = selected
