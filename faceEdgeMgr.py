@@ -55,7 +55,7 @@ EdgeParams = namedtuple('EdgeParams',['edgeHash','params'])
 #==============================================================================
 # Main class definition
 #==============================================================================
-class FaceEdgeMgr:
+class Groups:
 
     """ 
     The purpose of this object is to group together all related faces and associated edges in order to make finding and processing edges and faces inherently easy  
@@ -91,8 +91,12 @@ class FaceEdgeMgr:
         self.app = adsk.core.Application.get()
         self.design = self.app.activeProduct
 
+
+    def addGroup(self, face):
+        
+
             
-    def clearAttribs(self, name):  
+    def clearAttribs(self, name):
         #not used - can be called manually during debugging
         attribs = self.design.findAttributes(name, '')
         for attrib in attribs:
@@ -222,10 +226,10 @@ class FaceEdgeMgr:
 
 
 
-class dbGroup:
+class Group:
     
     """ 
-    dbGroup is the associated group of faces and edges that have a common primary face - ie all edges that would be cut with the same dogbone 
+    Group is the associated group of faces and edges that have a common primary face, and common dogbone parameters - ie all edges that would be cut with the same dogbone 
     type and size in the same body or component.  It's also associated with a single timeline object (this is because dogbones could be created in any part of the
     timeline, and this app allows all dogbones to be edited at the same time - timeline will roll back to each appropriate group when edited.)
     """

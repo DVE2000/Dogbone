@@ -16,7 +16,18 @@ from . import dbutils as dbUtils
 from . import DbParams
 from math import sqrt, pi
 
-class SelectedEdge:
+
+class dbEdges():
+
+    def __init__(self, parentFace):
+
+        self.face = weakref.ref(parentFace)()
+        
+
+    def __iter__(self):
+        for 
+
+class dbEdge:
     _dbParams = {}
     def __init__(self, edge, parentFace, mode = 0x0, attributes = False):
         self.logger = logging.getLogger('dogbone.mgr.edge')
