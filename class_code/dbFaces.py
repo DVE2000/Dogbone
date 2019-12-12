@@ -1,25 +1,55 @@
 import logging
 from pprint import pformat
+import adsk.core, adsk.fusion
 
 from sys import getrefcount as grc
 
 from collections import defaultdict, namedtuple
 from math import pi, tan
 
-import adsk.core, adsk.fusion
 import traceback
 import weakref
 import json
 from functools import reduce, lru_cache
 
-from . import dbutils as dbUtils
-from . import DbParams
-from . import dbEdges
+from common import dbutils as dbUtils
+from common import dbParamsClass
+from class_code.dbEdges import dbEdges, dbEdge
 from math import sqrt, pi
 
-class SelectedFace:
+
+
+class DbFaces:
+
+    def __init__(self, parent):
+        self.group = weakref.ref(parent)()
+        self.dbFaces = group.dbFaces
+        self.dbEdges = group.dbEdges
+        self.faces = []
+
+    def __iter__(self):
+        for face in self.faces:
+            yield face
+
+    """     def addAllFaces(self, face):
+            body = face.body
+            for face in body.faces:
+    """            
+
+    def addFace(self, face):
+        self.faces.append(DbFace(face, self))
+
+    @property
+    def groupFaces(self):
+        return [face for face in self.dbFaces if face.group == group]
+
+    @property
+    def groupEdges(self):
+        return [edge for edge in self.dbEdges if edge.group == group]
+
+class DbFace:
     """
-    This class manages a single Face:
+    This class manages a single dogbone Face:
     keeps and makes a record of the viable edges, whether selected or not
     principle of operation: the first face added to a body/occurrence entity will find all other same facing faces, automatically finding eligible edges - they will all be selected by default.
     edges and faces have to be selected to be selected in the UI
@@ -41,10 +71,9 @@ class SelectedFace:
         self.face = face # BrepFace
         self.faceNormal = dbUtils.getFaceNormal(self.face)
         
-        self.faceHash = calcHash(face) if not preload else preload.faceHash
+        self.faceHash = hash((calcHash(face)))
 
-
-        self.tempId = face.tempId if not preload else preload.faceHash.split(':')[0]
+        self.tempId = face.tempId
         self._selected = True # record of all valid faces are kept, but only ones that are selected==True are processed for dogbones???
         self.group = weakref.ref(parent)()
 
@@ -94,6 +123,9 @@ class SelectedFace:
                 dbUtils.messageBox('Failed at edge:\n{}'.format(traceback.format_exc()))
         self.selected = True
         self.logger.debug('registered component count = {}'.format(len(self.parent.registeredFaces.keys())))
+
+    def __hash__(self):
+        return self.faceHash
                 
     def __del__(self):
         self.logger.debug("face {} deleted".format(self.faceHash))

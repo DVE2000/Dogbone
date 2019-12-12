@@ -1,40 +1,43 @@
 import logging
 from pprint import pformat
+import adsk.core, adsk.fusion
 
 from sys import getrefcount as grc
 
 from collections import defaultdict, namedtuple
 from math import pi, tan
 
-import adsk.core, adsk.fusion
+# import adsk.core, adsk.fusion
 import traceback
 import weakref
 import json
 from functools import reduce, lru_cache
 
-from . import dbutils as dbUtils
-from . import DbParams
-from math import sqrt, pi
+from common import dbutils as dbUtils
+from common import dbParamsClass
 
+from math import sqrt, pi
 
 class dbEdges():
 
     def __init__(self, parentFace):
 
         self.face = weakref.ref(parentFace)()
-        
+        self.edges = []
 
     def __iter__(self):
-        for 
+        for edge in self.edges:
+            yield edge
 
-class dbEdge:
+class dbEdge():
     _dbParams = {}
     def __init__(self, edge, parentFace, mode = 0x0, attributes = False):
         self.logger = logging.getLogger('dogbone.mgr.edge')
         self.logger.info('---------------------------------{}---------------------------'.format('creating edge'))
         self.edge = edge  #brep edge
-        self.edgeHash = calcHash(edge) if not attributes else attributes.edgeHash
-        self.tempId = edge.tempId if not attributes else attributes.edgeHash.split(':')[0]
+        self.edgeHash = hash((calcHash(edge)))
+        self.tempId = edge.tempId
+
         self.face = weakref.ref(parentFace)()
         self.group = self.face.group
         self.edge = edge
@@ -48,6 +51,9 @@ class dbEdge:
         #   self.edge.attributes.add(DBGROUP, DBEDGE_REGISTERED, 'True')
         self.logger.debug('{} - edge initiated'.format(self.edgeHash))
         self.topPlane = self.parent.topFacePlane
+
+    def __hash__(self):
+        return self.edgeHash
         
     def __del__(self):
         self.logger.debug('edge {} deleted'.format(self.edgeHash))
@@ -195,5 +201,5 @@ class dbEdge:
         
     @property
     def topFacePlane(self):
-        return self.parent.topFacePlane
+        return self.group.topFacePlane
         

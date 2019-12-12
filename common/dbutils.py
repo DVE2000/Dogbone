@@ -1,17 +1,13 @@
 import logging
 import time
+import adsk.core, adsk.fusion
+
 from math import pi, tan
 import os
 import traceback
 from functools import wraps
 from pprint import pformat
 from collections import defaultdict, namedtuple
-
-
-#import itertools
-
-import adsk.core
-import adsk.fusion
 
 def timer(func):
     @wraps(func)

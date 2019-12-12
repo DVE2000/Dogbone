@@ -7,21 +7,23 @@ Created on Sun Apr 21 19:51:42 2019
 
 import logging
 from pprint import pformat
+import adsk.core, adsk.fusion
 
 from sys import getrefcount as grc
 
 from collections import defaultdict, namedtuple
 from math import pi, tan
 
-import adsk.core, adsk.fusion
+# import adsk.core, adsk.fusion
 import traceback
 import weakref
 import json
 from functools import reduce, lru_cache
+import hashlib
 
-from . import dbutils as dbUtils
-from . import DbParams
-from . import dbFaces
+from common import dbutils as dbUtils
+from common import dbParamsClass
+from class_code.dbFaces import DbFaces, DbFace
 from math import sqrt, pi
 
 #==============================================================================
@@ -55,7 +57,7 @@ EdgeParams = namedtuple('EdgeParams',['edgeHash','params'])
 #==============================================================================
 # Main class definition
 #==============================================================================
-class Groups:
+class DbGroups:
 
     """ 
     The purpose of this object is to group together all related faces and associated edges in order to make finding and processing edges and faces inherently easy  
@@ -80,21 +82,21 @@ class Groups:
         self.logger = logging.getLogger('dogbone.mgr')
         
         self.logger.info('---------------------------------{}---------------------------'.format('faceEdgeMgr'))
-        self.logger.debug('faceEdgeMgr initiated')
-        self.dbGroups = {} #key groupHash value: dbGroupObject
-        self.registeredFaces = {} #key: occurrenceHash value: dict of key: facehash value: faceObjects
-        self.registeredEdges = {} #key: facehash value: dict of key:  edgehash value: edgeObjects
-        self.topFacePlanes = {} #key: occurrenceHash value:topFace plane - NOTE: may be better relegated to dbGroup level
-        self.selectedFaces = {} #key: occurrenceHash value: dict of key: facehash value: faceObjects
-        self.selectedEdges = {} #key: facehash value: dict of key:  edgehash value: edgeObjects
-        self.timeLineGroups = {} #key: occurrenceHash value: timelineGroup object - NOTE: may be better relegated to dbGroup level
+        self.logger.debug('dbGroups initiated')
+        self.dbOccurrences = set() #value: body or component name - to keep track of which body or component has dogbones
+        self.dbGroups = set() #value: dbGroupObject
+        self.dbFaces = set() #values: dbFaceObjects
+        self.dbEdges =  set() #values: dbEdgeObjects
+ 
         self.app = adsk.core.Application.get()
         self.design = self.app.activeProduct
 
+    def __iter__(self):
+        for group in self.dbGroups:
+            yield group
 
-    def addGroup(self, face):
-        
-
+    def addFace(self, face, dbParams):
+        self.dbGroups.add(DbGroup(face, self, dbParams))
             
     def clearAttribs(self, name):
         #not used - can be called manually during debugging
@@ -103,7 +105,9 @@ class Groups:
             attrib.deleteMe()
             
     def preLoad(self):
-        timelineGroups = self.design.timeline.timelineGroups
+        pass
+    
+    """     timelineGroups = self.design.timeline.timelineGroups
         try:
             dbTlGroups = list(filter(lambda x: 'db:' in x.name , timelineGroups))
         except:
@@ -128,8 +132,8 @@ class Groups:
                         if not faceAttribute.value:
                             continue
                         faceObject = SelectedFace(faceAttribute.parent, self, HashLoad(faceHash, occHash))
-
-    def updateAttributes(self):
+ 
+     def updateAttributes(self):
         #TODO
         for occHash, facesDict in self.registeredFaces.items():
             occHashFlag = True
@@ -138,144 +142,103 @@ class Groups:
                     faceObject.face.body.attributes.add(DBGROUP, 'occId:'+occHash, json.dumps(list(faceObject.registeredFaces.keys())))
                     occHashFlag = False
                 faceObject.refreshAttributes()
-    
+"""    
     @lru_cache(maxsize=128)
     def completeEntityList(self, entityHash):  #needs hashable parameters in the arguments for lru_cache to work
         self.logger.debug('Entity Hash  = {}'.format(entityHash))
-        return  (entityHash in map(lambda x: x.faceHash, self.registeredFaceObjectsAsList)) or (entityHash in map(lambda x: x.edgeHash, self.registeredEdgeObjectsAsList))
+        return  entityHash in self.dbEdges or entityHash in self.dbFaces
 
     def isSelectable(self, entity):
         
-        self._entity = entity
-
-        if entity.assemblyContext:
-            self.activeoccurrenceHash = entity.assemblyContext.component.name
-        else:
-            self.activeoccurrenceHash = entity.body.name
-        if self.activeoccurrenceHash not in map(lambda x: x.split(":")[0], self.registeredFaces.keys()):
+        activeoccurrenceHash = entity.assemblyContext.component.name if entity.assemblyContext else activeoccurrenceHash == entity.body.name
+        if activeoccurrenceHash not in self.dbOccurrences:
             return True
 
-        return self.completeEntityList(calcHash(entity))
+        return self.completeEntityList(hash(calcHash(entity)))
         
     @property        
     def registeredEdgeObjectsAsList(self):
-        edgeList = []
-        for comp in self.registeredEdges.values():
-            edgeList += comp.values()
-        return edgeList
+        return self.dbEdges
 
     @property        
     def registeredFaceObjectsAsList(self):
-        faceList = []
-        for comp in self.registeredFaces.values():
-            faceList += comp.values()
-        return faceList
+        return self.dbFaces
         
     @property
     def registeredEntitiesAsList(self):
         self.logger.debug('registeredEntitiesAsList')
-        edgeList = []
-        for comp in self.registeredEdges.values():
-            edgeList += comp
-        faceList = []
-        for comp in self.registeredFaces.values():
-            faceList += comp
-            faceEntities = map(lambda faceObjects: faceObjects.face, edgeList)
-            edgeEntities = map(lambda edgeObjects: edgeObjects.edge, faceList)
-            return faceEntities + edgeEntities
+        return self.dbFaces + self.dbEdges
 
     @property
     def selectedEdgeObjectsAsList(self):
         self.logger.debug('selectedEdgesAsList')
-        edgeList = []
-        for comp in self.selectedEdges.values():
-            edgeList += comp.values()
-        return edgeList    
-        
-    def selectedModeEdgeObjectsAsList(self, mode):
-        self.logger.debug('selectedEdgesAsList')
-        edgeList = []
-        for comp in self.selectedEdges.values():
-            if comp.mode != mode:
-                continue
-            edgeList += comp.values()
-        return edgeList
+        return [edgeObject for edgeObject in self.dbEdges if edgeObject.selected]    
             
     @property        
     def selectedFaceObjectsAsList(self):
         self.logger.debug('selectedFacesAsList')
-
-        faceList = []
-        for comp in self.selectedFaces.values():
-            faceList += comp.values()
-            
-        #   x =  []+list(self.selectedFaces.values())
-        #   edges = copy.deepcopy(self.selectedEdges)
-        return faceList
+        return [ faceObject for faceObject in self.dbFaces if faceObject.selected]
                      
     @property        
     def selectedEdgesAsGroupList(self):  # Grouped by occurrence/component
         self.logger.debug('registeredEdgeObjectsAsGroupList')
         groupedEdges  = {}
-        for occurrence in self.selectedFaces:
-            edges = []
-            for faceHash in self.selectedFaces[occurrence]:
-                edges += self.selectedEdges[faceHash].values()
-            groupedEdges[occurrence] = edges
+        for group in self.dbGroups:
+            groupedEdges[group] = [edge.edge for edge in self.dbEdges if edge.group == group and edge.selected]
         return groupedEdges
 
+    @property
+    def registeredOccurrencesAsList(self):
+        return self.dbOccurrences
 
-
-class Group:
+class DbGroup:
     
     """ 
-    Group is the associated group of faces and edges that have a common primary face, and common dogbone parameters - ie all edges that would be cut with the same dogbone 
+    Group is the associated group of dogbone faces and edges that have a common primary face, and common dogbone parameters - ie all edges that would be cut with the same dogbone 
     type and size in the same body or component.  It's also associated with a single timeline object (this is because dogbones could be created in any part of the
     timeline, and this app allows all dogbones to be edited at the same time - timeline will roll back to each appropriate group when edited.)
     """
 
-
-    __init__(self, faceEntity, parent):
+    def __init__(self, faceEntity, parent, dbParams):
         self.logger = logging.getLogger('dogbone.mgr.dbGroup')
+
+        self.groups = weakref.ref(parent)()
+        self.dbFaces = self.groups.dbFaces
+        self.dbEdges = self.groups.dbEdges
+        self.groups.dbOccurrences.add(occHash(faceEntity))
 
         self.logger.info('---------------------------------{}---------------------------'.format('creating group'))
 
         self.timeLineGroup
 
-        self._dbParams = {}
+        self._dbParams = dbParams
         
-        self.face = face # BrepFace
         self.faceNormal = dbUtils.getFaceNormal(self.face)
         
-        self.faceHash = calcHash(face) if not preload else preload.faceHash
+        self.topFacePlane = dbUtils.getTopFacePlane(face)
+        self.groupHash = hash((calcOccHash(topFacePlane), self._dbParams.idTuple))
+                
+        self.logger.debug('{} - group initiated'.format((calcOccHash(topFacePlane), self._dbParams.idTuple)))    
 
+    def __hash__(self):
+        return self.groupHash
 
-        self.tempId = face.tempId if not preload else preload.faceHash.split(':')[0]
-        self._selected = True # record of all valid faces are kept, but only ones that are selected==True are processed for dogbones???
-        self.registry = weakref.ref(parent)()
+    def addFaces(self, face):
 
-        self.groupHash = 
-        self.groups = self.registry.groups.setdefault(self.groupHash,{} )
-
-        self.occurrenceHash = calcOccHash(face) if not preload else preload.occHash
-        self.topFacePlane = self.parent.topFacePlanes.setdefault(self.occurrenceHash, dbUtils.getTopFacePlane(face))
+        body = face.body
+        faceNormal = dbUtils.getFaceNormal(face)
         
-        self.registeredFaces = self.registry.registeredFaces.setdefault(self.occurrenceHash, {})
-        self.registeredFaces[self.faceHash] = self
-        self.registeredEdges = self.registry.registeredEdges.setdefault(self.faceHash, {})
-        
-        self.selectedFaces = self.registry.selectedFaces.setdefault(self.occurrenceHash, {})
-        self.selectedEdges = self.registry.selectedEdges.setdefault(self.faceHash, {})
-        self.logger.debug('{} - face initiated'.format(self.faceHash))       
+        for face1 in body.faces:
+            if faceNormal.angleTo(dbUtils.getFaceNormal(face1))== 0:
+                faceObject = self.addFace(face1, self)
 
-    def addFace(self, face):
+
+    def addFace(self, face, parentFaces):
         #==============================================================================
         #         Adds face to registered and selected registries
         #==============================================================================
-        self.logger.debug('registered Faces before = {}'.format(pformat(self.registeredFaces)))
-        self.logger.debug('selected Faces before = {}'.format(pformat(self.selectedFaces)))
-        self.logger.debug('registered Edges before = {}'.format(pformat(self.registeredEdges)))
-        self.logger.debug('selected Edges before = {}'.format(pformat(self.selectedEdges)))
+        self.logger.debug('registered Faces before = {}'.format(pformat(self.dbFaces)))
+        self.logger.debug('registered Edges before = {}'.format(pformat(self.dbEdges)))
             
         faces = self.selectedFaces.setdefault(calcOccHash(face), {})
         self.logger.debug('cache cleared')
@@ -286,17 +249,8 @@ class Group:
             faceObject.selected = True
             return
         
-        body = face.body
-        faceNormal = dbUtils.getFaceNormal(face)
-        
-        for face1 in body.faces:
-            if faceNormal.angleTo(dbUtils.getFaceNormal(face1))== 0:
-                faceObject = SelectedFace(face1, self)
-
-        self.logger.debug('registered Faces after = {}'.format(pformat(self.registeredFaces)))
-        self.logger.debug('selected Faces after = {}'.format(pformat(self.selectedFaces)))
-        self.logger.debug('registered Edges after = {}'.format(pformat(self.registeredEdges)))
-        self.logger.debug('selected Edges after = {}'.format(pformat(self.selectedEdges)))
+        self.logger.debug('registered Faces after = {}'.format(pformat(self.dbFaces)))
+        self.logger.debug('registered Edges after = {}'.format(pformat(self.dbEdges)))
         
     def deleteFace(self, face):
         #TODO:

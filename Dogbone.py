@@ -13,33 +13,25 @@
 # twice the offset (as the offset is applied to the radius) at each selected edge.
 
 import logging
-import os
+import os, sys
+import adsk.core, adsk.fusion
+
+appPath = os.path.dirname(os.path.abspath(__file__))
+if appPath not in sys.path:
+    sys.path.insert(0, appPath)
 
 from collections import defaultdict
 
-import adsk.core, adsk.fusion
+# import adsk.core, adsk.fusion
 import traceback
 import json
 
 import time
-from . import dbutils as dbUtils
-from .dbParamsClass import DbParams
-from math import sqrt
-from math import pi
-from .faceEdgeMgr import *
+from common import dbutils as dbUtils
+from math import sqrt, pi
+from class_code.faceEdgeMgr import DbGroups, DbGroup
+from common.dbParamsClass import DbParams
 
-FACE_ID = 'faceID'
-REV_ID = 'revId'
-ID = 'id'
-DEBUGLEVEL = logging.NOTSET
-
-NORMAL_MODE = 0x0
-MINIMAL_MODE = 0x1
-MORTISE_ALONG_LONGSIDE_MODE = 0x2
-MORTISE_ALONG_SHORTSIDE_MODE = 0x4
-FROMTOP_MODE = 0x8
-
-appPath = os.path.dirname(os.path.abspath(__file__))
 logger = logging.getLogger('dogbone')
 
 for handler in logger.handlers:
@@ -78,15 +70,7 @@ class DogboneCommand(object):
         self.app = adsk.core.Application.get()
         self.ui = self.app.userInterface
 
-        self.dbParams = DbParams(offset = None,
-                                 toolDia = .25,
-                                 toolDiaOffset = 0,
-                                 fromTop = False,
-                                 dbType = 'Normal Dogbone',
-                                 longSide = True,
-                                 minimalPercent = 10.0,
-                                 minAngleLimit = pi/2,
-                                 maxAngleLimit = pi)
+        self.dbParams = DbParams()
         self.faceSelections = adsk.core.ObjectCollection.create()
         self.offsetStr = "0"
         self.toolDiaStr = str(self.dbParams.toolDia) + " in"
@@ -192,7 +176,7 @@ class DogboneCommand(object):
         try:
             self.removeButtons()
         except:
-            pass
+            return -1
         
         buttonRestore = self.ui.commandDefinitions.addButtonDefinition(self.RESTORE_ID,
                                                                        'Refresh',
@@ -230,11 +214,7 @@ class DogboneCommand(object):
     def removeButtons(self):
 #        cleans up buttons and command definitions left over from previous instantiations
         cmdDef = self.ui.commandDefinitions.itemById(self.COMMAND_ID)
-        if cmdDef:
-            cmdDef.deleteMe()
         restoreDef = self.ui.commandDefinitions.itemById(self.RESTORE_ID)
-        if restoreDef:
-            restoreDef.deleteMe()
         createPanel = self.ui.allToolbarPanels.itemById('SolidCreatePanel')
         dbDropDowncntrl = createPanel.controls.itemById('dbDropDown')
         if dbDropDowncntrl:
@@ -245,6 +225,10 @@ class DogboneCommand(object):
             if dbRestoreBtncntrl:
                 dbRestoreBtncntrl.deleteMe()
             dbDropDowncntrl.deleteMe()
+        if restoreDef:
+            restoreDef.deleteMe()
+        if cmdDef:
+            cmdDef.deleteMe()
 
     def onCreate(self, args:adsk.core.CommandCreatedEventArgs):
         """
@@ -279,7 +263,7 @@ class DogboneCommand(object):
         self.selectedFaces = {} 
         self.selectedEdges = {} 
 #        self.registeredEntities = adsk.core.ObjectCollection.create()
-        self.registry = FaceEdgeMgr()
+        self.registry = DbGroups()
         
         self.workspace = self.ui.activeWorkspace
         # activeToolbarPanels = adsk.core.ObjectCollection.create()
@@ -431,20 +415,21 @@ class DogboneCommand(object):
         occurrenceTable.isFullWidth = True
 
         rowCount = 0
-        for faceObject in self.registry.registeredFaceObjectsAsList:
-            occurrenceTable.addCommandInput(inputs.addImageCommandInput(f"row{rowCount}", 
-                                                                        faceObject.occurrenceHash, 
-                                                                        'resources/tableBody/16x16-normal.png'),
-                                                                        rowCount,
-                                                                        0)
-            occurrenceTable.addCommandInput(inputs.addTextBoxCommandInput(f"row{rowCount}Name",
-                                                                        "          ",
-                                                                        faceObject.face.body.name,
-                                                                        1,
-                                                                        True),
-                                                                        rowCount,
-                                                                        1)
-            rowCount+=1
+        if not self.registry.registeredFaceObjectsAsList:
+            for faceObject in self.registry.registeredFaceObjectsAsList:
+                occurrenceTable.addCommandInput(inputs.addImageCommandInput(f"row{rowCount}", 
+                                                                            faceObject.occurrenceHash, 
+                                                                            'resources/tableBody/16x16-normal.png'),
+                                                                            rowCount,
+                                                                            0)
+                occurrenceTable.addCommandInput(inputs.addTextBoxCommandInput(f"row{rowCount}Name",
+                                                                            "          ",
+                                                                            faceObject.face.body.name,
+                                                                            1,
+                                                                            True),
+                                                                            rowCount,
+                                                                            1)
+                rowCount+=1
 
 
         benchMark = settingGroupChildInputs.addBoolValueInput("benchmark",
