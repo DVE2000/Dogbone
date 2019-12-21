@@ -27,9 +27,9 @@ import traceback
 import json
 
 import time
-from common import dbutils as dbUtils
+from common import dbutils as dbUtils, calcHash
 from math import sqrt, pi
-from class_code.faceEdgeMgr import DbGroups, DbGroup
+from class_source.faceEdgeMgr import DbGroups, DbGroup
 from common.dbParamsClass import DbParams
 
 logger = logging.getLogger('dogbone')
@@ -65,7 +65,7 @@ class DogboneCommand(object):
 
     def __init__(self):
         
-        self.logger = logging.getLogger('dogbone')
+        self.logger = logging.getLogger('dogbone.command')
 
         self.app = adsk.core.Application.get()
         self.ui = self.app.userInterface
@@ -80,7 +80,7 @@ class DogboneCommand(object):
 
         self.addingEdges = 0
         self.parametric = False
-        self.logging = 0
+        self.logging = 10
         self.loggingLevels = {'Notset':0,'Debug':10,'Info':20,'Warning':30,'Error':40}
 
         self.expandModeGroup = True

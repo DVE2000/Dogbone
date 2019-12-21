@@ -18,10 +18,16 @@ def timer(func):
         return result
     return wrapper
 
+# Generate occurrence hash
+calcOccHash = lambda x: x.assemblyContext.name if x.assemblyContext else x.body.name
+
+# Generate an edgeHash or faceHash from object
+calcHash = lambda x: str(x.tempId) + ':' + x.assemblyContext.name.split(':')[-1] if x.assemblyContext else str(x.tempId) + ':' + x.body.name
+
 getFaceNormal = lambda face: face.evaluator.getNormalAtPoint(face.pointOnFace)[1]
 edgeVector = lambda coEdge:  coEdge.edge.evaluator.getEndPoints()[2].vectorTo(coEdge.edge.evaluator.getEndPoints()[1]) if coEdge.isOpposedToEdge else coEdge.edge.evaluator.getEndPoints()[1].vectorTo(coEdge.edge.evaluator.getEndPoints()[2]) 
 
-DbParams = namedtuple('DbParams', ['toolDia','dbType', 'fromTop', 'toolDiaOffset', 'offset', 'minimalPercent', 'longSide', 'minAngleLimit', 'maxAngleLimit' ])
+#DbParams = namedtuple('DbParams', ['toolDia','dbType', 'fromTop', 'toolDiaOffset', 'offset', 'minimalPercent', 'longSide', 'minAngleLimit', 'maxAngleLimit' ])
 logger = logging.getLogger('dogbone.utils')
 
 def findInnerCorners(face):
@@ -225,6 +231,7 @@ def getTranslateVectorBetweenFaces(fromFace, toFace):
         
     
 class HandlerHelper(object):
+    # Overloads notify method of handler Class
     def __init__(self):
         # Note: we need to maintain a reference to each handler, otherwise the handlers will be GC'd and SWIG will be
         # unable to call our callbacks. Learned this the hard way!

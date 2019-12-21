@@ -23,7 +23,7 @@ import hashlib
 
 from common import dbutils as dbUtils
 from common import dbParamsClass
-from class_code.dbFaces import DbFaces, DbFace
+from class_source.dbFaces import DbFaces, DbFace
 from math import sqrt, pi
 
 #==============================================================================
@@ -44,12 +44,6 @@ DEBUGLEVEL = logging.NOTSET
 #==============================================================================
 faceSelections = lambda selectionObjects: list(filter(lambda face: face.objectType == adsk.fusion.BRepFace.classType(), selectionObjects))
 edgeSelections = lambda selectionObjects: list(filter(lambda edge: edge.objectType == adsk.fusion.BRepEdge.classType(), selectionObjects))
-
-# Generate occurrence hash
-calcOccHash = lambda x: x.assemblyContext.name if x.assemblyContext else x.body.name
-
-# Generate an edgeHash or faceHash from object
-calcHash = lambda x: str(x.tempId) + ':' + x.assemblyContext.name.split(':')[-1] if x.assemblyContext else str(x.tempId) + ':' + x.body.name
 
 HashLoad = namedtuple('Hashload',['faceHash','occHash'])
 EdgeParams = namedtuple('EdgeParams',['edgeHash','params'])

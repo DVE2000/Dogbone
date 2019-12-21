@@ -14,7 +14,7 @@ from functools import reduce, lru_cache
 
 from common import dbutils as dbUtils
 from common import dbParamsClass
-from class_code.dbEdges import dbEdges, dbEdge
+from class_source.dbEdges import dbEdges, dbEdge
 from math import sqrt, pi
 
 
