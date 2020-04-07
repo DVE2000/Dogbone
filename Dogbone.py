@@ -27,7 +27,8 @@ import traceback
 import json
 
 import time
-from common import dbutils as dbUtils, calcHash
+from common import dbutils as dbUtils
+from common.dbutils import calcHash
 from math import sqrt, pi
 from class_source.faceEdgeMgr import DbGroups, DbGroup
 from common.dbParamsClass import DbParams
@@ -542,7 +543,7 @@ class DogboneCommand(object):
             #==============================================================================
                  
                 self.logger.debug('face being added {}'.format(calcHash(face)))
-                self.registry.addFace(face)
+                self.registry.addFace(face, self.dbParams)
                             
                 if not changedInput.commandInputs.itemById('edgeSelect').isVisible:
                     changedInput.commandInputs.itemById('edgeSelect').isVisible = True

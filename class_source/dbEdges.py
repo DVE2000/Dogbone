@@ -14,6 +14,7 @@ import json
 from functools import reduce, lru_cache
 
 from common import dbutils as dbUtils
+from common.dbutils import occHash
 from common import dbParamsClass
 
 from math import sqrt, pi

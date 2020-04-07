@@ -23,6 +23,7 @@ import hashlib
 
 from common import dbutils as dbUtils
 from common import dbParamsClass
+from common.dbutils import calcOccHash, calcHash 
 from class_source.dbFaces import DbFaces, DbFace
 from math import sqrt, pi
 
@@ -144,7 +145,7 @@ class DbGroups:
 
     def isSelectable(self, entity):
         
-        activeoccurrenceHash = entity.assemblyContext.component.name if entity.assemblyContext else activeoccurrenceHash == entity.body.name
+        activeoccurrenceHash = entity.assemblyContext.component.name if entity.assemblyContext else entity.body.name
         if activeoccurrenceHash not in self.dbOccurrences:
             return True
 
