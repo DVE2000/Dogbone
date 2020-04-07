@@ -221,6 +221,7 @@ class DogboneCommand(object):
         if dbDropDowncntrl:
             dbButtoncntrl = dbDropDowncntrl.controls.itemById('dogboneBtn')
             if dbButtoncntrl:
+                dbButtoncntrl.isPromoted = False
                 dbButtoncntrl.deleteMe()
             dbRestoreBtncntrl = dbDropDowncntrl.controls.itemById('dogboneRestoreBtn')
             if dbRestoreBtncntrl:
@@ -504,7 +505,10 @@ class DogboneCommand(object):
     #  also where eligible edges are determined
     #==============================================================================
     def onChange(self, args:adsk.core.InputChangedEventArgs):
-        
+        # test comment
+        # test comment
+        # test comment
+        # test comment
         changedInput = adsk.core.CommandInput.cast(args.input)
 
         if changedInput.id == 'dogboneType':
@@ -746,6 +750,9 @@ class DogboneCommand(object):
             return # jump out if not dealing with either of the two selection boxes
         eventArgs.isSelectable = self.registry.isSelectable(eventArgs.selection.entity)
         return
+
+    def removeHandlers(self):
+        adsk.terminate()
 
     @property
     def design(self):
@@ -1026,6 +1033,8 @@ def run(context):
 def stop(context):
     try:
         dog.removeButtons()
+        dog.handlers.handlers.clear()
+        adsk.terminate()
     except:
         dbUtils.messageBox(traceback.format_exc())
 

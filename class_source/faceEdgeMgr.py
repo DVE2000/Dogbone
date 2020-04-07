@@ -200,20 +200,20 @@ class DbGroup:
         self.groups = weakref.ref(parent)()
         self.dbFaces = self.groups.dbFaces
         self.dbEdges = self.groups.dbEdges
-        self.groups.dbOccurrences.add(occHash(faceEntity))
+        self.groups.dbOccurrences.add(calcOccHash(faceEntity))
 
         self.logger.info('---------------------------------{}---------------------------'.format('creating group'))
 
-        self.timeLineGroup
+        self.timeLineGroup = []
 
         self._dbParams = dbParams
         
-        self.faceNormal = dbUtils.getFaceNormal(self.face)
+        self.faceNormal = dbUtils.getFaceNormal(faceEntity)
         
-        self.topFacePlane = dbUtils.getTopFacePlane(face)
+        self.topFacePlane = dbUtils.getTopFacePlane(faceEntity)
         self.groupHash = hash((calcOccHash(topFacePlane), self._dbParams.idTuple))
                 
-        self.logger.debug('{} - group initiated'.format((calcOccHash(topFacePlane), self._dbParams.idTuple)))    
+        self.logger.debug('{} - group initiated'.format((calcOccHash(self.topFacePlane), self._dbParams.idTuple)))    
 
     def __hash__(self):
         return self.groupHash
