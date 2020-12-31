@@ -11,7 +11,7 @@ Dogbone addin for fusion 360
 
    **Note: RuntimeError: 2 : InternalValidationError : isExist**
    
-   A recent OS update has enforced case sensitive Folder and File names, and it has revealed an inconsistent capitalization of the folder named Resource.  The easiest method of correcting the error is to change **R**esource to **r**esource in the dogbone directory (generally found "/Users/<your username>/Library/Application Support/Autodesk/Autodesk Fusion 360/APl/Addlns/Dogbone")  
+   A recent OS update has enforced case sensitive Folder and File names, and it has revealed an inconsistent capitalization of the folder named Resource.  The easiest method of correcting the error is to change **R**esource to **r**esource in the dogbone directory (generally found "/Users/\<your username\>/Library/Application Support/Autodesk/Autodesk Fusion 360/APl/Addlns/Dogbone")  
 
    * If you installed F360 directly from AD - download self extracting file [here](https://github.com/DVE2000/Dogbone/releases/download/v2.0/macSetup_AD_dogbone_v2_0.pkg)
 
