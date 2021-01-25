@@ -67,8 +67,8 @@ class DbGroups:
          all selected edges - aka selectedEdges
 
     This object provides basic collation and processing functions - so that face and edge Objects can remain behind the scenes to the outside
-    It also holds the full list of registered and selected face and edge objects - drilling down to a face or edge will inherently only make the relevant entries 
-    available to the face or edge objects
+    It also holds the full list of registered and selected face and edge objects - drilling down to a face or edge will inherently only make the
+    relevant entries available to the face or edge objects
 
     """
 
