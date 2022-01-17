@@ -4,9 +4,9 @@
 	"id":	"28d98884-d5ec-40ab-b8f8-f5f9a76dfc4e",
 	"author":	"Peter Ludikar, Gary Singer, Casey Rogers, Patrick Rainsberry, David Liu",
 	"description":	{
-		"":	"An Add-In for making dog-bone fillets."
+		"":	"Work in progress - Add-In for making dog-bone fillets."
 	},
-	"version":	"2.0",
+	"version":	"3.0",
 	"runOnStartup":	true,
 	"supportedOS":	"windows|mac",
   "editEnabled":	true
