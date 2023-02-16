@@ -245,13 +245,25 @@ class DogboneCommand(object):
         except:
             pass
 
-        # add add-in to UI
+
+
+        # Create button definition and command event handler
         buttonDogbone = self.ui.commandDefinitions.addButtonDefinition(
             self.COMMAND_ID, 'Dogbone', 'Creates dogbones at all inside corners of a face', 'Resources')
 
         buttonDogbone.commandCreated.add(self.handlers.make_handler(adsk.core.CommandCreatedEventHandler,
                                                                     self.onCreate))
+        # Create controls for Manufacturing Workspace
+        mfgEnv = self.ui.workspaces.itemById('MfgWorkingModelEnv')
+        mfgTab = mfgEnv.toolbarTabs.itemById('MfgSolidTab')
+        mfgSolidPanel = mfgTab.toolbarPanels.itemById('SolidCreatePanel')
+        buttonControlMfg = mfgSolidPanel.controls.addCommand(buttonDogbone, 'dogboneBtn')
 
+        # Make the button available in the Mfg panel.
+        buttonControlMfg.isPromotedByDefault = True
+        buttonControlMfg.isPromoted = True
+
+        # CReate controls for the Design Workspace
         createPanel = self.ui.allToolbarPanels.itemById('SolidCreatePanel')
         buttonControl = createPanel.controls.addCommand(buttonDogbone, 'dogboneBtn')
 
@@ -260,13 +272,18 @@ class DogboneCommand(object):
         buttonControl.isPromoted = True
 
     def removeButton(self):
-        cmdDef = self.ui.commandDefinitions.itemById(self.COMMAND_ID)
-        if cmdDef:
-            cmdDef.deleteMe()
         createPanel = self.ui.allToolbarPanels.itemById('SolidCreatePanel')
-        cntrl = createPanel.controls.itemById(self.COMMAND_ID)
-        if cntrl:
+        if cntrl := createPanel.controls.itemById(self.COMMAND_ID):
             cntrl.deleteMe()
+
+        mfgEnv = self.ui.workspaces.itemById('MfgWorkingModelEnv')
+        mfgTab = mfgEnv.toolbarTabs.itemById('MfgSolidTab')
+        mfgSolidPanel = mfgTab.toolbarPanels.itemById('SolidCreatePanel')
+        if cntrl := mfgSolidPanel.controls.itemById(self.COMMAND_ID):
+            cntrl.deleteMe()
+
+        if cmdDef := self.ui.commandDefinitions.itemById(self.COMMAND_ID):
+            cmdDef.deleteMe()
 
     def onCreate(self, args:adsk.core.CommandCreatedEventArgs):
         """
