@@ -613,63 +613,8 @@ class DogboneCommand(object):
         self.writeDefaults()
 
         if self.parametric:
-            userParams = adsk.fusion.UserParameters.cast(self.design.userParameters)
-            
-            #set up parameters, so that changes can be easily made after dogbones have been inserted
-            if not userParams.itemByName('dbToolDia'):
-                dValIn = adsk.core.ValueInput.createByString(self.circStr)
-                dParameter = userParams.add('dbToolDia', dValIn, self.design.unitsManager.defaultLengthUnits, '')
-                dParameter.isFavorite = True
-            else:
-                uParam = userParams.itemByName('dbToolDia')
-                uParam.expression = self.circStr
-                uParam.isFavorite = True
-                
-            if not userParams.itemByName('dbOffset'):
-                rValIn = adsk.core.ValueInput.createByString(self.offStr)
-                rParameter = userParams.add('dbOffset',rValIn, self.design.unitsManager.defaultLengthUnits, 'Do NOT change formula')
-            else:
-                uParam = userParams.itemByName('dbOffset')
-                uParam.expression = self.offStr
-                uParam.comment = 'Do NOT change formula'
-
-            if not userParams.itemByName('dbRadius'):
-                rValIn = adsk.core.ValueInput.createByString('(dbToolDia + dbOffset)/2')
-                rParameter = userParams.add('dbRadius',rValIn, self.design.unitsManager.defaultLengthUnits, 'Do NOT change formula')
-            else:
-                uParam = userParams.itemByName('dbRadius')
-                uParam.expression = '(dbToolDia + dbOffset)/2'
-                uParam.comment = 'Do NOT change formula'
-
-            if not userParams.itemByName('dbMinPercent'):
-                rValIn = adsk.core.ValueInput.createByReal(self.minimalPercent)
-                rParameter = userParams.add('dbMinPercent',rValIn, '', '')
-                rParameter.isFavorite = True
-            else:
-                uParam = userParams.itemByName('dbMinPercent')
-                uParam.value = self.minimalPercent
-                uParam.comment = ''
-                uParam.isFavorite = True
-
-            if not userParams.itemByName('dbHoleOffset'):
-                oValIn = adsk.core.ValueInput.createByString('dbRadius / sqrt(2)' + (' * (1 + dbMinPercent/100)') if self.dbType == 'Minimal Dogbone' else 'dbRadius' if self.dbType == 'Mortise Dogbone' else 'dbRadius / sqrt(2)')
-                oParameter = userParams.add('dbHoleOffset', oValIn, self.design.unitsManager.defaultLengthUnits, 'Do NOT change formula')
-            else:
-                uParam = userParams.itemByName('dbHoleOffset')
-                uParam.expression = 'dbRadius / sqrt(2)' + (' * (1 + dbMinPercent/100)') if self.dbType == 'Minimal Dogbone' else 'dbRadius' if self.dbType == 'Mortise Dogbone' else 'dbRadius / sqrt(2)'
-                uParam.comment = 'Do NOT change formula'
-
-            self.radius = userParams.itemByName('dbRadius').value
-            self.offset = adsk.core.ValueInput.createByString('dbOffset')
-            self.offset = adsk.core.ValueInput.createByReal(userParams.itemByName('dbHoleOffset').value)
-
             self.createParametricDogbones()
-
-        else: #Static dogbones
-
-            self.radius = (self.circVal + self.offVal) / 2
-            self.offset = self.radius / sqrt(2)  * (1 + self.minimalPercent/100) if self.dbType == 'Minimal Dogbone' else self.radius if self.dbType == 'Mortise Dogbone' else self.radius / sqrt(2)
-            
+        else:
             self.createStaticDogbones()
         
         self.logger.info('all dogbones complete\n-------------------------------------------\n')
@@ -822,9 +767,16 @@ class DogboneCommand(object):
         self.errorCount = 0
         if not self.design:
             raise RuntimeError('No active Fusion design')
-        holeInput = adsk.fusion.HoleFeatureInput.cast(None)
-        offsetByStr = adsk.core.ValueInput.createByString('dbHoleOffset')
-        centreDistance = self.radius*(1+self.minimalPercent/100 if self.dbType=='Minimal Dogbone' else  1)
+
+        holeDiaExpr = '({}) + ({})'.format(self.circStr, self.offStr)
+        holeOffsetExpr = (
+            '({}) / 2'.format(holeDiaExpr) if self.dbType == 'Mortise Dogbone' else
+            '({}) / sqrt(8) * {:.3f}'.format(holeDiaExpr, 1 + self.minimalPercent / 100.0) if self.dbType == 'Minimal Dogbone' else
+            '({}) / sqrt(8)'.format(holeDiaExpr))
+
+        diaByStr = adsk.core.ValueInput.createByString(holeDiaExpr)
+        offsetByStr = adsk.core.ValueInput.createByString(holeOffsetExpr)
+        suppressedHoles = []
         
         for occurrenceFace in self.selectedOccurrences.values():
             startTlMarker = self.design.timeline.markerPosition
@@ -909,11 +861,6 @@ class DogboneCommand(object):
                         
                     selectedEdgeFaces = makeNative(selectedEdge.edge).faces
                     
-                    dirVect = adsk.core.Vector3D.cast(dbUtils.getFaceNormal(selectedEdgeFaces[0]).copy())
-                    dirVect.add(dbUtils.getFaceNormal(selectedEdgeFaces[1]))
-                    dirVect.normalize()
-                    dirVect.scaleBy(centreDistance)  #ideally radius should be linked to parameters, 
- 
                     if self.dbType == 'Mortise Dogbone':
                         direction0 = dbUtils.correctedEdgeVector(edge1,startVertex) 
                         direction1 = dbUtils.correctedEdgeVector(edge2,startVertex)
@@ -955,7 +902,7 @@ class DogboneCommand(object):
                         holePlane = makeNative(face)
                          
                     holes =  comp.features.holeFeatures
-                    holeInput = holes.createSimpleInput(adsk.core.ValueInput.createByString('dbRadius*2'))
+                    holeInput = holes.createSimpleInput(diaByStr)
 #                    holeInput.creationOccurrence = occ #This needs to be uncommented once AD fixes component copy issue!!
                     holeInput.isDefaultDirection = True
                     holeInput.tipAngle = adsk.core.ValueInput.createByString('180 deg')
@@ -971,11 +918,10 @@ class DogboneCommand(object):
                     holeFeature = holes.add(holeInput)
                     holeFeature.name = 'dogbone'
                     holeFeature.isSuppressed = True
+                    suppressedHoles.append(holeFeature)
                     
-                for hole in holes:
-                    if hole.name[:7] != 'dogbone':
-                        break
-                    hole.isSuppressed = False
+            for hole in suppressedHoles:
+                hole.isSuppressed = False
                     
             endTlMarker = self.design.timeline.markerPosition-1
             if endTlMarker - startTlMarker >0:
@@ -992,8 +938,9 @@ class DogboneCommand(object):
         self.errorCount = 0
         if not self.design:
             raise RuntimeError('No active Fusion design')
-        holeInput = adsk.fusion.HoleFeatureInput.cast(None)
-        centreDistance = self.radius*(1+self.minimalPercent/100 if self.dbType == 'Minimal Dogbone' else  1)
+
+        radius = (self.circVal + self.offVal) / 2
+        centreDistance = radius*(1+self.minimalPercent/100 if self.dbType == 'Minimal Dogbone' else  1)
         
         for occurrenceFace in self.selectedOccurrences.values():
             startTlMarker = self.design.timeline.markerPosition
@@ -1130,7 +1077,7 @@ class DogboneCommand(object):
                         face = reValidateFace(comp, selectedFace.refPoint)
 
                     holes =  comp.features.holeFeatures
-                    holeInput = holes.createSimpleInput(adsk.core.ValueInput.createByReal(self.radius*2))
+                    holeInput = holes.createSimpleInput(adsk.core.ValueInput.createByReal(radius*2))
                     holeInput.isDefaultDirection = True
                     holeInput.tipAngle = adsk.core.ValueInput.createByString('180 deg')
                     holeInput.participantBodies = [face.body]
