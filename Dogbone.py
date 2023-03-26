@@ -64,47 +64,44 @@ class DbFace:
         #             this is where inside corner edges, dropping down from the face are processed
         #==============================================================================
 
-        for loop in self.face.loops:
-            if loop.coEdges.count <3 :  
-                #circles and non-straight edges that make a face
-                continue 
-            outer = 1 if loop.isOuter else 1
+        faceNormal = dbUtils.getFaceNormal(face)
 
-            for coEdge in loop.coEdges:
-                if coEdge.edge.geometry.curveType != adsk.core.Curve2DTypes.Line2DCurveType:
+        for edge in self.face.body.edges:
+                if edge.isDegenerate:
                     continue
-                thisEdge:adsk.fusion.BRepEdge = coEdge.edge
-                nextEdge:adsk.fusion.BRepEdge = coEdge.next.edge
-
-                _, thisCoEdgeStart, thisCoEdgeEnd = coEdge.evaluator.getEndPoints()
-                _, nextCoEdgeStart, nextCoEdgeEnd = coEdge.next.evaluator.getEndPoints()
-                thisCoEdgeVector = adsk.core.Point3D.create(thisCoEdgeStart.x, thisCoEdgeStart.y, 0).vectorTo(adsk.core.Point3D.create(thisCoEdgeEnd.x,thisCoEdgeEnd.y, 0))
-                nextCoEdgeVector = adsk.core.Point3D.create(nextCoEdgeStart.x, nextCoEdgeStart.y, 0).vectorTo(adsk.core.Point3D.create(nextCoEdgeEnd.x,nextCoEdgeEnd.y, 0))
-                # nextCoEdgeVector = nextCoEdgeStart.geometry.vectorTo(nextCoEdgeEnd.geometry)
-
-                thisStartVertex, thisEndVertex = (thisEdge.endVertex, thisEdge.startVertex) if coEdge.isOpposedToEdge else (thisEdge.startVertex, thisEdge.endVertex)
-                nextStartVertex, nextEndVertex = (nextEdge.endVertex, nextEdge.startVertex) if coEdge.next.isOpposedToEdge else (nextEdge.startVertex, nextEdge.endVertex)
-
-                thisEdgeVector = thisStartVertex.geometry.vectorTo(thisEndVertex.geometry)
-                nextEdgeVector = nextStartVertex.geometry.vectorTo(nextEndVertex.geometry)
-            
-                print(f'isOuter: {loop.isOuter} this: {thisCoEdgeVector.asArray()} next:{nextCoEdgeVector.asArray()}')
-                if thisCoEdgeVector.crossProduct(nextCoEdgeVector).z*outer >0:
+                if edge in self.brepEdges:
                     continue
-                if abs(thisCoEdgeVector.angleTo(nextCoEdgeVector) - math.pi/2) > 0.001:
-                    continue
-                vertexEdges = {hash(edge.entityToken): edge for edge in thisEndVertex.edges}
-                loopEdges = {hash(thisEdge.entityToken), hash(nextEdge.entityToken)}
-                edgeId = (vertexEdges.keys() - loopEdges).pop()
-                edge = vertexEdges[edgeId]
-            # edgeId = hash(edge.entityToken) #str(edge.tempId)+':'+ activeEdgeName
-                parent.selectedEdges[edgeId] = self._associatedEdgesDict[edgeId] = DbEdge(edge = edge, parentFace = self)
-                self.brepEdges.append(edge)
-                parent.addingEdges = True
-                self.commandInputsEdgeSelect.addSelection(edge)
-                parent.addingEdges = False
-                parent.selectedEdgesSet  |= {edgeId} # can be used for reverse lookup of edge to face
-                        # dbUtils.messageBox(f'Failed at edge:\n{traceback.format_exc()}')
+                try:
+                    if edge.geometry.curveType != adsk.core.Curve3DTypes.Line3DCurveType:
+                        continue
+                    vector = edge.startVertex.geometry.vectorTo(edge.endVertex.geometry)
+                    if vector.isPerpendicularTo(faceNormal):
+                        continue
+                    if edge.faces.item(0).geometry.objectType != adsk.core.Plane.classType():
+                        continue
+                    if edge.faces.item(1).geometry.objectType != adsk.core.Plane.classType():
+                        continue              
+                    if edge.startVertex not in face.vertices:
+                        if edge.endVertex not in face.vertices:
+                            continue
+                        else:
+                            vector = edge.endVertex.geometry.vectorTo(edge.startVertex.geometry)
+                    if vector.dotProduct(faceNormal) >= 0:
+                        continue
+                    if dbUtils.getAngleBetweenFaces(edge) > math.pi:
+                        continue
+
+                    # activeEdgeName = edge.assemblyContext.name.split(':')[-1] if edge.assemblyContext else edge.body.name
+                    edgeId = hash(edge.entityToken) #str(edge.tempId)+':'+ activeEdgeName
+                # edgeId = hash(edge.entityToken) #str(edge.tempId)+':'+ activeEdgeName
+                    parent.selectedEdges[edgeId] = self._associatedEdgesDict[edgeId] = DbEdge(edge = edge, parentFace = self)
+                    self.brepEdges.append(edge)
+                    parent.addingEdges = True
+                    self.commandInputsEdgeSelect.addSelection(edge)
+                    parent.addingEdges = False
+                    parent.selectedEdgesSet  |= {edgeId}
+                except:
+                    dbUtils.messageBox('Failed at edge:\n{}'.format(traceback.format_exc()))
 
     def __hash__(self):
         return self.faceId
