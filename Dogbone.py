@@ -65,23 +65,33 @@ class DbFace:
         #==============================================================================
 
         for loop in self.face.loops:
-            if len(loop.coEdges) <3 :
-                continue
-            for coEdge in loop.coEdges:
+            if loop.coEdges.count <3 :  
+                #circles and non-straight edges that make a face
+                continue 
+            outer = 1 if loop.isOuter else 1
 
+            for coEdge in loop.coEdges:
                 if coEdge.edge.geometry.curveType != adsk.core.Curve2DTypes.Line2DCurveType:
                     continue
                 thisEdge:adsk.fusion.BRepEdge = coEdge.edge
                 nextEdge:adsk.fusion.BRepEdge = coEdge.next.edge
+
+                _, thisCoEdgeStart, thisCoEdgeEnd = coEdge.evaluator.getEndPoints()
+                _, nextCoEdgeStart, nextCoEdgeEnd = coEdge.next.evaluator.getEndPoints()
+                thisCoEdgeVector = adsk.core.Point3D.create(thisCoEdgeStart.x, thisCoEdgeStart.y, 0).vectorTo(adsk.core.Point3D.create(thisCoEdgeEnd.x,thisCoEdgeEnd.y, 0))
+                nextCoEdgeVector = adsk.core.Point3D.create(nextCoEdgeStart.x, nextCoEdgeStart.y, 0).vectorTo(adsk.core.Point3D.create(nextCoEdgeEnd.x,nextCoEdgeEnd.y, 0))
+                # nextCoEdgeVector = nextCoEdgeStart.geometry.vectorTo(nextCoEdgeEnd.geometry)
+
                 thisStartVertex, thisEndVertex = (thisEdge.endVertex, thisEdge.startVertex) if coEdge.isOpposedToEdge else (thisEdge.startVertex, thisEdge.endVertex)
-                nextStartVertex, nextEndVertex = (nextEdge.endVertex, nextEdge.startVertex) if coEdge.isOpposedToEdge else (nextEdge.startVertex, nextEdge.endVertex)
+                nextStartVertex, nextEndVertex = (nextEdge.endVertex, nextEdge.startVertex) if coEdge.next.isOpposedToEdge else (nextEdge.startVertex, nextEdge.endVertex)
 
                 thisEdgeVector = thisStartVertex.geometry.vectorTo(thisEndVertex.geometry)
                 nextEdgeVector = nextStartVertex.geometry.vectorTo(nextEndVertex.geometry)
             
-                if thisEdgeVector.crossProduct(nextEdgeVector).z >0:
+                print(f'isOuter: {loop.isOuter} this: {thisCoEdgeVector.asArray()} next:{nextCoEdgeVector.asArray()}')
+                if thisCoEdgeVector.crossProduct(nextCoEdgeVector).z*outer >0:
                     continue
-                if abs(thisEdgeVector.angleTo(nextEdgeVector) - math.pi/2) > 0.001:
+                if abs(thisCoEdgeVector.angleTo(nextCoEdgeVector) - math.pi/2) > 0.001:
                     continue
                 vertexEdges = {hash(edge.entityToken): edge for edge in thisEndVertex.edges}
                 loopEdges = {hash(thisEdge.entityToken), hash(nextEdge.entityToken)}
