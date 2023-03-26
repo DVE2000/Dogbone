@@ -54,7 +54,7 @@ class DbFace:
         self.face = face # BrepFace
         self._faceId = hash(face.entityToken)
         self.faceNormal = dbUtils.getFaceNormal(face)
-        self._refPoint = face.nativeObject.pointOnFace if face.assemblyContext else face.pointOnFace,
+        self._refPoint = face.nativeObject.pointOnFace if face.assemblyContext else face.pointOnFace
         self.commandInputsEdgeSelect = commandInputsEdgeSelect
         self._selected = True
         self._associatedEdgesDict = {} # Keyed with edge
@@ -129,7 +129,7 @@ class DbFace:
 
     @property
     def refPoint(self):
-        self._refPoint = True
+        return self._refPoint
 
     @property
     def select(self):
@@ -149,7 +149,7 @@ class DbFace:
     
     @property
     def selectedEdges(self):
-        return [edgeObj for edgeObj in self._associatedEdgesDict if edgeObj.isSelected]
+        return [edgeObj for edgeObj in self._associatedEdgesDict.values() if edgeObj.isSelected]
     
     @property
     def deleteEdges(self):
@@ -161,6 +161,22 @@ class DbFace:
     @property
     def faceId(self):
         return self._faceId
+
+    @property
+    def component(self)->adsk.fusion.Component:
+        return self.face.assemblyContext.component if self.face.assemblyContext else _rootComp
+  
+    @property
+    def occurrence(self)->adsk.fusion.Occurrence:
+        return self.face.assemblyContext if self.face.assemblyContext else None
+
+    @property
+    def native(self):
+        return self.face.nativeObject if self.face.nativeObject else self.face
+
+    @property
+    def revalidate(self):
+        return self.component.findBRepUsingPoint(self.face, adsk.fusion.BRepEntityTypes.BRepFaceEntityType,-1.0 ,False ).item(0)
 
 class DbEdge:
     def __init__(self, edge:adsk.fusion.BRepEdge, parentFace:DbFace):
@@ -199,6 +215,9 @@ class DbEdge:
     def __hash__(self) -> int:
         return self._hash
 
+    @property
+    def native(self):
+        return self.edge.nativeObject if self.edge.nativeObject else self.edge
 class DogboneCommand(object):
     COMMAND_ID = "dogboneBtn"
     
@@ -882,7 +901,7 @@ class DogboneCommand(object):
 
     @property
     def originPlane(self):
-        return self.rootComp.xZConstructionPlane if self.yUp else self.rootComp.xYConstructionPlane
+        return _rootComp.xZConstructionPlane if self.yUp else _rootComp.xYConstructionPlane
 
     # The main algorithm for parametric dogbones
     def createParametricDogbones(self):
@@ -897,31 +916,32 @@ class DogboneCommand(object):
         for occurrenceFace in self.selectedOccurrences.values():
             startTlMarker = _design.timeline.markerPosition
 
-            if occurrenceFace[0].face.assemblyContext:
-                comp = occurrenceFace[0].face.assemblyContext.component
-                occ = occurrenceFace[0].face.assemblyContext
-                self.logger.debug(f'processing component  = {comp.name}')
-                self.logger.debug(f'processing occurrence  = {occ.name}')
-                #entityName = occ.name.split(':')[-1]
-            else:
-               comp = self.rootComp
-               occ = None
-               self.logger.debug('processing Rootcomponent')
+            # if occurrenceFace[0].face.assemblyContext:
+            #     comp = occurrenceFace[0].face.assemblyContext.component
+            #     occ = occurrenceFace[0].face.assemblyContext
+            #     self.logger.debug(f'processing component  = {comp.name}')
+            #     self.logger.debug(f'processing occurrence  = {occ.name}')
+            #     #entityName = occ.name.split(':')[-1]
+            # else:
+            #    comp = _rootComp
+            #    occ = None
+            #    self.logger.debug('processing Rootcomponent')
+            comp:adsk.fusion.Component = occurrenceFace[0].component
+            occ:adsk.fusion.Occurrence = occurrenceFace[0].occurrence
 
             if self.fromTop:
-                (topFace, topFaceRefPoint) = dbUtils.getTopFace(makeNative(occurrenceFace[0].face))
+                (topFace, topFaceRefPoint) = dbUtils.getTopFace(occurrenceFace[0].native)
                 self.logger.info(f'Processing holes from top face - {topFace.body.name}')
 
             for selectedFace in occurrenceFace:
                 if len(selectedFace.selectedEdges.values()) <1:
                     self.logger.debug('Face has no edges')
-                face = makeNative(selectedFace.face)
-                
-                comp:adsk.fusion.Component = comp
+                    
+                face = selectedFace.native
                 
                 if not face.isValid:
                     self.logger.debug('revalidating Face')
-                    face = reValidateFace(comp, selectedFace.refPoint)
+                    face.revalidate
                 self.logger.debug(f'Processing Face = {face.tempId}')
               
                 #faceNormal = dbUtils.getFaceNormal(face.nativeObject)
@@ -929,7 +949,7 @@ class DogboneCommand(object):
                     self.logger.debug(f'topFace type {type(topFace)}')
                     if not topFace.isValid:
                        self.logger.debug('revalidating topFace') 
-                       topFace = reValidateFace(comp, topFaceRefPoint)
+                       topFace.revalidate # = reValidateFace(comp, topFaceRefPoint)
 
                     topFace = makeNative(topFace)
                        
@@ -947,7 +967,7 @@ class DogboneCommand(object):
 
                     if not face.isValid:
                         self.logger.debug('Revalidating face')
-                        face = reValidateFace(comp, selectedFace.refPoint)
+                        face.revalidate # = reValidateFace(comp, selectedFace.refPoint)
 
                     if not selectedEdge.edge.isValid:
                         continue # edges that have been processed already will not be valid any more - at the moment this is easier than removing the 
@@ -1018,7 +1038,7 @@ class DogboneCommand(object):
                         self.logger.debug(f'centrePoint at topFace = {centrePoint.asArray()}')
                         holePlane = topFace if self.fromTop else face
                         if not holePlane.isValid:
-                            holePlane = reValidateFace(comp, topFaceRefPoint)
+                            holePlane.revalidate # = reValidateFace(comp, topFaceRefPoint)
                     else:
                         holePlane = makeNative(face)
                          
@@ -1066,25 +1086,25 @@ class DogboneCommand(object):
         for occurrenceFace in self.selectedOccurrences.values():
             startTlMarker = _design.timeline.markerPosition
             
-            if occurrenceFace[0].face.assemblyContext:
-                comp = occurrenceFace[0].face.assemblyContext.component
-                occ = occurrenceFace[0].face.assemblyContext
-                self.logger.info(f'processing component  = {comp.name}')
-                self.logger.info(f'processing occurrence  = {occ.name}')
-                #entityName = occ.name.split(':')[-1]
-            else:
-               comp = self.rootComp
-               occ = None
-               self.logger.info('processing Rootcomponent')
-               
+            # if occurrenceFace[0].face.assemblyContext:
+            #     comp = occurrenceFace[0].face.assemblyContext.component
+            #     occ = occurrenceFace[0].face.assemblyContext
+            #     self.logger.info(f'processing component  = {comp.name}')
+            #     self.logger.info(f'processing occurrence  = {occ.name}')
+            #     #entityName = occ.name.split(':')[-1]
+            # else:
+            #    comp = _rootComp
+            #    occ = None
+            #    self.logger.info('processing Rootcomponent')
+            comp:adsk.fusion.Component = occurrenceFace[0].component
+            occ:adsk.fusion.Occurrence = occurrenceFace[0].occurrence   
             
             if self.fromTop:
-                (topFace, topFaceRefPoint) = dbUtils.getTopFace(makeNative(occurrenceFace[0].face))
+                (topFace, topFaceRefPoint) = dbUtils.getTopFace(occurrenceFace[0].native)
                 self.logger.debug(f'topFace ref point: {topFaceRefPoint.asArray()}')
                 self.logger.info(f'Processing holes from top face - {topFace.tempId}')
                 self.debugFace(topFace)
                 
-                    
                 sketch:adsk.fusion.Sketch = comp.sketches.add(topFace)  #used for fault finding
                 sketch.name = 'dogbone'
                 sketch.isComputeDeferred = True
@@ -1094,7 +1114,7 @@ class DogboneCommand(object):
                 if len(selectedFace.selectedEdges) <1:
                     self.logger.debug('Face has no edges')
                     continue 
-                face = makeNative(selectedFace.face)
+                face = selectedFace.native
 
                 if not face.isValid:
                     self.logger.debug('Revalidating face')
@@ -1125,7 +1145,7 @@ class DogboneCommand(object):
                     sketch.isComputeDeferred = True
                     self.logger.debug(f'creating face plane sketch - {sketch.name}')
                 
-                for selectedEdge in selectedFace.selectedEdges.values():
+                for selectedEdge in selectedFace.selectedEdges:
                     
                     self.logger.debug(f'Processing edge - {selectedEdge.edge.tempId}')
 
@@ -1146,7 +1166,7 @@ class DogboneCommand(object):
                     except:
                         pass
 
-                    edge = makeNative(selectedEdge.edge)                    
+                    edge = selectedEdge.native                    
                     startVertex:adsk.fusion.BRepVertex = dbUtils.getVertexAtFace(face, edge)
                     centrePoint = startVertex.geometry.copy()
                         
