@@ -49,7 +49,7 @@ _ui = _app.userInterface
 _rootComp = _design.rootComponent
 
 class DbFace:
-    def __init__(self, parent, face, commandInputsEdgeSelect):
+    def __init__(self, parent, face:adsk.fusion.BRepFace, commandInputsEdgeSelect):
         self.parent:DogboneCommand = parent
         self.face = face # BrepFace
         self._faceId = hash(face.entityToken)
@@ -58,7 +58,7 @@ class DbFace:
         self.commandInputsEdgeSelect = commandInputsEdgeSelect
         self._selected = True
         self._associatedEdgesDict = {} # Keyed with edge
-        self.brepEdges = [] # used for quick checking if an edge is already included (below)
+        processedEdges = [] # used for quick checking if an edge is already included (below)
 
         #==============================================================================
         #             this is where inside corner edges, dropping down from the face are processed
@@ -67,41 +67,43 @@ class DbFace:
         faceNormal = dbUtils.getFaceNormal(face)
 
         for edge in self.face.body.edges:
-                if edge.isDegenerate:
+            if not edge.isValid:
+                # continue
+                edge = self.component.findBRepUsingPoint(
+                    edge.evaluator.getPointAtParameter(.5), adsk.fusion.BRepEntityTypes.BRepEdgeEntityType,-1.0 ,False 
+                    ).item(0)               
+            if edge.isDegenerate:
+                continue
+            if edge in processedEdges:
+                continue
+            try:
+                if edge.geometry.curveType != adsk.core.Curve3DTypes.Line3DCurveType:
                     continue
-                if edge in self.brepEdges:
+                vector = edge.startVertex.geometry.vectorTo(edge.endVertex.geometry)
+                if vector.isPerpendicularTo(faceNormal):
                     continue
-                try:
-                    if edge.geometry.curveType != adsk.core.Curve3DTypes.Line3DCurveType:
+                if edge.faces.item(0).geometry.objectType != adsk.core.Plane.classType():
+                    continue
+                if edge.faces.item(1).geometry.objectType != adsk.core.Plane.classType():
+                    continue              
+                if edge.startVertex not in face.vertices:
+                    if edge.endVertex not in face.vertices:
                         continue
-                    vector = edge.startVertex.geometry.vectorTo(edge.endVertex.geometry)
-                    if vector.isPerpendicularTo(faceNormal):
-                        continue
-                    if edge.faces.item(0).geometry.objectType != adsk.core.Plane.classType():
-                        continue
-                    if edge.faces.item(1).geometry.objectType != adsk.core.Plane.classType():
-                        continue              
-                    if edge.startVertex not in face.vertices:
-                        if edge.endVertex not in face.vertices:
-                            continue
-                        else:
-                            vector = edge.endVertex.geometry.vectorTo(edge.startVertex.geometry)
-                    if vector.dotProduct(faceNormal) >= 0:
-                        continue
-                    if dbUtils.getAngleBetweenFaces(edge) > math.pi:
-                        continue
+                    else:
+                        vector = edge.endVertex.geometry.vectorTo(edge.startVertex.geometry)
+                if vector.dotProduct(faceNormal) >= 0:
+                    continue
+                if dbUtils.getAngleBetweenFaces(edge) > math.pi:
+                    continue
 
-                    # activeEdgeName = edge.assemblyContext.name.split(':')[-1] if edge.assemblyContext else edge.body.name
-                    edgeId = hash(edge.entityToken) #str(edge.tempId)+':'+ activeEdgeName
-                # edgeId = hash(edge.entityToken) #str(edge.tempId)+':'+ activeEdgeName
-                    parent.selectedEdges[edgeId] = self._associatedEdgesDict[edgeId] = DbEdge(edge = edge, parentFace = self)
-                    self.brepEdges.append(edge)
-                    parent.addingEdges = True
-                    self.commandInputsEdgeSelect.addSelection(edge)
-                    parent.addingEdges = False
-                    parent.selectedEdgesSet  |= {edgeId}
-                except:
-                    dbUtils.messageBox('Failed at edge:\n{}'.format(traceback.format_exc()))
+                edgeId = hash(edge.entityToken) #str(edge.tempId)+':'+ activeEdgeName
+                parent.selectedEdges[edgeId] = self._associatedEdgesDict[edgeId] = DbEdge(edge = edge, parentFace = self)
+                processedEdges.append(edge)
+                parent.addingEdges = True
+                self.commandInputsEdgeSelect.addSelection(edge)
+                parent.addingEdges = False
+            except:
+                dbUtils.messageBox('Failed at edge:\n{}'.format(traceback.format_exc()))
 
     def __hash__(self):
         return self.faceId
@@ -186,6 +188,22 @@ class DbEdge:
         self._edgeId = hash(edge.entityToken)
         self._selected = True
         self._parentFace = parentFace
+        self._native = self.edge.nativeObject if self.edge.nativeObject else self.edge
+
+        face1, face2 = (face for face in self._native.faces)
+        _,face1normal = face1.evaluator.getNormalAtPoint(face1.pointOnFace)
+        _,face2normal = face2.evaluator.getNormalAtPoint(face2.pointOnFace)
+        face1normal.add(face2normal)
+        face1normal.normalize()
+        self._cornerVector = face1normal
+
+        self._dogboneCentre = self.native.startVertex.geometry \
+            if self.native.startVertex in self._parentFace.native.vertices \
+            else self.native.endVertex.geometry
+        
+        self._endPoints = (self.native.startVertex, self.native.endVertex)\
+                if self.native.startVertex in self._parentFace.native.vertices\
+                    else self._endPoints (self.native.endVertex, self.native.startVertex)
 
     def __hash__(self):
         return self._edgeId
@@ -201,6 +219,37 @@ class DbEdge:
     @property
     def isSelected(self):
         return self._selected
+
+    @property
+    def native(self):
+        return self._native
+
+    @property
+    def dogboneCentre(self)->adsk.core.Point3D:
+        '''
+        returns native Edge Point associated with parent Face - initial centre of the dogbone
+        '''
+        return self._dogboneCentre
+
+    @property
+    def endPoints(self)->adsk.fusion.BRepVertex:
+        '''
+        returns native Edge Point associated with parent Face - initial centre of the dogbone
+        '''
+        return self._endPoints
+
+    @property
+    def cornerVector(self)->adsk.core.Vector3D:
+        '''
+        returns normalised vector away from the faceVertex that the dogbone needs to located on
+          '''
+        # face1, face2 = (face for face in self.edge.faces)
+        # _,face1normal = face1.evaluator.getNormalAtPoint(face1.pointOnFace)
+        # _,face2normal = face1.evaluator.getNormalAtPoint(face2.pointOnFace)
+        # face1normal.add(face2normal)
+        # face1normal.normalize()
+        # face1normal
+        return self._cornerVector 
     
     def faceObj(self):
         return self._parentFace
@@ -234,7 +283,7 @@ class DogboneCommand(object):
     selectedOccurrences = {} 
     selectedFaces = {} #key: face.entityToken value:[DbFace,...]
     selectedEdges = {} #kay: edge.entityToken value:[DbEdge, ...]
-    selectedEdgesSet = set()
+    # selectedEdgesSet = set()
 
     def __init__(self):
 
@@ -887,7 +936,7 @@ class DogboneCommand(object):
 
             # occurrenceNumber = activeOccurrenceId.split(':')[-1]
             edgeId = hash(currentEdge.entityToken) #str(currentEdge.tempId) + ':' + occurrenceNumber
-            if (edgeId in self.selectedEdgesSet):
+            if (edgeId in self.selectedEdges.keys()):
                 eventArgs.isSelectable = True
             else:
                 eventArgs.isSelectable = False
@@ -1138,7 +1187,8 @@ class DogboneCommand(object):
                     self.logger.debug(f'creating face plane sketch - {sketch.name}')
                 
                 for selectedEdge in selectedFace.selectedEdges:
-                    
+                    selectedEdge:DbEdge
+
                     self.logger.debug(f'Processing edge - {selectedEdge.edge.tempId}')
 
                     if not selectedEdge.isSelected:
@@ -1153,15 +1203,15 @@ class DogboneCommand(object):
                         continue # edges that have been processed already will not be valid any more - at the moment this is easier than removing the 
     #                    affected edge from self.edges after having been processed
                     try:
-                        if not dbUtils.isEdgeAssociatedWithFace(face, makeNative(selectedEdge.edge)):
+                        if not dbUtils.isEdgeAssociatedWithFace(face, selectedEdge.native):
                             continue  # skip if edge is not associated with the face currently being processed
                     except:
                         pass
 
                     edge = selectedEdge.native                    
-                    startVertex:adsk.fusion.BRepVertex = dbUtils.getVertexAtFace(face, edge)
-                    centrePoint = startVertex.geometry.copy()
-                        
+                    centrePoint = selectedEdge.dogboneCentre # dbUtils.getVertexAtFace(face, edge)
+                    # centrePoint = startVertex.geometry.copy()
+                    startVertex, endVertex = selectedEdge.endPoints    
                     selectedEdgeFaces = edge.faces
                     
                     if self.dbType == 'Mortise Dogbone':
@@ -1178,10 +1228,10 @@ class DogboneCommand(object):
                                 dirVect = direction1
                             else:
                                 dirVect = direction0
+                        dirVect.normalize()
                     else:
-                        dirVect:adsk.core.Vector3D = dbUtils.getFaceNormal(makeNative(selectedEdgeFaces[0])).copy()
-                        dirVect.add(dbUtils.getFaceNormal(makeNative(selectedEdgeFaces[1])))
-                    dirVect.normalize()
+                        dirVect = selectedEdge.cornerVector
+
                     dirVect.scaleBy(centreDistance)  #ideally radius should be linked to parameters, 
                                                           # but hole start point still is the right quadrant
                     centrePoint.translateBy(dirVect)
