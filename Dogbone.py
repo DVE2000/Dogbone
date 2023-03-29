@@ -26,8 +26,7 @@ import time
 from . import dbutils as dbUtils
 from .decorators import eventHandler
 from math import sqrt as sqrt
-from .DbFace import DbFace
-from .DbEdge import DbEdge
+from .DbClasses import DbFace, DbEdge
 
 
 #constants - to keep attribute group and names consistent
