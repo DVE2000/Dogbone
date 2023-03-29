@@ -18,9 +18,10 @@ def getAngleBetweenFaces(edge)->float:
     but: the edge direction needs to be determined 
     outer coEdges always run counterClockwise
     get the coEdge for face1
-    orient the edge vector so it is has the same direction as the coEdge
-    then with edge vertical, face1 on left, face2 on right, coEdge1 will be up
-    if inside corner: face1normal x face2normal result will be in down direction
+    orient the edge vector so it is has the same direction as the coEdge.
+    
+    Then with edge vertical, face1 on left, face2 on right, coEdge1 will be up
+    if inside corner: face1normal x face2normal result will be in DOWN direction
     ie opposite to face1 coEdge direction
     """
     # Verify that the two faces are planar.
@@ -41,10 +42,11 @@ def getAngleBetweenFaces(edge)->float:
     coEdge = coEdge1 if coEdge1.loop.face == face1 else coEdge2
 
     # Create a vector that represents the direction of the co-edge.
-    edgeVec = getEdgeVector(edge, coEdge.isOpposedToEdge)
+    edgeVec = getEdgeVector(edge, reverse = coEdge.isOpposedToEdge)
 
     # Get the cross product of the face normals.
-    cross = normal2.crossProduct(normal1)  #normal1 and normal2 are flipped as edge vector is pointing "up" 
+    # normal1 and normal2 are flipped as edge vector is pointing "up" 
+    cross = normal2.crossProduct(normal1)
 
     # Check to see if the cross product is in the same or opposite direction
     # of the co-edge direction.  If it's opposed then it's a convex angle.
@@ -57,26 +59,18 @@ def findExtent(face, edge):
 #    faceNormal = adsk.core.Vector3D.cast(face.evaluator.getNormalAtPoint(face.pointOnFace)[1])
     
     if edge.startVertex in face.vertices:
-        endVertex = edge.endVertex
-    else:
-        endVertex = edge.startVertex
-    return endVertex
-
+        return edge.endVertex
+    return edge.startVertex
     
-def correctedEdgeVector(edge, refVertex):
+def correctedEdgeVector(edge:adsk.fusion.BRepEdge, refVertex:adsk.fusion.BRepVertex)->adsk.core.Vector3D:
     if edge.startVertex.geometry.isEqualTo(refVertex.geometry):
         return edge.startVertex.geometry.vectorTo(edge.endVertex.geometry)
-    else:
-        return edge.endVertex.geometry.vectorTo(edge.startVertex.geometry)
-    return False
+    return edge.endVertex.geometry.vectorTo(edge.startVertex.geometry)
 
 def correctedSketchEdgeVector(edge, refPoint):
     if edge.startSketchPoint.geometry.isEqualTo(refPoint.geometry):
         return edge.startSketchPoint.geometry.vectorTo(edge.endSketchPoint.geometry)
-    else:
-        return edge.endSketchPoint.geometry.vectorTo(edge.startSketchPoint.geometry)
-    return False
-    
+    return edge.endSketchPoint.geometry.vectorTo(edge.startSketchPoint.geometry)
 
 def isEdgeAssociatedWithFace(face, edge):
     
@@ -106,7 +100,12 @@ def getVertexAtFace(face, edge):
         return edge.endVertex
     return False
 
-def getEdgeVector(edge:adsk.fusion.BRepEdge, reverse = False) ->adsk.core.Vector3D:
+def getEdgeVector(edge:adsk.fusion.BRepEdge, refFace:adsk.fusion.BRepFace = None, reverse = False) ->adsk.core.Vector3D:
+    """
+    returns vector of the edge paramater (not normalised!)
+    if refFace is supplied - returns vector pointing out from face vertex"""
+    if refFace:
+        reverse = edge.endVertex in refFace.vertices
     startPoint, endPoint = (edge.endVertex.geometry, edge.startVertex.geometry) if reverse else (edge.startVertex.geometry, edge.endVertex.geometry)
     return startPoint.vectorTo(endPoint)
 

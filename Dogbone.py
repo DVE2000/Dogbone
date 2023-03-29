@@ -66,12 +66,19 @@ class DbFace:
 
         faceNormal = dbUtils.getFaceNormal(face)
 
-        for edge in self.face.body.edges:
+        faceEdgesSet = {hash(edge.entityToken) for edge in face.edges}
+        faceVertices = [vertex for vertex in face.vertices]
+        allEdges = {}
+        for vertex  in faceVertices:
+            allEdges.update({hash(edge.entityToken): edge for edge in vertex.edges})
+
+        candidateEdgesId = set(allEdges.keys()) - faceEdgesSet
+        candidateEdges = [allEdges[edgeId] for edgeId in candidateEdgesId]
+
+        # for edge in self.face.body.edges:
+        for edge in candidateEdges:
             if not edge.isValid:
-                # continue
-                edge = self.component.findBRepUsingPoint(
-                    edge.evaluator.getPointAtParameter(.5), adsk.fusion.BRepEntityTypes.BRepEdgeEntityType,-1.0 ,False 
-                    ).item(0)               
+                continue
             if edge.isDegenerate:
                 continue
             if edge in processedEdges:
@@ -79,21 +86,18 @@ class DbFace:
             try:
                 if edge.geometry.curveType != adsk.core.Curve3DTypes.Line3DCurveType:
                     continue
-                vector = edge.startVertex.geometry.vectorTo(edge.endVertex.geometry)
-                if vector.isPerpendicularTo(faceNormal):
+                vector:adsk.core.Vector3D = dbUtils.getEdgeVector(edge, refFace = face) #edge.startVertex.geometry.vectorTo(edge.endVertex.geometry)
+                vector.normalize()
+                if not vector.isParallelTo(faceNormal):
                     continue
-                if edge.faces.item(0).geometry.objectType != adsk.core.Plane.classType():
+                if vector.isEqualTo(faceNormal):
                     continue
-                if edge.faces.item(1).geometry.objectType != adsk.core.Plane.classType():
+                face1, face2 = edge.faces 
+                if face1.geometry.objectType != adsk.core.Plane.classType():
+                    continue
+                if face2.geometry.objectType != adsk.core.Plane.classType():
                     continue              
-                if edge.startVertex not in face.vertices:
-                    if edge.endVertex not in face.vertices:
-                        continue
-                    else:
-                        vector = edge.endVertex.geometry.vectorTo(edge.startVertex.geometry)
-                if vector.dotProduct(faceNormal) >= 0:
-                    continue
-                if dbUtils.getAngleBetweenFaces(edge) > math.pi:
+                if abs(dbUtils.getAngleBetweenFaces(edge) - math.pi/2) > 0.001:
                     continue
 
                 edgeId = hash(edge.entityToken) #str(edge.tempId)+':'+ activeEdgeName
@@ -203,7 +207,7 @@ class DbEdge:
         
         self._endPoints = (self.native.startVertex, self.native.endVertex)\
                 if self.native.startVertex in self._parentFace.native.vertices\
-                    else self._endPoints (self.native.endVertex, self.native.startVertex)
+                    else (self.native.endVertex, self.native.startVertex)
 
     def __hash__(self):
         return self._edgeId

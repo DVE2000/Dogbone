@@ -8,6 +8,11 @@ import pprint
 from functools import wraps
 # from . import common as g
 
+# Globals
+_app = adsk.core.Application.get()
+_design = _app.activeProduct
+_ui = _app.userInterface
+_rootComp = _design.rootComponent
 
 pp = pprint.PrettyPrinter()
 
@@ -148,11 +153,11 @@ def makeTempFaceVisible(method):
     def wrapper (*args, **kwargs):
 
         # Create a base feature
-        baseFeats = c._rootComp.features.baseFeatures
+        baseFeats = _rootComp.features.baseFeatures
         baseFeat = baseFeats.add()
         
         baseFeat.startEdit()
-        bodies = c._rootComp.bRepBodies
+        bodies = _rootComp.bRepBodies
 
         tempBody = method(*args, **kwargs)
         tempBody.name = f'Debug_{method.__name__}'
@@ -169,7 +174,7 @@ def entityFromToken(method):
     def wrapper(*args, **kwargs):
         try:
             entityToken = method(*args, **kwargs)
-            entity = cacheDict.setdefault(entityToken, c._design.findEntityByToken(entityToken)[0])
+            entity = cacheDict.setdefault(entityToken, _design.findEntityByToken(entityToken)[0])
             return entity
         except:
             return None
