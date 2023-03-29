@@ -4,6 +4,8 @@ import traceback
 import adsk.core
 import adsk.fusion
 
+logger = logging.getLogger('dogbone.dbutils')
+
 
 def getAngleBetweenFaces(edge)->float:
     """
@@ -144,7 +146,6 @@ def getTopFace(selectedFace):
 
 def getTranslateVectorBetweenFaces(fromFace, toFace):
 #   returns absolute distance
-    logger = logging.getLogger(__name__)
 
     normal = getFaceNormal(fromFace)
     if not normal.isParallelTo(getFaceNormal(fromFace)):
@@ -158,29 +159,4 @@ def getTranslateVectorBetweenFaces(fromFace, toFace):
     toFacePoint = toFacePlane.intersectWithLine(fromFaceLine)
     translateVector = fromFacePoint.vectorTo(toFacePoint)
     return translateVector
-        
     
-class HandlerHelper(object):
-    def __init__(self):
-        # Note: we need to maintain a reference to each handler, otherwise the handlers will be GC'd and SWIG will be
-        # unable to call our callbacks. Learned this the hard way!
-        self.handlers = []  # needed to prevent GC of SWIG objects
-
-    def make_handler(self, handler_cls, notify_method, catch_exceptions=True):
-        class _Handler(handler_cls):
-            def notify(self, args):
-                self.logger = logging.getLogger(__name__)
-                if catch_exceptions:
-                    try:
-                        notify_method(args)
-                    except:
-                        messageBox('Failed:\n{}'.format(traceback.format_exc()))
-                        self.logger.exception('error termination')
-                        for handler in self.logger.handlers:
-                            handler.flush()
-                            handler.close()
-                else:
-                    notify_method(args)
-        h = _Handler()
-        self.handlers.append(h)
-        return h
