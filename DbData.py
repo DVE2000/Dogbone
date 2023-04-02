@@ -4,37 +4,37 @@ from math import pi
 from typing import Optional
 from dataclasses import dataclass
 from dataclasses_json import dataclass_json
+import adsk.core, adsk.fusion
+from .DbClasses import _design
 # from .py_packages.pydantic.dataclasses import dataclass
 
 @dataclass_json
 @dataclass
 class DbParams:
      '''Dataclass - Holds add-in instance setup values'''
-     toolDia: float = 0.25
-     dbType: str = "Normal Dogbone"
-     # fromTop: bool = False
-     fromTop: bool = True
-     toolDiaOffset: int = 0
-     toolDiameterOffset: int = 0
-     offStr: str = "0 cm"
-     offVal: float = 0.0
      toolDiaStr: str = "0.25 in"
-     toolDiaVal: float = 0.635
-     minimalPercent: float = 0
+     dbType: str = "Normal Dogbone"
+     fromTop: bool = True
+     toolDiaOffsetStr: str = "0 cm"
+
+     mortiseType: bool = False
      longSide: bool = True
+
+     minimalPercent: float = 10.0
      minAngleLimit: float = 5/180*pi
      maxAngleLimit: float = 3*pi/4
-     benchmark: bool = False
-     minimalPercent: float = 10.0
+
      parametric: bool = False
-     logging: int = 0
-     mortiseType: bool = False
      expandModeGroup: bool = True
      expandSettingsGroup: bool = True    
- 
-     # @property
-     # def toolDiaStr(self):
-     #      return str(self.toolDia)
-     # @property
-     # def toolDiameterOffsetStr(self):
-     #      return str(self.toolDiameterOffset)
+     logging: int = 0
+     benchmark: bool = False
+
+     @property
+     def toolDia(self):
+          return _design.unitsManager.evaluateExpression(self.toolDiaStr)
+
+     @property
+     def toolDiaOffset(self):
+          return  _design.unitsManager.evaluateExpression(self.toolDiaOffsetStr)
+     
