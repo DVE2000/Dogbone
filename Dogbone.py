@@ -56,10 +56,10 @@ reValidateFace = lambda comp, x: comp.findBRepUsingPoint(x, adsk.fusion.BRepEnti
 
 class DogboneCommand(object):
     COMMAND_ID = "dogboneBtn"
+    # REFRESH_COMMAND_ID = "refreshDogboneBtn"
     
     param = DbParams()
     registeredEdgesDict = {}
-
     
     faces = []
     edges = []
@@ -111,6 +111,39 @@ class DogboneCommand(object):
 
         return
 
+    # def addRefreshButton(self):
+    #     try:
+    #     # clean up any crashed instances of the button if existing
+    #         self.removeButton()
+    #     except:
+    #         pass
+
+    #     # Create button definition and command event handler
+    #     refreshButtonDogbone = _ui.commandDefinitions.addButtonDefinition(
+    #         self.REFRESH_COMMAND_ID, 
+    #         'DogboneRefresh', 
+    #         'Refreshes already created dogbones', 
+    #         'Resources')
+
+    #     self.onRefreshCreate(event=refreshButtonDogbone.commandCreated)
+    #     # Create controls for Manufacturing Workspace
+    #     mfgEnv = _ui.workspaces.itemById('MfgWorkingModelEnv')
+    #     mfgTab = mfgEnv.toolbarTabs.itemById('MfgSolidTab')
+    #     mfgSolidPanel = mfgTab.toolbarPanels.itemById('SolidCreatePanel')
+    #     buttonControlMfg = mfgSolidPanel.controls.addCommand(refreshButtonDogbone, 'refreshDogboneBtn')
+
+    #     # Make the button available in the Mfg panel.
+    #     buttonControlMfg.isPromotedByDefault = True
+    #     buttonControlMfg.isPromoted = True
+
+    #     # Create controls for the Design Workspace
+    #     createPanel = _ui.allToolbarPanels.itemById('SolidCreatePanel')
+    #     buttonControl = createPanel.controls.addCommand(refreshButtonDogbone, 'refreshDogboneBtn')
+
+    #     # Make the button available in the panel.
+    #     buttonControl.isPromotedByDefault = True
+    #     buttonControl.isPromoted = True
+
     def addButton(self):
         try:
         # clean up any crashed instances of the button if existing
@@ -157,6 +190,19 @@ class DogboneCommand(object):
 
         if cmdDef := _ui.commandDefinitions.itemById(self.COMMAND_ID):
             cmdDef.deleteMe()
+
+    @eventHandler(handler_cls = adsk.core.CommandCreatedEventHandler)
+    def onRefreshCreate(self, args:adsk.core.CommandCreatedEventArgs):
+            inputs = args.command.commandInputs
+            edgeSelectCommand = inputs.itemById('edgeSelect')
+            if not edgeSelectCommand.isVisible:
+                return
+            focusState = inputs.itemById('faceSelect').hasFocus
+            edgeSelectCommand.hasFocus = True
+            [_ui.activeSelections.removeByEntity(edgeObj.edge) for edgeObj in self.selectedEdges.values()]
+            [faceObj.reSelectEdges() for faceObj in self.selectedFaces.values()]
+            inputs.itemById('faceSelect').hasFocus = focusState
+            return
 
     @eventHandler(handler_cls = adsk.core.CommandCreatedEventHandler)
     def onCreate(self, args:adsk.core.CommandCreatedEventArgs):
@@ -292,6 +338,22 @@ class DogboneCommand(object):
         depthRowInput.tooltipDescription = "When \"From Top Face\" is selected, all dogbones will be extended to the top most face\n"\
                                             "\nThis is typically chosen when you don't want to, or can't do, double sided machining."
  
+        angleDetectionGroupInputs:adsk.core.GroupCommandInput = inputs.addGroupCommandInput('angleDetectionGroup', 'Detection Mode')
+        angleDetectionGroupInputs.isExpanded = self.param.angleDetectionGroup
+
+        enableAcuteAngleInput:adsk.core.BoolValueCommandInput = angleDetectionGroupInputs.children.addBoolValueInput('acuteAngle','Acute Angle', True, '', self.param.acuteAngle)
+        minAngleSliderInput:adsk.core.FloatSliderCommandInput = angleDetectionGroupInputs.children.addFloatSliderCommandInput('minSlider', 'Min Limit', '', 10.0, 89.0)
+        minAngleSliderInput.isVisible = self.param.acuteAngle
+        minAngleSliderInput.valueOne = self.param.minAngleLimit
+
+        enableObtuseAngleInput:adsk.core.BoolValueCommandInput = angleDetectionGroupInputs.children.addBoolValueInput('obtuseAngle','Obtuse Angle', True, '', self.param.obtuseAngle) # 
+        # enableAcuteAngleInput.isVisible = self.param.obtuseAngle
+        
+        maxAngleSliderInput:adsk.core.FloatSliderCommandInput = angleDetectionGroupInputs.children.addFloatSliderCommandInput('maxSlider', 'Max Limit', '', 91.0, 170.0)
+        maxAngleSliderInput.isVisible = self.param.obtuseAngle
+        maxAngleSliderInput.valueOne = self.param.maxAngleLimit  
+        # enableObtuseAngleInput.isVisible = self.param.obtuseAngle
+
         settingGroup:adsk.core.GroupCommandInput = inputs.addGroupCommandInput('settingsGroup', 'Settings')
         settingGroup.isExpanded = self.param.expandSettingsGroup
         settingGroupChildInputs = settingGroup.children
@@ -334,7 +396,37 @@ class DogboneCommand(object):
         if changedInput.id == 'dogboneType':
             changedInput.commandInputs.itemById('minimalPercent').isVisible = (changedInput.commandInputs.itemById('dogboneType').selectedItem.name == 'Minimal Dogbone')
             changedInput.commandInputs.itemById('mortiseType').isVisible = (changedInput.commandInputs.itemById('dogboneType').selectedItem.name == 'Mortise Dogbone')
+            return
+        
 
+        if changedInput.id == 'acuteAngle':
+            changedInput.commandInputs.itemById('minSlider').isVisible = changedInput.value
+            self.param.acuteAngle = changedInput.value
+
+        if changedInput.id == 'minSlider':
+            self.param.minAngleLimit = changedInput.commandInputs.itemById('minSlider').valueOne
+
+        if changedInput.id == 'obtuseAngle':
+            changedInput.commandInputs.itemById('maxSlider').isVisible = changedInput.value
+            self.param.obtuseAngle = changedInput.value
+
+        if changedInput.id == 'maxSlider':
+            self.param.maxAngleLimit = changedInput.commandInputs.itemById('maxSlider').valueOne
+
+        if changedInput.id == 'acuteAngle' \
+             or changedInput.id == 'obtuseAngle' \
+             or changedInput.id == 'minSlider' \
+             or changedInput.id == 'maxSlider' :
+            edgeSelectCommand = changedInput.parentCommand.commandInputs.itemById('edgeSelect')
+            if not edgeSelectCommand.isVisible:
+                return
+            focusState = changedInput.parentCommand.commandInputs.itemById('faceSelect').hasFocus
+            edgeSelectCommand.hasFocus = True
+            [_ui.activeSelections.removeByEntity(edgeObj.edge) for edgeObj in self.selectedEdges.values()]
+            [faceObj.reSelectEdges() for faceObj in self.selectedFaces.values()]
+            changedInput.parentCommand.commandInputs.itemById('faceSelect').hasFocus = focusState
+            return
+            
         if changedInput.id != 'faceSelect' and changedInput.id != 'edgeSelect':
             return
 
@@ -347,10 +439,11 @@ class DogboneCommand(object):
             if len(self.selectedFaces) > changedInput.selectionCount:               
                 # a face has been removed
                 
-                # If all faces are removed, just iterate through all
+                # If all faces are removed, just reset registers
                 if changedInput.selectionCount == 0:                
-                    [ faceObj.deselectAll for faceObj in self.selectedFaces.values()]
+                    self.selectedEdges = {}
                     self.selectedFaces = {}
+                    self.selectedOccurrences = {}
                     changedInput.commandInputs.itemById('edgeSelect').clearSelection()
                     changedInput.commandInputs.itemById('faceSelect').hasFocus = True                    
                     changedInput.commandInputs.itemById('edgeSelect').isVisible = False   
@@ -361,7 +454,8 @@ class DogboneCommand(object):
                 missingFaces = set(self.selectedFaces.keys()) ^ selectionSet
                 changedInput.commandInputs.itemById('edgeSelect').isVisible = True   
                 changedInput.commandInputs.itemById('edgeSelect').hasFocus = True
-                [(self.selectedFaces[missingFace].deleteEdges,
+                [(self.selectedFaces[missingFace].removeFaceFromSelectedOccurrences(),
+                  self.selectedFaces[missingFace].deleteEdges(),
                    self.selectedFaces.pop(missingFace)) for missingFace in missingFaces]
                 changedInput.commandInputs.itemById('faceSelect').hasFocus = True
                 return
@@ -387,12 +481,13 @@ class DogboneCommand(object):
                 faces += (t := [DbFace(
                         parent = self, 
                         face = selectionDict[id],
+                        params = self.param,
                         commandInputsEdgeSelect = changedInput.commandInputs.itemById('edgeSelect')
                         )
                         for id in addedFaces])
                 self.selectedOccurrences[activeOccurrenceId] = faces # adds a face to a list of faces associated with this occurrence
                 self.selectedFaces.update( {faceObj.faceId: faceObj for faceObj in t})
-                [self.selectedFaces[faceId].selectAll for faceId in addedFaces] 
+                [self.selectedFaces[faceId].selectAll() for faceId in addedFaces] 
                 changedInput.commandInputs.itemById('faceSelect').hasFocus = True
             return
             #end of processing faces
@@ -440,7 +535,12 @@ class DogboneCommand(object):
         self.param.minimalPercent = inputs['minimalPercent'].value
         self.param.fromTop = (inputs['depthExtent'].selectedItem.name == 'From Top Face')
         self.param.parametric = (inputs['modeRow'].selectedItem.name == 'Parametric')
-        self.longSide = (inputs['mortiseType'].selectedItem.name == 'On Long Side')
+        self.param.longSide = (inputs['mortiseType'].selectedItem.name == 'On Long Side')
+        self.param.angleDetectionGroup = inputs['angleDetectionGroup'].isExpanded
+        self.param.acuteAngle = inputs['acuteAngle'].value
+        self.param.obtuseAngle = inputs['obtuseAngle'].value
+        self.param.minAngleLimit = inputs['minSlider'].valueOne
+        self.param.maxAngleLimit = inputs['maxSlider'].valueOne
         self.param.expandModeGroup = (inputs['modeGroup']).isExpanded
         self.param.expandSettingsGroup = (inputs['settingsGroup']).isExpanded
 
@@ -448,11 +548,11 @@ class DogboneCommand(object):
         self.logger.debug(f'self.param.dbType = {self.param.dbType}')
         self.logger.debug(f'self.param.parametric = {self.param.parametric}')
         self.logger.debug(f'self.param.toolDiaStr = {self.param.toolDiaStr}')
-        self.logger.debug(f'self.toolDia = {self.param.toolDia}')
+        self.logger.debug(f'self.param.toolDia = {self.param.toolDia}')
         self.logger.debug(f'self.param.toolDiaOffsetStr = {self.param.toolDiaOffsetStr}')
         self.logger.debug(f'self.param.toolDiaOffset = {self.param.toolDiaOffset}')
         self.logger.debug(f'self.param.benchmark = {self.param.benchmark}')
-        self.logger.debug(f'self.mortiseType = {self.longSide}')
+        self.logger.debug(f'self.param.mortiseType = {self.param.longSide}')
         self.logger.debug(f'self.param.expandModeGroup = {self.param.expandModeGroup}')
         self.logger.debug(f'self.param.expandSettingsGroup = {self.param.expandSettingsGroup}')
         
@@ -677,22 +777,12 @@ class DogboneCommand(object):
             else:
                 activeOccurrenceId = hash(eventArgs.selection.entity.body.entityToken) 
 
-            # occurrenceNumber = activeOccurrenceId.split(':')[-1]
-            edgeId = hash(currentEdge.entityToken) #str(currentEdge.tempId) + ':' + occurrenceNumber
+            edgeId = hash(currentEdge.entityToken) 
             if (edgeId in self.selectedEdges.keys()):
                 eventArgs.isSelectable = True
             else:
                 eventArgs.isSelectable = False
             return
-
-
-    @property
-    def design(self):
-        return _app.activeProduct
-
-    @property
-    def rootComp(self):
-        return _design.rootComponent
 
     @property
     def originPlane(self):
@@ -711,16 +801,6 @@ class DogboneCommand(object):
         for occurrenceFaces in self.selectedOccurrences.values():
             startTlMarker = _design.timeline.markerPosition
 
-            # if occurrenceFaces[0].face.assemblyContext:
-            #     comp = occurrenceFaces[0].face.assemblyContext.component
-            #     occ = occurrenceFaces[0].face.assemblyContext
-            #     self.logger.debug(f'processing component  = {comp.name}')
-            #     self.logger.debug(f'processing occurrence  = {occ.name}')
-            #     #entityName = occ.name.split(':')[-1]
-            # else:
-            #    comp = _rootComp
-            #    occ = None
-            #    self.logger.debug('processing Rootcomponent')
             comp:adsk.fusion.Component = occurrenceFaces[0].component
             occ:adsk.fusion.Occurrence = occurrenceFaces[0].occurrence
 
@@ -875,15 +955,14 @@ class DogboneCommand(object):
         self.errorCount = 0
         if not _design:
             raise RuntimeError('No active Fusion design')
-        holeInput:adsk.fusion.HoleFeatureInput = None
-        centreDistance = self.radius*(1+self.param.minimalPercent/100 if self.param.dbType == 'Minimal Dogbone' else  1)
         
-        TempBrepMgr = adsk.fusion.TemporaryBRepManager.get()
+        tempBrepMgr = adsk.fusion.TemporaryBRepManager.get()
 
         for occurrenceFaces in self.selectedOccurrences.values():
             startTlMarker = _design.timeline.markerPosition
             comp:adsk.fusion.Component = occurrenceFaces[0].component
-            occ:adsk.fusion.Occurrence = occurrenceFaces[0].occurrence   
+            occ:adsk.fusion.Occurrence = occurrenceFaces[0].occurrence 
+            topFace = None  
             
             if self.param.fromTop:
                 topFace, topFaceRefPoint = dbUtils.getTopFace(occurrenceFaces[0].native)
@@ -891,128 +970,37 @@ class DogboneCommand(object):
                 self.logger.info(f'Processing holes from top face - {topFace.tempId}')
                 self.debugFace(topFace)
                 
-                sketch:adsk.fusion.Sketch = comp.sketches.add(topFace)  #used for fault finding
-                sketch.name = 'dogbone'
-                sketch.isComputeDeferred = True
-                self.logger.debug(f'Added topFace sketch - {sketch.name}')
-
             for selectedFace in occurrenceFaces:
-                if len(selectedFace.selectedEdges) <1:
-                    self.logger.debug('Face has no edges')
-                    continue 
-                face = selectedFace.native
 
-                if not face.isValid:
-                    self.logger.debug('Revalidating face')
-                    face = selectedFace.revalidate()
-                    self.logger.info(f'Processing Face = {face.tempId}')
-                    self.debugFace(face)
-
-                self.logger.info(f'processing face - {face.tempId}')
-                self.debugFace(face)
-                holeList = []                
-
-                # comp:adsk.fusion.Component = comp
-                if self.param.fromTop:
-                    self.logger.debug(f'topFace type {type(topFace)}')
-                    if not topFace.isValid:
-                       self.logger.debug('revalidating topFace') 
-                       topFace = reValidateFace(comp, topFaceRefPoint)
-                       topFaceRefPoint = topFace.pointOnFace
-                       self.debugFace(topFace)
-                    self.logger.debug(f'topFace isValid = {topFace.isValid}')
-                    transformVector = dbUtils.getTranslateVectorBetweenFaces(face, topFace)
-                    self.logger.debug(f'creating transformVector to topFace = {transformVector.asArray()} length = {transformVector.length}')
-                else:    
-                    sketch:adsk.fusion.Sketch = comp.sketches.add(face)
-                    sketch.name = 'dogbone'
-                    sketch.isComputeDeferred = True
-                    self.logger.debug(f'creating face plane sketch - {sketch.name}')
-                
-                for selectedEdge in selectedFace.selectedEdges:
-                    selectedEdge:DbEdge
-
-                    self.logger.debug(f'Processing edge - {selectedEdge.edge.tempId}')
-
-                    if not selectedEdge.isSelected:
-                        self.logger.debug('  Not selected. Skipping...')
-                        continue
-
-                    if not face.isValid:
-                        self.logger.debug('Revalidating face')
-                        face = selectedFace.revalidate()
-                        
-                    if not selectedEdge.edge.isValid:
-                        continue # edges that have been processed already will not be valid any more - at the moment this is easier than removing the 
-    #                    affected edge from self.edges after having been processed
-                    try:
-                        if not dbUtils.isEdgeAssociatedWithFace(face, selectedEdge.native):
-                            continue  # skip if edge is not associated with the face currently being processed
-                    except:
-                        pass
-
-                    edge = selectedEdge.native                    
-                    centrePoint = selectedEdge.dogboneCentre # dbUtils.getVertexAtFace(face, edge)
-                    # centrePoint = startVertex.geometry.copy()
-                    startVertex, endVertex = selectedEdge.endPoints    
-                    selectedEdgeFaces = edge.faces
-                    
-                    if self.param.dbType == 'Mortise Dogbone':
-                        (edge0, edge1) = dbUtils.getCornerEdgesAtFace(face, edge)
-                        direction0 = dbUtils.correctedEdgeVector(edge0,startVertex) 
-                        direction1 = dbUtils.correctedEdgeVector(edge1,startVertex) 
-                        if self.longSide:
-                            if (edge0.length > edge1.length):
-                                dirVect = direction0
-                            else:
-                                dirVect = direction1
-                        else:
-                            if (edge0.length > edge1.length):
-                                dirVect = direction1
-                            else:
-                                dirVect = direction0
-                        dirVect.normalize()
+                toolCollection = adsk.core.ObjectCollection.create()
+                toolBodies = None
+ 
+                for edge in selectedFace.selectedEdges:
+                    if not toolBodies:
+                        toolBodies = edge.getToolBody(params = self.param, topFace = topFace)
                     else:
-                        dirVect = selectedEdge.cornerVector
+                        tempBrepMgr.booleanOperation(toolBodies, edge.getToolBody(params = self.param, topFace = topFace), adsk.fusion.BooleanTypes.UnionBooleanType)
 
-                    dirVect.scaleBy(centreDistance)  #ideally radius should be linked to parameters, 
-                                                          # but hole start point still is the right quadrant
-                    centrePoint.translateBy(dirVect)
-                    if self.param.fromTop:
-                        centrePoint.translateBy(transformVector)
+                baseFeatures = _rootComp.features.baseFeatures
+                baseFeature = baseFeatures.add()
+                baseFeature.name = 'dogbone'
 
-                    centrePoint = sketch.modelToSketchSpace(centrePoint)
-                    
-                    sketchPoint = sketch.sketchPoints.add(centrePoint)  #as the centre is placed on midline endPoint, it automatically gets constrained
-                    length = (selectedEdge.edge.length + transformVector.length) if self.param.fromTop else makeNative(selectedEdge.edge).length
-                    holeList.append([length, sketchPoint])
-                    self.logger.info(f'hole added to list - length {length}, {sketchPoint.geometry.asArray()}')
-                    
-                depthList = set(map(lambda x: x[0], holeList))  #create a unique set of depths - using this in the filter will automatically group depths
+                baseFeature.startEdit()
+                dbB = _rootComp.bRepBodies.add(toolBodies, baseFeature)
+                dbB.name = 'dogboneTool'
+                baseFeature.finishEdit()
 
-                for depth in depthList:
-                    self.logger.debug(f'processing holes at depth {depth}')
-                    pointCollection = adsk.core.ObjectCollection.create()  #needed for the setPositionBySketchpoints
-                    holeCount = 0
-                    for hole in filter(lambda h: h[0] == depth, holeList):
-                        pointCollection.add(hole[1])
-                        holeCount+=1
-                    
-                    if not face.isValid:
-                        self.logger.debug('Revalidating face')
-                        face = selectedFace.revalidate()
+                toolCollection.add(baseFeature.bodies.item(0))
 
-                    holes =  comp.features.holeFeatures
-                    holeInput = holes.createSimpleInput(adsk.core.ValueInput.createByReal(self.radius*2))
-                    holeInput.isDefaultDirection = True
-                    holeInput.tipAngle = adsk.core.ValueInput.createByString('180 deg')
-                    holeInput.participantBodies = [face.body]
-                    holeInput.setPositionBySketchPoints(pointCollection)
-                    holeInput.setDistanceExtent(adsk.core.ValueInput.createByReal(depth))
+                activeBody = selectedFace.native.body
 
-                    holes.add(holeInput)
-                    self.logger.info(f'{holeCount} Holes added')
-            sketch.isComputeDeferred = False
+                combineInput = _rootComp.features.combineFeatures.createInput(targetBody = activeBody, 
+                                                                            toolBodies = toolCollection)
+                combineInput.isKeepToolBodies = False
+                combineInput.isNewComponent = False
+                combineInput.operation = adsk.fusion.FeatureOperations.CutFeatureOperation
+                combine = _rootComp.features.combineFeatures.add(combineInput)
+
                     
             endTlMarker = _design.timeline.markerPosition-1
             if endTlMarker - startTlMarker >0:
@@ -1023,56 +1011,21 @@ class DogboneCommand(object):
             
         if self.errorCount >0:
             dbUtils.messageBox(f'Reported errors:{self.errorCount}\nYou may not need to do anything, \nbut check holes have been created')
-
             
-def getDogboneTool(faceList:list):
-    logger = logging.getLogger('dogbone.getDogboneTool')
-    # toolCollection = adsk.core.ObjectCollection.create()
-    tempBrepMgr = adsk.fusion.TemporaryBRepManager.get()
-    toolBodies = None
-
-    for faceObj in faceList:
-        faceObj:DbFace
-        logger.debug(f'processing {faceObj} *****************')
-
-        for edge in faceObj.selectedEdges:
-            dbToolBody = edge.getdbTool(params)
-            if not toolBodies:
-                toolBodies = dbToolBody
-                continue
-            tempBrepMgr.booleanOperation(
-                toolBodies,
-                dbToolBody,
-                adsk.fusion.BooleanTypes.UnionBooleanType)  #combine all the dogbones into a single toolbody
-
-    if not toolBodies:
-        raise NoEdgesToProcess('Empty Edge Collection')
-    # baseFeatures = g._rootComp.features.baseFeatures
-    # baseFeature = baseFeatures.add()
-    # baseFeature.name = 'dogbone'
-
-    # baseFeature.startEdit()
-    # dbB = g._rootComp.bRepBodies.add(toolBodies, baseFeature)
-    # dbB.name = 'dogboneTool'
-    # baseFeature.finishEdit()
-
-    # toolCollection.add(baseFeature.bodies.item(0))
-    # targetBody = self.register.registeredFacesByBodyAsList(representativeFaceObject.body_token)[0].entity.body
-    return toolBodies # toolCollection, targetBody
-
-
 dog = DogboneCommand()
 
 
 def run(context):
     try:
         dog.addButton()
+        # dog.addRefreshButton()
     except:
         dbUtils.messageBox(traceback.format_exc())
 
 
 def stop(context):
     try:
+        adsk.terminate()
         dog.removeButton()
     except:
         dbUtils.messageBox(traceback.format_exc())

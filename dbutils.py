@@ -64,10 +64,10 @@ def findExtent(face, edge):
         return edge.endVertex
     return edge.startVertex
     
-def correctedEdgeVector(edge:adsk.fusion.BRepEdge, refVertex:adsk.fusion.BRepVertex)->adsk.core.Vector3D:
-    if edge.startVertex.geometry.isEqualTo(refVertex.geometry):
-        return edge.startVertex.geometry.vectorTo(edge.endVertex.geometry)
-    return edge.endVertex.geometry.vectorTo(edge.startVertex.geometry)
+def correctedEdgeVector(edge:adsk.fusion.BRepEdge, refPoint:adsk.core.Point3D)->adsk.core.Vector3D:
+    if edge.startPoint.isEqualTo(refPoint):
+        return edge.startPoint.vectorTo(edge.endPoint)
+    return edge.endPoint.vectorTo(edge.startPoint)
 
 def correctedSketchEdgeVector(edge, refPoint):
     if edge.startSketchPoint.geometry.isEqualTo(refPoint.geometry):
@@ -120,7 +120,7 @@ def messageBox(*args):
     adsk.core.Application.get().userInterface.messageBox(*args)
 
 
-def getTopFace(selectedFace):
+def getTopFace(selectedFace:adsk.fusion.BRepFace)->adsk.fusion.BRepFace:
     normal = getFaceNormal(selectedFace)
     refPlane = adsk.core.Plane.create(selectedFace.vertices.item(0).geometry, normal)
     refLine = adsk.core.InfiniteLine3D.create(selectedFace.vertices.item(0).geometry, normal)

@@ -17,7 +17,7 @@ _rootComp = _design.rootComponent
 pp = pprint.PrettyPrinter()
 
 logger = logging.getLogger('dogbone.decorators')
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.NOTSET)
 
 @dataclass()
 class HandlerCollection():
