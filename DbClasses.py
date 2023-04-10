@@ -16,23 +16,26 @@ from math import sqrt, tan, pi
 logger = logging.getLogger('dogbone.DbClasses')
 
 _app = adsk.core.Application.get()
-_design = _app.activeProduct
+_design:adsk.fusion.Design = _app.activeProduct
 _ui = _app.userInterface
 _rootComp = _design.rootComponent
 
 class DbFace:
     def __init__(self, parent, face:adsk.fusion.BRepFace, params, commandInputsEdgeSelect):
         from .Dogbone import DogboneCommand
+        self.face = face = face if face.isValid else _design.findEntityByToken(self._entityToken)[0] # self.component.findBRepUsingPoint(self._refPoint, adsk.fusion.BRepEntityTypes.BRepFaceEntityType,-1.0 ,False ).item(0) 
         self.parent:DogboneCommand = parent
-        self.face = face # BrepFace
-        self._faceId = hash(face.entityToken)
+        self._entityToken = face.entityToken
+        self._faceId = hash(self._entityToken)
         self.faceNormal = dbUtils.getFaceNormal(face)
         self._refPoint = face.nativeObject.pointOnFace if face.assemblyContext else face.pointOnFace
+        self._component = face.body.parentComponent
         self.commandInputsEdgeSelect = commandInputsEdgeSelect
         self._selected = True
         self._params = params
         self._associatedEdgesDict = {} # Keyed with edge
         processedEdges = [] # used for quick checking if an edge is already included (below)
+        self._customGraphicGroup = None #
 
         #==============================================================================
         #             this is where inside corner edges, dropping down from the face are processed
@@ -102,9 +105,14 @@ class DbFace:
     def selectAll(self):
         self._selected = True
         self.parent.addingEdges = True
-        [(selectedEdge.select, 
-          _ui.activeSelections.add(selectedEdge.edge))
-        for selectedEdge in self._associatedEdgesDict.values()]
+        # selectedEdgesCollection = _ui.activeSelections.all
+        # selectedEdgesDict = {hash(e.entityToken): e for e in selectedEdgesCollection if e.objectType == adsk.fusion.BRepEdge.classType()}
+        [selectedEdge.select 
+            for selectedEdge in self._associatedEdgesDict.values()]
+        # changedEdgeSelection = set(self._associatedEdgesDict.keys()) ^ set(selectedEdgesDict.keys())
+        # updatedCollection = adsk.core.ObjectCollection.create()
+        # [updatedCollection.add(self.parent.selectedEdges[e]) for e in changedEdgeSelection]
+        # _ui.activeSelections.all = updatedCollection
         self.parent.addingEdges = False
 
     def deselectAll(self):
@@ -185,11 +193,15 @@ class DbFace:
 class DbEdge:
 
     def __init__(self, edge:adsk.fusion.BRepEdge, parentFace:DbFace):
-        self.edge = edge
+        self.edge = edge = edge if edge.isValid else self.component.findBRepUsingPoint(self._refPoint, adsk.fusion.BRepEntityTypes.BRepEdgeEntityType,-1.0 ,False ).item(0)
+
+        self._refPoint = edge.nativeObject.pointOnEdge if edge.assemblyContext else edge.pointOnEdge
+
         self._edgeId = hash(edge.entityToken)
         self._selected = True
         self._parentFace = parentFace
         self._native = self.edge.nativeObject if self.edge.nativeObject else self.edge
+        self._component = edge.body.parentComponent
 
         face1, face2 = (face for face in self._native.faces)
         _,face1normal = face1.evaluator.getNormalAtPoint(face1.pointOnFace)
@@ -199,19 +211,24 @@ class DbEdge:
         self._cornerVector = face1normal
 
         self._cornerAngle = dbUtils.getAngleBetweenFaces(edge)
+        self._customGraphicGroup = None
 
         self._dogboneCentre = self.native.startVertex.geometry \
             if self.native.startVertex in self._parentFace.native.vertices \
             else self.native.endVertex.geometry
         
-        self._endPoints = (self.native.startVertex.geometry, self.native.endVertex.geometry)\
+        self._nativeEndPoints = (self.native.startVertex.geometry, self.native.endVertex.geometry)\
                 if self.native.startVertex in self._parentFace.native.vertices\
                     else (self.native.endVertex.geometry, self.native.startVertex.geometry)
 
-        startPoint, endPoint = self._endPoints
+        startPoint, endPoint = self._nativeEndPoints
         
-        self._edgeVector:adsk.core.Vector3D = startPoint.vectorTo(endPoint)
-        self._edgeVector.normalize()
+        self._nativeEdgeVector:adsk.core.Vector3D = startPoint.vectorTo(endPoint)
+        self._nativeEdgeVector.normalize()
+
+        self._endPoints = (self.edge.startVertex.geometry, self.edge.endVertex.geometry)\
+                if self.edge.startVertex in self._parentFace.face.vertices\
+                    else (self.edge.endVertex.geometry, self.edge.startVertex.geometry)
 
     def __hash__(self):
         return self._edgeId
@@ -219,6 +236,11 @@ class DbEdge:
     @property
     def select(self):
         self._selected = True
+
+    @property
+    def component(self)->adsk.fusion.Component:
+        return self._component
+        # return self.edge.assemblyContext.component if self.edge.assemblyContext else _rootComp
 
     @property
     def cornerAngle(self):
@@ -244,9 +266,16 @@ class DbEdge:
         return self._dogboneCentre
 
     @property
-    def endPoints(self)->adsk.fusion.BRepVertex:
+    def nativeEndPoints(self)->adsk.fusion.BRepVertex:
         '''
         returns native Edge Point associated with parent Face - initial centre of the dogbone
+        '''
+        return self._nativeEndPoints
+
+    @property
+    def endPoints(self)->adsk.fusion.BRepVertex:
+        '''
+        returns occurrence Edge Point associated with parent Face - initial centre of the dogbone
         '''
         return self._endPoints
     
@@ -268,7 +297,7 @@ class DbEdge:
         returns normalised vector away from the faceVertex that 
         the dogbone needs to be located on
           '''
-        return self._edgeVector 
+        return self._nativeEdgeVector 
     
     def faceObj(self):
         return self._parentFace
@@ -297,7 +326,8 @@ class DbEdge:
         box = None
 
         tempBrepMgr = adsk.fusion.TemporaryBRepManager.get()
-        startPoint, endPoint = edgeObj.endPoints
+        startPoint, endPoint = edgeObj.nativeEndPoints
+        startPoint, endPoint = startPoint.copy(), endPoint.copy()
         effectiveRadius = (params.toolDia + params.toolDiaOffset)/2
         centreDistance = effectiveRadius*((1+params.minimalPercent/100) if params.dbType == 'Minimal Dogbone' else  1)
 
@@ -391,6 +421,21 @@ class DbEdge:
     
     def getToolBody(self, params, topFace:adsk.fusion.BRepFace = None):
         return DbEdge.__getToolBody(self, params, topFace)
+    
+    def addCustomGraphic(self):
+        if not self._parentFace._customGraphicGroup:
+            self._parentFace._customGraphicGroup = self._component.customGraphicsGroups.add()
+        coordList = []
+        [coordList.extend([n for n in p.asArray()]) for p in self.endPoints]
+        coords = adsk.fusion.CustomGraphicsCoordinates.create(coordList)
+        
+        # body:adsk.fusion.CustomGraphicsBRepBody = self._parentFace._customGraphicGroup.addBRepBody(self.edge.body)
+
+        line:adsk.fusion.CustomGraphicsLine = self._parentFace._customGraphicGroup.addLines(coords, [], False)
+        line.color = adsk.fusion.CustomGraphicsSolidColorEffect.create(adsk.core.Color.create(0,255,0,255))
+        line.id = str(self._edgeId)
+        line.isSelectable = True
+
 
 
 
