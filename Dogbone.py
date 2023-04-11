@@ -372,7 +372,7 @@ class DogboneCommand(object):
         cmd:adsk.core.Command = args.command
         # Add handlers to this command.
         self.onExecute(event=cmd.execute)
-        self.onExecutePreview(event=cmd.executePreview)
+        # self.onExecutePreview(event=cmd.executePreview)
         self.onFaceSelect(event=cmd.selectionEvent)
         self.onValidate(event=cmd.validateInputs)
         self.onChange(event=cmd.inputChanged)
