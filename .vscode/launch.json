@@ -15,6 +15,7 @@
 				"filePath":	"${file}"
 			},
 			"port":	9023,
-			"host":	"localhost"
+			"host":	"localhost",
+			"logToFile": true
 		}]
 }
