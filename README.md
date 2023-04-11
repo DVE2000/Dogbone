@@ -1,5 +1,13 @@
 Dogbone addin for fusion 360
 ===
+## Version: 2.1
+
+Added detection mode - now allows acute and obtuse angles to be generated
+Changed internal mechanism to uniquely identify faces and edges
+Simplified internal mechanism to identify which edges and faces have been selected/deselected 
+Updated dogbone generation mechanism - stopped using sketches as a basis.  Now uses tempBrepManger - noticeably faster!
+
+Next version should use F360's customFeatures - but at the moment, it's not ready for public consumption.
 
 ## Version: 2.0
 
