@@ -372,8 +372,8 @@ class DogboneCommand(object):
         cmd:adsk.core.Command = args.command
         # Add handlers to this command.
         self.onExecute(event=cmd.execute)
-        # self.onExecutePreview(event=cmd.executePreview)
-        self.onFaceSelect(event=cmd.selectionEvent)
+        self.onExecutePreview(event=cmd.executePreview)
+        self.onPreSelect(event=cmd.selectionEvent)
         self.onValidate(event=cmd.validateInputs)
         self.onChange(event=cmd.inputChanged)
 
@@ -683,7 +683,7 @@ class DogboneCommand(object):
                     args.areInputsValid = False
                     
     @eventHandler(handler_cls = adsk.core.SelectionEventHandler)                
-    def onFaceSelect(self, args):
+    def onPreSelect(self, args):
         '''==============================================================================
             Routine gets called with every mouse movement, if a commandInput select is active                   
            ==============================================================================
@@ -1008,7 +1008,28 @@ class DogboneCommand(object):
                 combineInput.operation = adsk.fusion.FeatureOperations.CutFeatureOperation
                 combine = _rootComp.features.combineFeatures.add(combineInput)
 
-                    
+                newFaces = {hash(face.entityToken): face for face in combine.faces}
+                
+                while True:
+                    try:
+                        id, face = newFaces.popitem()
+                        if face.geometry.objectType == adsk.core.Cylinder.classType():
+                            cylinderFace = face
+                            continue
+                        if dbUtils.getFaceNormal(face).isParallelTo(selectedFace.faceNormal):
+                            if dbUtils.getFaceNormal(face).isEqualTo(selectedFace.faceNormal):
+                                id, topface = face
+                            continue
+                        side = {id: side for id, side in newFaces.items() if dbUtils.getFaceNormal(side).isParallelTo(dbUtils.getFaceNormal(face)) }
+                        if side == {}:
+                            continue
+                        side1id = id
+                        id2, _ = side.popitem()
+                        side2 = newFaces.pop(id2)
+                    except KeyError:
+                        break
+
+
             endTlMarker = _design.timeline.markerPosition-1
             if endTlMarker - startTlMarker >0:
                 timelineGroup = _design.timeline.timelineGroups.add(startTlMarker,endTlMarker)

@@ -23,7 +23,7 @@ _rootComp = _design.rootComponent
 class DbFace:
     def __init__(self, parent, face:adsk.fusion.BRepFace, params, commandInputsEdgeSelect):
         from .Dogbone import DogboneCommand
-        self.face = face = face if face.isValid else _design.findEntityByToken(self._entityToken)[0] # self.component.findBRepUsingPoint(self._refPoint, adsk.fusion.BRepEntityTypes.BRepFaceEntityType,-1.0 ,False ).item(0) 
+        self.face = face # = face if face.isValid else _design.findEntityByToken(self._entityToken)[0] # self.component.findBRepUsingPoint(self._refPoint, adsk.fusion.BRepEntityTypes.BRepFaceEntityType,-1.0 ,False ).item(0) 
         self.parent:DogboneCommand = parent
         self._entityToken = face.entityToken
         self._faceId = hash(self._entityToken)
@@ -32,10 +32,15 @@ class DbFace:
         self._component = face.body.parentComponent
         self.commandInputsEdgeSelect = commandInputsEdgeSelect
         self._selected = True
-        self._params = params
-        self._associatedEdgesDict = {} # Keyed with edge
+        self._params = params  # for potential future use
+
+        self._previewFace = None
+        self._previewFaceId = None
+        self._inPreviewMode = False
+
+        self._associatedEdgesDict = {} # Keyed with edgeToken, value: edgeObject
         processedEdges = [] # used for quick checking if an edge is already included (below)
-        self._customGraphicGroup = None #
+        self._customGraphicGroup = None # for potential future use
 
         #==============================================================================
         #             this is where inside corner edges, dropping down from the face are processed
@@ -82,7 +87,7 @@ class DbFace:
                     or (not (params.minAngleLimit < angle < params.maxAngleLimit) and params.acuteAngle and params.obtuseAngle):
                     continue
 
-                edgeId = hash(edge.entityToken) #str(edge.tempId)+':'+ activeEdgeName
+                edgeId = hash(edge.entityToken)
                 parent.selectedEdges[edgeId] = self._associatedEdgesDict[edgeId] = DbEdge(edge = edge, parentFace = self)
                 processedEdges.append(edge)
                 parent.addingEdges = True
@@ -105,14 +110,8 @@ class DbFace:
     def selectAll(self):
         self._selected = True
         self.parent.addingEdges = True
-        # selectedEdgesCollection = _ui.activeSelections.all
-        # selectedEdgesDict = {hash(e.entityToken): e for e in selectedEdgesCollection if e.objectType == adsk.fusion.BRepEdge.classType()}
         [selectedEdge.select 
             for selectedEdge in self._associatedEdgesDict.values()]
-        # changedEdgeSelection = set(self._associatedEdgesDict.keys()) ^ set(selectedEdgesDict.keys())
-        # updatedCollection = adsk.core.ObjectCollection.create()
-        # [updatedCollection.add(self.parent.selectedEdges[e]) for e in changedEdgeSelection]
-        # _ui.activeSelections.all = updatedCollection
         self.parent.addingEdges = False
 
     def deselectAll(self):
@@ -124,8 +123,15 @@ class DbFace:
         self.parent.addingEdges = False
 
     def reSelectEdges(self):
-        # self._associatedEdgesDict = {}
         self.__init__(self.parent, self.face, self._params, self.commandInputsEdgeSelect)
+
+    @property
+    def inPreviewMode(self):
+        return self._inPreviewMode
+    
+    @inPreviewMode.setter
+    def inPreviewMode(self, state: bool):
+        self._inPreviewMode = state
 
     @property
     def refPoint(self):
@@ -203,7 +209,7 @@ class DbEdge:
         self._native = self.edge.nativeObject if self.edge.nativeObject else self.edge
         self._component = edge.body.parentComponent
 
-        face1, face2 = (face for face in self._native.faces)
+        face1, face2 = self._native.faces
         _,face1normal = face1.evaluator.getNormalAtPoint(face1.pointOnFace)
         _,face2normal = face2.evaluator.getNormalAtPoint(face2.pointOnFace)
         face1normal.add(face2normal)
@@ -290,6 +296,12 @@ class DbEdge:
         the dogbone needs to be located on
           '''
         return self._cornerVector 
+
+    @property
+    def customGraphicsLineEndPoints(self):
+        end1, end2 = self._endPoints
+        end1.translateBy(self._cornerVector), end2.translateBy(self._cornerVector)
+        return  end1, end2
 
     @property
     def edgeVector(self)->adsk.core.Vector3D:
@@ -402,20 +414,22 @@ class DbEdge:
         widthDirectionVector = edgeObj.cornerVector.copy()
         widthDirectionVector.transformBy(orthogonalMatrix)
 
-        boxLength = .001 if (boxLength < 0.001) else boxLength 
-        
-        boundaryBox = adsk.core.OrientedBoundingBox3D.create(centerPoint = boxCentrePoint, 
-                                                            lengthDirection = lengthDirectionVector, 
-                                                            widthDirection = widthDirectionVector, 
-                                                            length = boxLength, 
-                                                            width = boxWidth, 
-                                                            height = edgeHeight)
-        
-        box = tempBrepMgr.createBox(boundaryBox)
+        if boxLength > 0 :
 
-        tempBrepMgr.booleanOperation(targetBody = toolbody, 
-                                    toolBody = box, 
-                                    booleanType = adsk.fusion.BooleanTypes.UnionBooleanType)
+            # boxLength = .001 if (boxLength < 0.001) else boxLength 
+            
+            boundaryBox = adsk.core.OrientedBoundingBox3D.create(centerPoint = boxCentrePoint, 
+                                                                lengthDirection = lengthDirectionVector, 
+                                                                widthDirection = widthDirectionVector, 
+                                                                length = boxLength, 
+                                                                width = boxWidth, 
+                                                                height = edgeHeight)
+            
+            box = tempBrepMgr.createBox(boundaryBox)
+
+            tempBrepMgr.booleanOperation(targetBody = toolbody, 
+                                        toolBody = box, 
+                                        booleanType = adsk.fusion.BooleanTypes.UnionBooleanType)
 
         return toolbody
     

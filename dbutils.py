@@ -27,7 +27,7 @@ def getAngleBetweenFaces(edge)->float:
     ie opposite to face1 coEdge direction
     """
     # Verify that the two faces are planar.
-    face1, face2  = (face for face in edge.faces)
+    face1, face2  = edge.faces
     if not face1 or not face2:
         return 0
     if face1.geometry.objectType != adsk.core.Plane.classType() or face2.geometry.objectType != adsk.core.Plane.classType():
@@ -40,7 +40,7 @@ def getAngleBetweenFaces(edge)->float:
     normalAngle = normal1.angleTo(normal2)
 
     # Get the co-edge of the selected edge for face1.
-    coEdge1, coEdge2 = (coEdge for coEdge in edge.coEdges)
+    coEdge1, coEdge2 = edge.coEdges
     coEdge = coEdge1 if coEdge1.loop.face == face1 else coEdge2
 
     # Create a vector that represents the direction of the co-edge.
