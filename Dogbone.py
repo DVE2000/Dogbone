@@ -816,7 +816,7 @@ class DogboneCommand(object):
                 self.logger.info(f'Processing holes from top face - {topFace.body.name}')
 
             for selectedFace in occurrenceFaces:
-                if len(selectedFace.selectedEdges.values()) <1:
+                if len(selectedFace.selectedEdges) <1:
                     self.logger.debug('Face has no edges')
                     
                 face = selectedFace.native
@@ -839,7 +839,7 @@ class DogboneCommand(object):
                     transformVector = dbUtils.getTranslateVectorBetweenFaces(face, topFace)
                     self.logger.debug(f'creating transformVector to topFace = ({transformVector.x},{transformVector.y},{transformVector.z}) length = {transformVector.length}')
                                 
-                for selectedEdge in selectedFace.selectedEdges.values():
+                for selectedEdge in selectedFace.selectedEdges:
                     
                     self.logger.debug(f'Processing edge - {selectedEdge.edge.tempId}')
 
