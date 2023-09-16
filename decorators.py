@@ -120,6 +120,20 @@ def eventHandler(handler_cls=adsk.core.Base):
         return handlerWrapper
     return decoratorWrapper
 
+# Decorator to trigger parser
+def parseDecorator(func):
+        @wraps(func)  #spoofs wrapped method so that __name__, __doc__ (ie docstring) etc. behaves like it came from the method that is being wrapped.   
+        def wrapper( *_args, **_kwargs):
+            '''
+            '''
+            rtn = func(*_args, **_kwargs)
+            cmdInputs = _args[1].inputs.command.commandInputs
+            _args[0].parseInputs(cmdInputs)  #calls self.parseInputs - needs to be better  
+            logger.debug(f'notify method created: {func.__name__}')
+            return rtn
+        return wrapper
+
+
 class Button(adsk.core.ButtonControlDefinition):
     def __init__():
         super().__init__()

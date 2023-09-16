@@ -63,7 +63,7 @@ class DbFace:
             try:
                 if edge.geometry.curveType != adsk.core.Curve3DTypes.Line3DCurveType:
                     continue
-                vector:adsk.core.Vector3D = dbUtils.getEdgeVector(edge, refFace = face) #edge.startVertex.geometry.vectorTo(edge.endVertex.geometry)
+                vector:adsk.core.Vector3D = dbUtils.getEdgeVector(edge, refFace = face) 
                 vector.normalize()
                 if not vector.isParallelTo(faceNormal):
                     continue
@@ -76,13 +76,16 @@ class DbFace:
                     continue 
 
                 angle = dbUtils.getAngleBetweenFaces(edge)*180/pi
-                if (abs(angle - 90) > 0.001 ) and not(params.acuteAngle or params.obtuseAngle) \
+                if (abs(angle - 90) > 0.001 ) and not(params.acuteAngle or params.obtuseAngle ) \
                     or (not (params.minAngleLimit < angle <= 90) and params.acuteAngle and not params.obtuseAngle) \
                     or (not(90 <= angle < params.maxAngleLimit) and not params.acuteAngle and params.obtuseAngle) \
                     or (not (params.minAngleLimit < angle < params.maxAngleLimit) and params.acuteAngle and params.obtuseAngle):
                     continue
 
-                edgeId = hash(edge.entityToken) #str(edge.tempId)+':'+ activeEdgeName
+                if ((abs(angle-90) > 0.001) and params.parametric):
+                    continue
+
+                edgeId = hash(edge.entityToken)
                 parent.selectedEdges[edgeId] = self._associatedEdgesDict[edgeId] = DbEdge(edge = edge, parentFace = self)
                 processedEdges.append(edge)
                 parent.addingEdges = True

@@ -35,7 +35,7 @@ import json
 
 import time
 from . import dbutils as dbUtils
-from .decorators import eventHandler
+from .decorators import eventHandler, parseDecorator
 from math import sqrt as sqrt
 from .DbClasses import DbFace, DbEdge
 from .DbData import DbParams
@@ -335,6 +335,8 @@ class DogboneCommand(object):
         angleDetectionGroupInputs:adsk.core.GroupCommandInput = inputs.addGroupCommandInput('angleDetectionGroup', 'Detection Mode')
         angleDetectionGroupInputs.isExpanded = self.param.angleDetectionGroup
 
+        angleDetectionGroupInputs.isVisible = not self.param.parametric #disables angle selection if in parametric mode
+
         enableAcuteAngleInput:adsk.core.BoolValueCommandInput = angleDetectionGroupInputs.children.addBoolValueInput('acuteAngle','Acute Angle', True, '', self.param.acuteAngle)
         enableAcuteAngleInput.tooltip = "Enables detection of corner angles less than 90"
         minAngleSliderInput:adsk.core.FloatSliderCommandInput = angleDetectionGroupInputs.children.addFloatSliderCommandInput('minSlider', 'Min Limit', '', 10.0, 89.0)
@@ -391,6 +393,7 @@ class DogboneCommand(object):
     #  also where eligible edges are determined
     #==============================================================================
     @eventHandler(handler_cls = adsk.core.InputChangedEventHandler)
+    @parseDecorator
     def onChange(self, args:adsk.core.InputChangedEventArgs):
         
         changedInput:adsk.core.CommandInput = args.input
@@ -405,6 +408,10 @@ class DogboneCommand(object):
             changedInput: adsk.core.ValueCommandInput
             self.param.toolDiaStr = changedInput.expression
             return
+        
+        if changedInput.id == 'modeRow':
+            changedInput.parentCommand.commandInputs.itemById('angleDetectionGroup').isVisible = changedInput.selectedItem.name == 'Static'
+            self.param.parametric = changedInput.selectedItem.name == 'Parametric'  #
         
 
         if changedInput.id == 'acuteAngle':
@@ -421,10 +428,12 @@ class DogboneCommand(object):
         if changedInput.id == 'maxSlider':
             self.param.maxAngleLimit = changedInput.commandInputs.itemById('maxSlider').valueOne
 
+        # 
         if changedInput.id == 'acuteAngle' \
-             or changedInput.id == 'obtuseAngle' \
-             or changedInput.id == 'minSlider' \
-             or changedInput.id == 'maxSlider' :
+            or changedInput.id == 'obtuseAngle' \
+            or changedInput.id == 'minSlider' \
+            or changedInput.id == 'maxSlider'\
+            or changedInput.id == 'modeRow':  # refresh edges after specific input changes
             edgeSelectCommand = changedInput.parentCommand.commandInputs.itemById('edgeSelect')
             if not edgeSelectCommand.isVisible:
                 return
