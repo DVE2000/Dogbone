@@ -81,7 +81,16 @@ class DogboneCommand(object):
         }
 
         self.levels = {}
-        self.initLogger()
+        self.logger = logging.getLogger("dogbone")
+        self.formatter = logging.Formatter(
+            "%(asctime)s ; %(name)s ; %(levelname)s ; %(lineno)d; %(message)s"
+        )
+        self.logHandler = logging.FileHandler(
+            os.path.join(_appPath, "dogbone.log"), mode="w"
+        )
+        self.logHandler.setFormatter(self.formatter)
+        self.logHandler.flush()
+        self.logger.addHandler(self.logHandler)
 
     def writeDefaults(self):
         self.logger.info("config file write")
@@ -733,18 +742,6 @@ class DogboneCommand(object):
             entity = inputs["faceSelect"].selection(i).entity
             if entity.objectType == adsk.fusion.BRepFace.classType():
                 self.faces.append(entity)
-
-    def initLogger(self):
-        self.logger = logging.getLogger("dogbone")
-        self.formatter = logging.Formatter(
-            "%(asctime)s ; %(name)s ; %(levelname)s ; %(lineno)d; %(message)s"
-        )
-        self.logHandler = logging.FileHandler(
-            os.path.join(_appPath, "dogbone.log"), mode="w"
-        )
-        self.logHandler.setFormatter(self.formatter)
-        self.logHandler.flush()
-        self.logger.addHandler(self.logHandler)
 
     def closeLogger(self):
         for handler in self.logger.handlers:
