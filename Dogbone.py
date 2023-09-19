@@ -82,7 +82,6 @@ class DogboneCommand(object):
 
         self.levels = {}
         self.initLogger()
-        _appPath = os.path.dirname(os.path.abspath(__file__))
 
     def writeDefaults(self):
         self.logger.info("config file write")
