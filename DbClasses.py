@@ -231,10 +231,9 @@ class DbFace:
         return self.face.nativeObject if self.face.nativeObject else self.face
 
     def revalidate(self) -> adsk.fusion.BRepFace:
-        self._face = self.component.findBRepUsingPoint(
+        return self.component.findBRepUsingPoint(
             self._refPoint, adsk.fusion.BRepEntityTypes.BRepFaceEntityType, -1.0, False
         ).item(0)
-        return self._face
 
 
 class DbEdge:
