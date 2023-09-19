@@ -1,5 +1,5 @@
-import math, logging
-import traceback
+import logging
+import math
 
 import adsk.core
 import adsk.fusion

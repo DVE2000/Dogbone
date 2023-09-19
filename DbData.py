@@ -1,10 +1,9 @@
 # -*- coding: utf-8 -*-
 
-from math import pi
-from typing import Optional
 from dataclasses import dataclass
+
 from dataclasses_json import dataclass_json
-import adsk.core, adsk.fusion
+
 
 # from .py_packages.pydantic.dataclasses import dataclass
 

@@ -1,11 +1,15 @@
-import logging, sys, gc, os
+import gc
+import logging
+import pprint
+import sys
 import time
 import traceback
-import adsk.core, adsk.fusion
-from typing import ClassVar
-from dataclasses import dataclass, field, InitVar
-import pprint
+from dataclasses import dataclass, field
 from functools import wraps
+from typing import ClassVar
+
+import adsk.core
+import adsk.fusion
 
 # from . import common as g
 

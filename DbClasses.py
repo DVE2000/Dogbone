@@ -1,17 +1,10 @@
 import logging
-
-from collections import defaultdict
-
-import adsk.core, adsk.fusion
-import math
 import traceback
-import os
-import json
+from math import tan, pi
 
-import time
+import adsk.core
+import adsk.fusion
 from . import dbutils as dbUtils
-from .decorators import eventHandler
-from math import sqrt, tan, pi
 
 logger = logging.getLogger("dogbone.DbClasses")
 

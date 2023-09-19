@@ -12,8 +12,20 @@
 # The add-in will then create a dogbone with diamater equal to the tool diameter plus
 # twice the offset (as the offset is applied to the radius) at each selected edge.
 import logging
-import adsk.core, adsk.fusion
-import os, sys
+import os
+import sys
+
+import adsk.core
+import adsk.fusion
+
+import traceback
+
+import time
+from . import dbutils as dbUtils
+from .decorators import eventHandler, parseDecorator
+from math import sqrt as sqrt
+from .DbClasses import DbFace
+from .DbData import DbParams
 
 # Globals
 _app = adsk.core.Application.get()
@@ -27,27 +39,12 @@ if _subpath not in sys.path:
     # sys.path.insert(0, os.path.join(f'{_appPath}','py_packages','dataclasses_json'))
     sys.path.insert(0, "")
 
-from collections import defaultdict
-
-import math
-import traceback
-import json
-
-import time
-from . import dbutils as dbUtils
-from .decorators import eventHandler, parseDecorator
-from math import sqrt as sqrt
-from .DbClasses import DbFace, DbEdge
-from .DbData import DbParams
-
-
 # constants - to keep attribute group and names consistent
 DOGBONEGROUP = "dogBoneGroup"
 # FACE_ID = 'faceID'
 REV_ID = "revId"
 ID = "id"
 DEBUGLEVEL = logging.NOTSET
-
 
 calcId = lambda x: hash(
     x.entityToken
@@ -270,9 +267,9 @@ class DogboneCommand(object):
         selInput1 = inputs.addSelectionInput(
             "edgeSelect",
             "DogBone Edges",
-            "Select or de-select any internal edges dropping down from a selected face (to apply dogbones to",
+            "SELECT OR de-SELECT ANY internal edges dropping down FROM a selected face (TO apply dogbones TO",
         )
-        selInput1.tooltip = "Select or de-select any internal edges dropping down from a selected face (to apply dogbones to)"
+        selInput1.tooltip = "SELECT OR de-SELECT ANY internal edges dropping down FROM a selected face (TO apply dogbones TO)"
         selInput1.addSelectionFilter("LinearEdges")
         selInput1.setSelectionLimits(1, 0)
         selInput1.isVisible = False
