@@ -2,12 +2,14 @@ import copy
 import json
 import warnings
 from collections import defaultdict, namedtuple
+
 # noinspection PyProtectedMember
-from dataclasses import (MISSING,
-                         _is_dataclass_instance,
-                         fields,
-                         is_dataclass  # type: ignore
-                         )
+from dataclasses import (
+    MISSING,
+    _is_dataclass_instance,
+    fields,
+    is_dataclass,  # type: ignore
+)
 from datetime import datetime, timezone
 from decimal import Decimal
 from enum import Enum
@@ -17,16 +19,22 @@ from uuid import UUID
 from typing_inspect import is_union_type  # type: ignore
 
 from dataclasses_json import cfg
-from dataclasses_json.utils import (_get_type_cons, _get_type_origin,
-                                    _handle_undefined_parameters_safe,
-                                    _is_collection, _is_mapping, _is_new_type,
-                                    _is_optional, _isinstance_safe,
-                                    _issubclass_safe)
+from dataclasses_json.utils import (
+    _get_type_cons,
+    _get_type_origin,
+    _handle_undefined_parameters_safe,
+    _is_collection,
+    _is_mapping,
+    _is_new_type,
+    _is_optional,
+    _isinstance_safe,
+    _issubclass_safe,
+)
 
 Json = Union[dict, list, str, int, float, bool, None]
 
-confs = ['encoder', 'decoder', 'mm_field', 'letter_case', 'exclude']
-FieldOverride = namedtuple('FieldOverride', confs)
+confs = ["encoder", "decoder", "mm_field", "letter_case", "exclude"]
+FieldOverride = namedtuple("FieldOverride", confs)
 
 
 class _ExtendedEncoder(json.JSONEncoder):
@@ -57,14 +65,15 @@ def _user_overrides_or_exts(cls):
     mm_fields = cfg.global_config.mm_fields
     for field in fields(cls):
         if field.type in encoders:
-            global_metadata[field.name]['encoder'] = encoders[field.type]
+            global_metadata[field.name]["encoder"] = encoders[field.type]
         if field.type in decoders:
-            global_metadata[field.name]['decoder'] = decoders[field.type]
+            global_metadata[field.name]["decoder"] = decoders[field.type]
         if field.type in mm_fields:
-            global_metadata[field.name]['mm_fields'] = mm_fields[field.type]
+            global_metadata[field.name]["mm_fields"] = mm_fields[field.type]
     try:
-        cls_config = (cls.dataclass_json_config
-                      if cls.dataclass_json_config is not None else {})
+        cls_config = (
+            cls.dataclass_json_config if cls.dataclass_json_config is not None else {}
+        )
     except AttributeError:
         cls_config = {}
 
@@ -73,16 +82,16 @@ def _user_overrides_or_exts(cls):
         field_config = {}
         # first apply global overrides or extensions
         field_metadata = global_metadata[field.name]
-        if 'encoder' in field_metadata:
-            field_config['encoder'] = field_metadata['encoder']
-        if 'decoder' in field_metadata:
-            field_config['decoder'] = field_metadata['decoder']
-        if 'mm_field' in field_metadata:
-            field_config['mm_field'] = field_metadata['mm_field']
+        if "encoder" in field_metadata:
+            field_config["encoder"] = field_metadata["encoder"]
+        if "decoder" in field_metadata:
+            field_config["decoder"] = field_metadata["decoder"]
+        if "mm_field" in field_metadata:
+            field_config["mm_field"] = field_metadata["mm_field"]
         # then apply class-level overrides or extensions
         field_config.update(cls_config)
         # last apply field-level overrides or extensions
-        field_config.update(field.metadata.get('dataclasses_json', {}))
+        field_config.update(field.metadata.get("dataclasses_json", {}))
         overrides[field.name] = FieldOverride(*map(field_config.get, confs))
     return overrides
 
@@ -159,14 +168,18 @@ def _decode_dataclass(cls, kvs, infer_missing):
         field_value = kvs[field.name]
         field_type = types[field.name]
         if field_value is None and not _is_optional(field_type):
-            warning = (f"value of non-optional type {field.name} detected "
-                       f"when decoding {cls.__name__}")
+            warning = (
+                f"value of non-optional type {field.name} detected "
+                f"when decoding {cls.__name__}"
+            )
             if infer_missing:
                 warnings.warn(
                     f"Missing {warning} and was defaulted to None by "
                     f"infer_missing=True. "
                     f"Set infer_missing=False (the default) to prevent this "
-                    f"behavior.", RuntimeWarning)
+                    f"behavior.",
+                    RuntimeWarning,
+                )
             else:
                 warnings.warn(f"`NoneType` object {warning}.", RuntimeWarning)
             init_kwargs[field.name] = field_value
@@ -178,14 +191,12 @@ def _decode_dataclass(cls, kvs, infer_missing):
 
             field_type = field_type.__supertype__
 
-        if (field.name in overrides
-                and overrides[field.name].decoder is not None):
+        if field.name in overrides and overrides[field.name].decoder is not None:
             # FIXME hack
             if field_type is type(field_value):
                 init_kwargs[field.name] = field_value
             else:
-                init_kwargs[field.name] = overrides[field.name].decoder(
-                    field_value)
+                init_kwargs[field.name] = overrides[field.name].decoder(field_value)
         elif is_dataclass(field_type):
             # FIXME this is a band-aid to deal with the value already being
             # serialized when handling nested marshmallow schema
@@ -194,18 +205,19 @@ def _decode_dataclass(cls, kvs, infer_missing):
             if is_dataclass(field_value):
                 value = field_value
             else:
-                value = _decode_dataclass(field_type, field_value,
-                                          infer_missing)
+                value = _decode_dataclass(field_type, field_value, infer_missing)
             init_kwargs[field.name] = value
         elif _is_supported_generic(field_type) and field_type != str:
-            init_kwargs[field.name] = _decode_generic(field_type,
-                                                      field_value,
-                                                      infer_missing)
+            init_kwargs[field.name] = _decode_generic(
+                field_type, field_value, infer_missing
+            )
         elif _is_supported_generic(field_type) and field_type != str:
-            print("initializing %s with t: %s v: %s, infer: %s" % (field.name, field_type, field_value, infer_missing))
+            print(
+                "initializing %s with t: %s v: %s, infer: %s"
+                % (field.name, field_type, field_value, infer_missing)
+            )
         else:
-            init_kwargs[field.name] = _support_extended_types(field_type,
-                                                              field_value)
+            init_kwargs[field.name] = _support_extended_types(field_type, field_value)
 
     return cls(**init_kwargs)
 
@@ -221,13 +233,9 @@ def _support_extended_types(field_type, field_value):
             tz = datetime.now(timezone.utc).astimezone().tzinfo
             res = datetime.fromtimestamp(field_value, tz=tz)
     elif _issubclass_safe(field_type, Decimal):
-        res = (field_value
-               if isinstance(field_value, Decimal)
-               else Decimal(field_value))
+        res = field_value if isinstance(field_value, Decimal) else Decimal(field_value)
     elif _issubclass_safe(field_type, UUID):
-        res = (field_value
-               if isinstance(field_value, UUID)
-               else UUID(field_value))
+        res = field_value if isinstance(field_value, UUID) else UUID(field_value)
     else:
         res = field_value
     return res
@@ -236,8 +244,12 @@ def _support_extended_types(field_type, field_value):
 def _is_supported_generic(type_):
     not_str = not _issubclass_safe(type_, str)
     is_enum = _issubclass_safe(type_, Enum)
-    return (not_str and _is_collection(type_)) or _is_optional(
-        type_) or is_union_type(type_) or is_enum
+    return (
+        (not_str and _is_collection(type_))
+        or _is_optional(type_)
+        or is_union_type(type_)
+        or is_enum
+    )
 
 
 def _decode_generic(type_, value, infer_missing):
@@ -291,7 +303,7 @@ def _decode_dict_keys(key_type, xs, infer_missing):
     # handle NoneType keys... it's weird to type a Dict as NoneType keys
     # but it's valid...
     if key_type is None or key_type == Any:
-        decode_function = key_type = (lambda x: x)
+        decode_function = key_type = lambda x: x
     # handle a nested python dict that has tuples for keys. E.g. for
     # Dict[Tuple[int], int], key_type will be typing.Tuple[int], but
     # decode_function should be tuple, so map() doesn't break.
@@ -316,8 +328,7 @@ def _decode_items(type_arg, xs, infer_missing):
     hence the check of `is_dataclass(vs)`
     """
     if is_dataclass(type_arg) or is_dataclass(xs):
-        items = (_decode_dataclass(type_arg, x, infer_missing)
-                 for x in xs)
+        items = (_decode_dataclass(type_arg, x, infer_missing) for x in xs)
     elif _is_supported_generic(type_arg):
         items = (_decode_generic(type_arg, x, infer_missing) for x in xs)
     else:
@@ -337,22 +348,25 @@ def _asdict(obj, encode_json=False):
             if overrides[field.name].encoder:
                 value = getattr(obj, field.name)
             else:
-                value = _asdict(
-                    getattr(obj, field.name),
-                    encode_json=encode_json
-                )
+                value = _asdict(getattr(obj, field.name), encode_json=encode_json)
             result.append((field.name, value))
 
-        result = _handle_undefined_parameters_safe(cls=obj, kvs=dict(result),
-                                                   usage="to")
-        return _encode_overrides(dict(result), _user_overrides_or_exts(obj),
-                                 encode_json=encode_json)
+        result = _handle_undefined_parameters_safe(
+            cls=obj, kvs=dict(result), usage="to"
+        )
+        return _encode_overrides(
+            dict(result), _user_overrides_or_exts(obj), encode_json=encode_json
+        )
     elif isinstance(obj, Mapping):
-        return dict((_asdict(k, encode_json=encode_json),
-                     _asdict(v, encode_json=encode_json)) for k, v in
-                    obj.items())
-    elif isinstance(obj, Collection) and not isinstance(obj, str) \
-            and not isinstance(obj, bytes):
+        return dict(
+            (_asdict(k, encode_json=encode_json), _asdict(v, encode_json=encode_json))
+            for k, v in obj.items()
+        )
+    elif (
+        isinstance(obj, Collection)
+        and not isinstance(obj, str)
+        and not isinstance(obj, bytes)
+    ):
         return list(_asdict(v, encode_json=encode_json) for v in obj)
     else:
         return copy.deepcopy(obj)

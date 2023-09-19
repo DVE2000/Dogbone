@@ -4,10 +4,10 @@ import traceback
 import adsk.core
 import adsk.fusion
 
-logger = logging.getLogger('dogbone.dbutils')
+logger = logging.getLogger("dogbone.dbutils")
 
 
-def getAngleBetweenFaces(edge)->float:
+def getAngleBetweenFaces(edge) -> float:
     """
     returns radian angle between faces
     """
@@ -27,10 +27,13 @@ def getAngleBetweenFaces(edge)->float:
     ie opposite to face1 coEdge direction
     """
     # Verify that the two faces are planar.
-    face1, face2  = (face for face in edge.faces)
+    face1, face2 = (face for face in edge.faces)
     if not face1 or not face2:
         return 0
-    if face1.geometry.objectType != adsk.core.Plane.classType() or face2.geometry.objectType != adsk.core.Plane.classType():
+    if (
+        face1.geometry.objectType != adsk.core.Plane.classType()
+        or face2.geometry.objectType != adsk.core.Plane.classType()
+    ):
         return 0
 
     # Get the normal of each face.
@@ -44,56 +47,68 @@ def getAngleBetweenFaces(edge)->float:
     coEdge = coEdge1 if coEdge1.loop.face == face1 else coEdge2
 
     # Create a vector that represents the direction of the co-edge.
-    edgeVec = getEdgeVector(edge, reverse = coEdge.isOpposedToEdge)
+    edgeVec = getEdgeVector(edge, reverse=coEdge.isOpposedToEdge)
 
     # Get the cross product of the face normals.
-    # normal1 and normal2 are flipped as edge vector is pointing "up" 
+    # normal1 and normal2 are flipped as edge vector is pointing "up"
     cross = normal2.crossProduct(normal1)
 
     # Check to see if the cross product is in the same or opposite direction
     # of the co-edge direction.  If it's opposed then it's a convex angle.
-    angle = (math.pi * 2) - (math.pi - normalAngle) if edgeVec.angleTo(cross) > math.pi/2 else math.pi - normalAngle
+    angle = (
+        (math.pi * 2) - (math.pi - normalAngle)
+        if edgeVec.angleTo(cross) > math.pi / 2
+        else math.pi - normalAngle
+    )
 
     return angle
 
+
 def findExtent(face, edge):
-    
-#    faceNormal = adsk.core.Vector3D.cast(face.evaluator.getNormalAtPoint(face.pointOnFace)[1])
-    
+    #    faceNormal = adsk.core.Vector3D.cast(face.evaluator.getNormalAtPoint(face.pointOnFace)[1])
+
     if edge.startVertex in face.vertices:
         return edge.endVertex
     return edge.startVertex
-    
-def correctedEdgeVector(edge:adsk.fusion.BRepEdge, refPoint:adsk.core.Point3D)->adsk.core.Vector3D:
+
+
+def correctedEdgeVector(
+    edge: adsk.fusion.BRepEdge, refPoint: adsk.core.Point3D
+) -> adsk.core.Vector3D:
     if edge.startPoint.isEqualTo(refPoint):
         return edge.startPoint.vectorTo(edge.endPoint)
     return edge.endPoint.vectorTo(edge.startPoint)
+
 
 def correctedSketchEdgeVector(edge, refPoint):
     if edge.startSketchPoint.geometry.isEqualTo(refPoint.geometry):
         return edge.startSketchPoint.geometry.vectorTo(edge.endSketchPoint.geometry)
     return edge.endSketchPoint.geometry.vectorTo(edge.startSketchPoint.geometry)
 
+
 def isEdgeAssociatedWithFace(face, edge):
-    
     # have to check both ends - not sure which way around the start and end vertices are
     if edge.startVertex in face.vertices:
         return True
     if edge.endVertex in face.vertices:
         return True
     return False
-    
+
+
 def getCornerEdgesAtFace(face, edge):
-    #not sure which end is which - so test edge ends for inclusion in face
-    startVertex = edge.startVertex if edge.startVertex in face.vertices else edge.endVertex 
-    #edge has 2 adjacent faces - therefore the face that isn't from the 3 faces of startVertex, has to be the top face edges
-    
+    # not sure which end is which - so test edge ends for inclusion in face
+    startVertex = (
+        edge.startVertex if edge.startVertex in face.vertices else edge.endVertex
+    )
+    # edge has 2 adjacent faces - therefore the face that isn't from the 3 faces of startVertex, has to be the top face edges
+
     vertexEdges = {hash(edge.entityToken): edge for edge in startVertex.edges}
     faceEdges = {hash(edge.entityToken): edge for edge in face.edges}
-    commonEdges = set(vertexEdges.keys()) & set(faceEdges.keys()) #intersect both sets
+    commonEdges = set(vertexEdges.keys()) & set(faceEdges.keys())  # intersect both sets
     if len(commonEdges) != 2:
-        raise NameError('returnVal len != 2')
+        raise NameError("returnVal len != 2")
     return (faceEdges[token] for token in commonEdges)
+
 
 def getVertexAtFace(face, edge):
     if edge.startVertex in face.vertices:
@@ -102,28 +117,37 @@ def getVertexAtFace(face, edge):
         return edge.endVertex
     return False
 
-def getEdgeVector(edge:adsk.fusion.BRepEdge, refFace:adsk.fusion.BRepFace = None, reverse = False) ->adsk.core.Vector3D:
+
+def getEdgeVector(
+    edge: adsk.fusion.BRepEdge, refFace: adsk.fusion.BRepFace = None, reverse=False
+) -> adsk.core.Vector3D:
     """
     returns vector of the edge paramater (not normalised!)
     if refFace is supplied - returns vector pointing out from face vertex"""
     if refFace:
         reverse = edge.endVertex in refFace.vertices
-    startPoint, endPoint = (edge.endVertex.geometry, edge.startVertex.geometry) if reverse else (edge.startVertex.geometry, edge.endVertex.geometry)
+    startPoint, endPoint = (
+        (edge.endVertex.geometry, edge.startVertex.geometry)
+        if reverse
+        else (edge.startVertex.geometry, edge.endVertex.geometry)
+    )
     return startPoint.vectorTo(endPoint)
 
-    
+
 def getFaceNormal(face):
     return face.evaluator.getNormalAtPoint(face.pointOnFace)[1]
-    
-    
+
+
 def messageBox(*args):
     adsk.core.Application.get().userInterface.messageBox(*args)
 
 
-def getTopFace(selectedFace:adsk.fusion.BRepFace)->adsk.fusion.BRepFace:
+def getTopFace(selectedFace: adsk.fusion.BRepFace) -> adsk.fusion.BRepFace:
     normal = getFaceNormal(selectedFace)
     refPlane = adsk.core.Plane.create(selectedFace.vertices.item(0).geometry, normal)
-    refLine = adsk.core.InfiniteLine3D.create(selectedFace.vertices.item(0).geometry, normal)
+    refLine = adsk.core.InfiniteLine3D.create(
+        selectedFace.vertices.item(0).geometry, normal
+    )
     refPoint = refPlane.intersectWithLine(refLine)
     faceList = []
     body = adsk.fusion.BRepBody.cast(selectedFace.body)
@@ -132,31 +156,36 @@ def getTopFace(selectedFace:adsk.fusion.BRepFace)->adsk.fusion.BRepFace:
             continue
         facePlane = adsk.core.Plane.create(face.vertices.item(0).geometry, normal)
         intersectionPoint = facePlane.intersectWithLine(refLine)
-#        distanceToRefPoint = refPoint.distanceTo(intersectionPoint)
+        #        distanceToRefPoint = refPoint.distanceTo(intersectionPoint)
         directionVector = refPoint.vectorTo(intersectionPoint)
         distance = directionVector.dotProduct(normal)
- #       distanceToRefPoint = distanceToRefPoint* (-1 if direction <0 else 1)
+        #       distanceToRefPoint = distanceToRefPoint* (-1 if direction <0 else 1)
         faceList.append([face, distance])
-    sortedFaceList = sorted(faceList, key = lambda x: x[1])
+    sortedFaceList = sorted(faceList, key=lambda x: x[1])
     top = sortedFaceList[-1]
-    refPoint = top[0].nativeObject.pointOnFace if top[0].assemblyContext else top[0].pointOnFace
-    
+    refPoint = (
+        top[0].nativeObject.pointOnFace
+        if top[0].assemblyContext
+        else top[0].pointOnFace
+    )
+
     return (top[0], refPoint)
- 
+
 
 def getTranslateVectorBetweenFaces(fromFace, toFace):
-#   returns absolute distance
+    #   returns absolute distance
 
     normal = getFaceNormal(fromFace)
     if not normal.isParallelTo(getFaceNormal(fromFace)):
         return False
 
     fromFacePlane = adsk.core.Plane.create(fromFace.vertices.item(0).geometry, normal)
-    fromFaceLine = adsk.core.InfiniteLine3D.create(fromFace.vertices.item(0).geometry, normal)
+    fromFaceLine = adsk.core.InfiniteLine3D.create(
+        fromFace.vertices.item(0).geometry, normal
+    )
     fromFacePoint = fromFacePlane.intersectWithLine(fromFaceLine)
-    
+
     toFacePlane = adsk.core.Plane.create(toFace.vertices.item(0).geometry, normal)
     toFacePoint = toFacePlane.intersectWithLine(fromFaceLine)
     translateVector = fromFacePoint.vectorTo(toFacePoint)
     return translateVector
-    
