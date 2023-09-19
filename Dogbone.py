@@ -70,6 +70,12 @@ class DogboneCommand(object):
     selectedEdges = {}  # kay: hash(edge.entityToken) value:[DbEdge, ...]
 
     def __init__(self):
+        # set in various methods, but should be initialized in __init__
+        self.offset = None
+        self.radius = None
+        self.selections = None
+        self.errorCount = None
+
         self.faceSelections = adsk.core.ObjectCollection.create()
         self.param = DbParams()
         self.loggingLevels = {
