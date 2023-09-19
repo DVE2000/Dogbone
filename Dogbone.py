@@ -40,7 +40,7 @@ if _subpath not in sys.path:
     sys.path.insert(0, "")
 
 # constants - to keep attribute group and names consistent
-DOGBONEGROUP = "dogBoneGroup"
+DOGBONE_GROUP = "dogBoneGroup"
 # FACE_ID = 'faceID'
 REV_ID = "revId"
 ID = "id"
