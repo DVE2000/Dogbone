@@ -13,7 +13,7 @@ if PY2:
     string_types = (str, unicode)  # noqa: F821
     text_type = unicode  # noqa: F821
 else:
-    string_types = (str, )
+    string_types = (str,)
     text_type = str
 
 
@@ -27,23 +27,30 @@ class EnumField(Field):
     NAME = LoadDumpOptions.name
 
     default_error_messages = {
-        'by_name': 'Invalid enum member {input}',
-        'by_value': 'Invalid enum value {input}',
-        'must_be_string': 'Enum name must be string'
+        "by_name": "Invalid enum member {input}",
+        "by_value": "Invalid enum value {input}",
+        "must_be_string": "Enum name must be string",
     }
 
     def __init__(
-            self, enum, by_value=False, load_by=None, dump_by=None, error='', *args, **kwargs
+        self,
+        enum,
+        by_value=False,
+        load_by=None,
+        dump_by=None,
+        error="",
+        *args,
+        **kwargs
     ):
         self.enum = enum
         self.by_value = by_value
 
-        if error and any(old in error for old in ('name}', 'value}', 'choices}')):
+        if error and any(old in error for old in ("name}", "value}", "choices}")):
             warnings.warn(
                 "'name', 'value', and 'choices' fail inputs are deprecated,"
                 "use input, names and values instead",
                 DeprecationWarning,
-                stacklevel=2
+                stacklevel=2,
             )
 
         self.error = error
@@ -53,8 +60,9 @@ class EnumField(Field):
 
         if not isinstance(load_by, Enum) or load_by not in LoadDumpOptions:
             raise ValueError(
-                'Invalid selection for load_by must be EnumField.VALUE or EnumField.NAME, got {}'.
-                format(load_by)
+                "Invalid selection for load_by must be EnumField.VALUE or EnumField.NAME, got {}".format(
+                    load_by
+                )
             )
 
         if dump_by is None:
@@ -62,8 +70,9 @@ class EnumField(Field):
 
         if not isinstance(dump_by, Enum) or dump_by not in LoadDumpOptions:
             raise ValueError(
-                'Invalid selection for load_by must be EnumField.VALUE or EnumField.NAME, got {}'.
-                format(dump_by)
+                "Invalid selection for load_by must be EnumField.VALUE or EnumField.NAME, got {}".format(
+                    dump_by
+                )
             )
 
         self.load_by = load_by
@@ -91,26 +100,26 @@ class EnumField(Field):
         try:
             return self.enum(value)
         except ValueError:
-            self.fail('by_value', input=value, value=value)
+            self.fail("by_value", input=value, value=value)
 
     def _deserialize_by_name(self, value, attr, data):
         if not isinstance(value, string_types):
-            self.fail('must_be_string', input=value, name=value)
+            self.fail("must_be_string", input=value, name=value)
 
         try:
             return getattr(self.enum, value)
         except AttributeError:
-            self.fail('by_name', input=value, name=value)
+            self.fail("by_name", input=value, name=value)
 
     def fail(self, key, **kwargs):
-        kwargs['values'] = ', '.join([text_type(mem.value) for mem in self.enum])
-        kwargs['names'] = ', '.join([mem.name for mem in self.enum])
+        kwargs["values"] = ", ".join([text_type(mem.value) for mem in self.enum])
+        kwargs["names"] = ", ".join([mem.name for mem in self.enum])
 
         if self.error:
             if self.by_value:
-                kwargs['choices'] = kwargs['values']
+                kwargs["choices"] = kwargs["values"]
             else:
-                kwargs['choices'] = kwargs['names']
+                kwargs["choices"] = kwargs["names"]
             msg = self.error.format(**kwargs)
             raise ValidationError(msg)
         else:

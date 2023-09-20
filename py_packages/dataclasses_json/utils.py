@@ -50,7 +50,7 @@ def _hasargs(type_, *args):
     except AttributeError:
         return False
     except TypeError:
-        if (type_.__args__ is None):
+        if type_.__args__ is None:
             return False
         else:
             raise
@@ -71,9 +71,9 @@ def _issubclass_safe(cls, classinfo):
     try:
         return issubclass(cls, classinfo)
     except Exception:
-        return (_is_new_type_subclass_safe(cls, classinfo)
-                if _is_new_type(cls)
-                else False)
+        return (
+            _is_new_type_subclass_safe(cls, classinfo) if _is_new_type(cls) else False
+        )
 
 
 def _is_new_type_subclass_safe(cls, classinfo):
@@ -93,9 +93,9 @@ def _is_new_type(type_):
 
 
 def _is_optional(type_):
-    return (_issubclass_safe(type_, Optional) or
-            _hasargs(type_, type(None)) or
-            type_ is Any)
+    return (
+        _issubclass_safe(type_, Optional) or _hasargs(type_, type(None)) or type_ is Any
+    )
 
 
 def _is_mapping(type_):
@@ -107,8 +107,9 @@ def _is_collection(type_):
 
 
 def _is_nonstr_collection(type_):
-    return (_issubclass_safe(_get_type_origin(type_), Collection)
-            and not _issubclass_safe(type_, str))
+    return _issubclass_safe(
+        _get_type_origin(type_), Collection
+    ) and not _issubclass_safe(type_, str)
 
 
 def _timestamp_to_dt_aware(timestamp: float):
@@ -121,7 +122,7 @@ def _undefined_parameter_action_safe(cls):
     try:
         if cls.dataclass_json_config is None:
             return
-        action_enum = cls.dataclass_json_config['undefined']
+        action_enum = cls.dataclass_json_config["undefined"]
     except (AttributeError, KeyError):
         return
 
@@ -141,19 +142,17 @@ def _handle_undefined_parameters_safe(cls, kvs, usage: str):
     if undefined_parameter_action is None:
         return kvs if usage != "init" else cls.__init__
     if usage == "from":
-        return undefined_parameter_action.value.handle_from_dict(cls=cls,
-                                                                 kvs=kvs)
+        return undefined_parameter_action.value.handle_from_dict(cls=cls, kvs=kvs)
     elif usage == "to":
-        return undefined_parameter_action.value.handle_to_dict(obj=cls,
-                                                               kvs=kvs)
+        return undefined_parameter_action.value.handle_to_dict(obj=cls, kvs=kvs)
     elif usage == "dump":
         return undefined_parameter_action.value.handle_dump(obj=cls)
     elif usage == "init":
         return undefined_parameter_action.value.create_init(obj=cls)
     else:
         raise ValueError(
-            f"usage must be one of ['to', 'from', 'dump', 'init'], "
-            f"but is '{usage}'")
+            f"usage must be one of ['to', 'from', 'dump', 'init'], " f"but is '{usage}'"
+        )
 
 
 # Define a type for the CatchAll field

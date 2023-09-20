@@ -1,50 +1,52 @@
 # -*- coding: utf-8 -*-
 
-from math import pi
-from typing import Optional
 from dataclasses import dataclass
+
 from dataclasses_json import dataclass_json
-import adsk.core, adsk.fusion
+
+
 # from .py_packages.pydantic.dataclasses import dataclass
+
 
 @dataclass_json
 @dataclass
 class DbParams:
 
-     '''Dataclass - Holds add-in instance setup values'''
-     toolDiaStr: str = "0.25 in"
-     dbType: str = "Normal Dogbone"
-     fromTop: bool = True
-     toolDiaOffsetStr: str = "0 cm"
+    """Dataclass - Holds add-in instance setup values"""
 
-     mortiseType: bool = False
-     longSide: bool = True
+    toolDiaStr: str = "0.25 in"
+    dbType: str = "Normal Dogbone"
+    fromTop: bool = True
+    toolDiaOffsetStr: str = "0 cm"
 
-     minimalPercent: float = 10.0
-     
-     minAngleLimit: float = 89
-     maxAngleLimit: float = 91
+    mortiseType: bool = False
+    longSide: bool = True
 
-     angleDetectionGroup: bool = False
-     acuteAngle: bool = False
-     obtuseAngle: bool = False
-     minAngleLimit: float = 89.0
-     maxAngleLimit: float = 91.0
+    minimalPercent: float = 10.0
 
+    minAngleLimit: float = 89
+    maxAngleLimit: float = 91
 
-     parametric: bool = False
-     expandModeGroup: bool = True
-     expandSettingsGroup: bool = True    
-     logging: int = 0
-     benchmark: bool = False
+    angleDetectionGroup: bool = False
+    acuteAngle: bool = False
+    obtuseAngle: bool = False
+    minAngleLimit: float = 89.0
+    maxAngleLimit: float = 91.0
 
-     @property
-     def toolDia(self):
-          from .Dogbone import _design
-          return _design.unitsManager.evaluateExpression(self.toolDiaStr)
+    parametric: bool = False
+    expandModeGroup: bool = True
+    expandSettingsGroup: bool = True
+    logging: int = 0
+    benchmark: bool = False
 
-     @property
-     def toolDiaOffset(self):
-          from .Dogbone import _design
-          return  _design.unitsManager.evaluateExpression(self.toolDiaOffsetStr)
-     
+    @property
+    def toolDia(self):
+        from .Dogbone import _design
+
+        return _design.unitsManager.evaluateExpression(self.toolDiaStr)
+
+    @property
+    def toolDiaOffset(self):
+        from .Dogbone import _design
+
+        return _design.unitsManager.evaluateExpression(self.toolDiaOffsetStr)
