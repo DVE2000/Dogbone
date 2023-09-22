@@ -58,6 +58,7 @@ reValidateFace = lambda comp, x: comp.findBRepUsingPoint(
 ).item(0)
 
 COMMAND_ID = "dogboneBtn"
+CONFIG_PATH = os.path.join(_appPath, "defaults.dat")
 
 
 # noinspection PyMethodMayBeStatic
@@ -117,31 +118,29 @@ class DogboneCommand(object):
             self.logger.exception(e)
             raise e
 
-    def writeDefaults(self):
+    def write_defaults(self):
         self.logger.info("config file write")
+        self.write_file(CONFIG_PATH, self.param.to_json())
 
-        json_file = open(os.path.join(_appPath, "defaults.dat"), "w", encoding="UTF-8")
-        json_file.write(self.param.to_json())
-        json_file.close()
+    def write_file(self, path: str, data: str):
+        with open(path, "w", encoding="UTF-8") as file:
+            file.write(data)
 
-    def readDefaults(self):
+    def read_file(self, path: str) -> str:
+        with open(path, "r", encoding="UTF-8") as file:
+            return file.read()
+
+    def read_defaults(self):
         self.logger.info("config file read")
-        if not os.path.isfile(os.path.join(_appPath, "defaults.dat")):
-            return
-        json_file = open(os.path.join(_appPath, "defaults.dat"), "r", encoding="UTF-8")
-        jsonString = json_file.read()
+
+        if not os.path.isfile(CONFIG_PATH):
+            return DbParams()
+
         try:
-            self.param = self.param.from_json(jsonString)
+            json = self.read_file(CONFIG_PATH)
+            return DbParams().from_json(json)
         except ValueError:
-            self.logger.error("default.dat error")
-            json_file.close()
-            json_file = open(
-                os.path.join(_appPath, "defaults.dat"), "w", encoding="UTF-8"
-            )
-            paramString = DbParams().to_json()
-            json_file.write(paramString)
-            json_file.close()
-            self.param = DbParams()
+            return DbParams
 
     def debugFace(self, face):
         if self.logger.level < logging.DEBUG:
@@ -285,7 +284,7 @@ class DogboneCommand(object):
             if returnValue != adsk.core.DialogResults.DialogYes:
                 return
             _design.designType = adsk.fusion.DesignTypes.ParametricDesignType
-        self.readDefaults()
+        self.read_defaults()
 
         self.selectedEdges = {}
         self.selectedFaces = {}
@@ -787,7 +786,7 @@ class DogboneCommand(object):
         self.logHandler.setLevel(self.param.logging)
         self.logger.setLevel(self.param.logging)
 
-        self.writeDefaults()
+        self.write_defaults()
 
         if self.param.parametric:
             userParams: adsk.fusion.UserParameters = _design.userParameters
