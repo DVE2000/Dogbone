@@ -54,9 +54,11 @@ reValidateFace = lambda comp, x: comp.findBRepUsingPoint(
     x, adsk.fusion.BRepEntityTypes.BRepFaceEntityType, -1.0, False
 ).item(0)
 
+COMMAND_ID = "dogboneBtn"
 
+
+# noinspection PyMethodMayBeStatic
 class DogboneCommand(object):
-    COMMAND_ID = "dogboneBtn"
     # REFRESH_COMMAND_ID = "refreshDogboneBtn"
 
     param = DbParams()
@@ -100,14 +102,15 @@ class DogboneCommand(object):
 
     def run(self, context):
         try:
-            self.addButton()
+            self.cleanup_commands()
+            self.register_commands()
         except Exception as e:
             self.logger.exception(e)
             raise e
 
     def stop(self, context):
         try:
-            self.removeButton()
+            self.cleanup_commands()
         except Exception as e:
             self.logger.exception(e)
             raise e
@@ -181,54 +184,59 @@ class DogboneCommand(object):
     #     buttonControl.isPromotedByDefault = True
     #     buttonControl.isPromoted = True
 
-    def addButton(self):
-        try:
-            # clean up any crashed instances of the button if existing
-            self.removeButton()
-        except:
-            pass
+    def register_commands(self):
 
         # Create button definition and command event handler
-        buttonDogbone = _ui.commandDefinitions.addButtonDefinition(
-            self.COMMAND_ID,
+        button = _ui.commandDefinitions.addButtonDefinition(
+            COMMAND_ID,
             "Dogbone",
             "Creates dogbones at all inside corners of a face",
             "Resources",
         )
 
-        self.onCreate(event=buttonDogbone.commandCreated)
+        self.onCreate(event=button.commandCreated)
         # Create controls for Manufacturing Workspace
-        mfgEnv = _ui.workspaces.itemById("MfgWorkingModelEnv")
-        mfgTab = mfgEnv.toolbarTabs.itemById("MfgSolidTab")
-        mfgSolidPanel = mfgTab.toolbarPanels.itemById("SolidCreatePanel")
-        buttonControlMfg = mfgSolidPanel.controls.addCommand(
-            buttonDogbone, "dogboneBtn"
+
+        control = self.get_solid_create_panel().controls.addCommand(
+            button, COMMAND_ID
         )
 
         # Make the button available in the Mfg panel.
-        buttonControlMfg.isPromotedByDefault = True
-        buttonControlMfg.isPromoted = True
+        control.isPromotedByDefault = True
+        control.isPromoted = True
 
         # Create controls for the Design Workspace
         createPanel = _ui.allToolbarPanels.itemById("SolidCreatePanel")
-        buttonControl = createPanel.controls.addCommand(buttonDogbone, "dogboneBtn")
+        buttonControl = createPanel.controls.addCommand(button, COMMAND_ID)
 
         # Make the button available in the panel.
         buttonControl.isPromotedByDefault = True
         buttonControl.isPromoted = True
 
-    def removeButton(self):
-        createPanel = _ui.allToolbarPanels.itemById("SolidCreatePanel")
-        if cntrl := createPanel.controls.itemById(self.COMMAND_ID):
-            cntrl.deleteMe()
+    def get_solid_create_panel(self):
+        env = _ui.workspaces.itemById("MfgWorkingModelEnv")
+        tab = env.toolbarTabs.itemById("MfgSolidTab")
+        return tab.toolbarPanels.itemById("SolidCreatePanel")
 
-        mfgEnv = _ui.workspaces.itemById("MfgWorkingModelEnv")
-        mfgTab = mfgEnv.toolbarTabs.itemById("MfgSolidTab")
-        mfgSolidPanel = mfgTab.toolbarPanels.itemById("SolidCreatePanel")
-        if cntrl := mfgSolidPanel.controls.itemById(self.COMMAND_ID):
-            cntrl.deleteMe()
+    def cleanup_commands(self):
+        self.remove_from_all()
+        self.remove_from_solid()
+        self.remove_command_definition()
 
-        if cmdDef := _ui.commandDefinitions.itemById(self.COMMAND_ID):
+    def remove_from_all(self):
+        panel = _ui.allToolbarPanels.itemById("SolidCreatePanel")
+        if not panel:
+            return
+
+        command = panel.controls.itemById(COMMAND_ID)
+        command and command.deleteMe()
+
+    def remove_from_solid(self):
+        control = self.get_solid_create_panel().controls.itemById(COMMAND_ID)
+        control and control.deleteMe()
+
+    def remove_command_definition(self):
+        if cmdDef := _ui.commandDefinitions.itemById(COMMAND_ID):
             cmdDef.deleteMe()
 
     # @eventHandler(handler_cls = adsk.core.CommandCreatedEventHandler)
