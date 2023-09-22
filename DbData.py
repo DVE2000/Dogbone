@@ -24,9 +24,6 @@ class DbParams:
 
     minimalPercent: float = 10.0
 
-    minAngleLimit: float = 89
-    maxAngleLimit: float = 91
-
     angleDetectionGroup: bool = False
     acuteAngle: bool = False
     obtuseAngle: bool = False
