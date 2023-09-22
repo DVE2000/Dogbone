@@ -98,6 +98,20 @@ class DogboneCommand(object):
         self.logHandler.flush()
         self.logger.addHandler(self.logHandler)
 
+    def run(self, context):
+        try:
+            self.addButton()
+        except Exception as e:
+            self.logger.exception(e)
+            raise e
+
+    def stop(self, context):
+        try:
+            self.removeButton()
+        except Exception as e:
+            self.logger.exception(e)
+            raise e
+
     def writeDefaults(self):
         self.logger.info("config file write")
 
@@ -499,12 +513,12 @@ class DogboneCommand(object):
 
         if changedInput.id == "dogboneType":
             changedInput.commandInputs.itemById("minimalPercent").isVisible = (
-                changedInput.commandInputs.itemById("dogboneType").selectedItem.name
-                == "Minimal Dogbone"
+                    changedInput.commandInputs.itemById("dogboneType").selectedItem.name
+                    == "Minimal Dogbone"
             )
             changedInput.commandInputs.itemById("mortiseType").isVisible = (
-                changedInput.commandInputs.itemById("dogboneType").selectedItem.name
-                == "Mortise Dogbone"
+                    changedInput.commandInputs.itemById("dogboneType").selectedItem.name
+                    == "Mortise Dogbone"
             )
             return
 
@@ -543,11 +557,11 @@ class DogboneCommand(object):
 
         #
         if (
-            changedInput.id == "acuteAngle"
-            or changedInput.id == "obtuseAngle"
-            or changedInput.id == "minSlider"
-            or changedInput.id == "maxSlider"
-            or changedInput.id == "modeRow"
+                changedInput.id == "acuteAngle"
+                or changedInput.id == "obtuseAngle"
+                or changedInput.id == "minSlider"
+                or changedInput.id == "maxSlider"
+                or changedInput.id == "modeRow"
         ):  # refresh edges after specific input changes
             edgeSelectCommand = changedInput.parentCommand.commandInputs.itemById(
                 "edgeSelect"
@@ -908,7 +922,7 @@ class DogboneCommand(object):
             # ==============================================================================
 
             if not len(
-                self.selectedOccurrences
+                    self.selectedOccurrences
             ):  # get out if the face selection list is empty
                 eventArgs.isSelectable = True
                 return
@@ -930,7 +944,7 @@ class DogboneCommand(object):
 
                 primaryFaceNormal = dbUtils.getFaceNormal(primaryFace.face)
                 if primaryFaceNormal.isParallelTo(
-                    dbUtils.getFaceNormal(eventArgs.selection.entity)
+                        dbUtils.getFaceNormal(eventArgs.selection.entity)
                 ):
                     eventArgs.isSelectable = True
                     return
@@ -1302,8 +1316,7 @@ dog = DogboneCommand()
 
 def run(context):
     try:
-        dog.addButton()
-        # dog.addRefreshButton()
+        dog.run(context)
     except:
         dbUtils.messageBox(traceback.format_exc())
 
@@ -1312,6 +1325,6 @@ def stop(context):
     try:
         _ui.terminateActiveCommand()
         adsk.terminate()
-        dog.removeButton()
+        dog.stop(context)
     except:
         dbUtils.messageBox(traceback.format_exc())
