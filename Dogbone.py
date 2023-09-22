@@ -14,6 +14,7 @@
 import logging
 import os
 import sys
+from typing import cast
 
 import adsk.core
 import adsk.fusion
@@ -29,7 +30,7 @@ from .DbData import DbParams
 
 # Globals
 _app = adsk.core.Application.get()
-_design = _app.activeProduct
+_design: adsk.fusion.Design = cast(adsk.fusion.Design, _app.activeProduct)
 _ui = _app.userInterface
 _rootComp = _design.rootComponent
 _appPath = os.path.dirname(os.path.abspath(__file__))
