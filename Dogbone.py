@@ -34,6 +34,8 @@ _design: adsk.fusion.Design = cast(adsk.fusion.Design, _app.activeProduct)
 _ui = _app.userInterface
 _rootComp = _design.rootComponent
 _appPath = os.path.dirname(os.path.abspath(__file__))
+
+# TODO: refactor usage of sub path as it breaks the IDE inspections
 _subpath = os.path.join(f"{_appPath}", "py_packages")
 if _subpath not in sys.path:
     sys.path.insert(0, _subpath)
