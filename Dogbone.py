@@ -62,7 +62,6 @@ COMMAND_ID = "dogboneBtn"
 class DogboneCommand(object):
     # REFRESH_COMMAND_ID = "refreshDogboneBtn"
 
-    param = DbParams()
     registeredEdgesDict = {}
 
     faces = []
