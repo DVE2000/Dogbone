@@ -169,35 +169,6 @@ def parseDecorator(func):
     return wrapper
 
 
-class Button(adsk.core.ButtonControlDefinition):
-    def __init__():
-        super().__init__()
-
-    def addCmd(
-        self,
-        parentDefinition,
-        commandId,
-        commandName,
-        tooltip,
-        resourceFolder,
-        handlerMethod,
-        parentControl,
-    ):
-        commandDefinition_ = parentDefinition.itemById(commandId)
-
-        if not commandDefinition_:
-            commandDefinition_ = parentDefinition.addButtonDefinition(
-                commandId, commandName, tooltip, resourceFolder
-            )
-
-        handlerMethod(commandDefinition_.commandCreated)
-
-        control_ = parentControl.addCommand(exportCommandDefinition_)
-        exportControl_.isPromoted = True
-
-        return commandDefinition_
-
-
 def makeTempFaceVisible(method):
     @wraps(method)
     def wrapper(*args, **kwargs):
