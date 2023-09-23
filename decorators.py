@@ -6,7 +6,7 @@ import time
 import traceback
 from dataclasses import dataclass, field
 from functools import wraps
-from typing import ClassVar
+from typing import ClassVar, cast
 
 import adsk.core
 import adsk.fusion
@@ -15,7 +15,7 @@ import adsk.fusion
 
 # Globals
 _app = adsk.core.Application.get()
-_design = _app.activeProduct
+_design: adsk.fusion.Design = cast(adsk.fusion.Design, _app.activeProduct)
 _ui = _app.userInterface
 _rootComp = _design.rootComponent
 
