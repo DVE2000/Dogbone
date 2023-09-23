@@ -152,39 +152,6 @@ class DogboneCommand(object):
 
         return
 
-    # def addRefreshButton(self):
-    #     try:
-    #     # clean up any crashed instances of the button if existing
-    #         self.removeButton()
-    #     except:
-    #         pass
-
-    #     # Create button definition and command event handler
-    #     refreshButtonDogbone = _ui.commandDefinitions.addButtonDefinition(
-    #         self.REFRESH_COMMAND_ID,
-    #         'DogboneRefresh',
-    #         'Refreshes already created dogbones',
-    #         'Resources')
-
-    #     self.onRefreshCreate(event=refreshButtonDogbone.commandCreated)
-    #     # Create controls for Manufacturing Workspace
-    #     mfgEnv = _ui.workspaces.itemById('MfgWorkingModelEnv')
-    #     mfgTab = mfgEnv.toolbarTabs.itemById('MfgSolidTab')
-    #     mfgSolidPanel = mfgTab.toolbarPanels.itemById('SolidCreatePanel')
-    #     buttonControlMfg = mfgSolidPanel.controls.addCommand(refreshButtonDogbone, 'refreshDogboneBtn')
-
-    #     # Make the button available in the Mfg panel.
-    #     buttonControlMfg.isPromotedByDefault = True
-    #     buttonControlMfg.isPromoted = True
-
-    #     # Create controls for the Design Workspace
-    #     createPanel = _ui.allToolbarPanels.itemById('SolidCreatePanel')
-    #     buttonControl = createPanel.controls.addCommand(refreshButtonDogbone, 'refreshDogboneBtn')
-
-    #     # Make the button available in the panel.
-    #     buttonControl.isPromotedByDefault = True
-    #     buttonControl.isPromoted = True
-
     def register_commands(self):
 
         # Create button definition and command event handler
@@ -240,18 +207,6 @@ class DogboneCommand(object):
         if cmdDef := _ui.commandDefinitions.itemById(COMMAND_ID):
             cmdDef.deleteMe()
 
-    # @eventHandler(handler_cls = adsk.core.CommandCreatedEventHandler)
-    # def onRefreshCreate(self, args:adsk.core.CommandCreatedEventArgs):
-    #         inputs = args.command.commandInputs
-    #         edgeSelectCommand = inputs.itemById('edgeSelect')
-    #         if not edgeSelectCommand.isVisible:
-    #             return
-    #         focusState = inputs.itemById('faceSelect').hasFocus
-    #         edgeSelectCommand.hasFocus = True
-    #         [_ui.activeSelections.removeByEntity(edgeObj.edge) for edgeObj in self.selectedEdges.values()]
-    #         [faceObj.reSelectEdges() for faceObj in self.selectedFaces.values()]
-    #         inputs.itemById('faceSelect').hasFocus = focusState
-    #         return
 
     @eventHandler(handler_cls=adsk.core.CommandCreatedEventHandler)
     def onCreate(self, args: adsk.core.CommandCreatedEventArgs):
