@@ -157,7 +157,7 @@ class DogboneUi:
             # ==============================================================================
 
             if not len(
-                    self.selectedOccurrences
+                    self.selection.selectedOccurrences
             ):  # get out if the face selection list is empty
                 eventArgs.isSelectable = True
                 return
@@ -166,7 +166,7 @@ class DogboneUi:
 
                 activeBodyName = hash(eventArgs.selection.entity.body.entityToken)
                 try:
-                    faces = self.selectedOccurrences[activeBodyName]
+                    faces = self.selection.selectedOccurrences[activeBodyName]
                     for face in faces:
                         if face.isSelected:
                             primaryFace = face
@@ -199,7 +199,7 @@ class DogboneUi:
             try:
                 selectedComponentList = [
                     x[0].face.assemblyContext.component
-                    for x in self.selectedOccurrences.values()
+                    for x in self.selection.selectedOccurrences.values()
                     if x[0].face.assemblyContext
                 ]
             except KeyError:
@@ -211,13 +211,13 @@ class DogboneUi:
                 return
 
             if (
-                    activeOccurrenceId not in self.selectedOccurrences
+                    activeOccurrenceId not in self.selection.selectedOccurrences
             ):  # check if mouse is over a face that is not already selected
                 eventArgs.isSelectable = False
                 return
 
             try:
-                faces = self.selectedOccurrences[activeOccurrenceId]
+                faces = self.selection.selectedOccurrences[activeOccurrenceId]
                 for face in faces:
                     if face.isSelected:
                         primaryFace = face
@@ -248,7 +248,7 @@ class DogboneUi:
             currentEdge: adsk.fusion.BRepEdge = selected.entity
 
             edgeId = hash(currentEdge.entityToken)
-            if edgeId in self.selectedEdges.keys():
+            if edgeId in self.selection.selectedEdges.keys():
                 eventArgs.isSelectable = True
             else:
                 eventArgs.isSelectable = False
@@ -362,9 +362,9 @@ class DogboneUi:
 
                 # If all faces are removed, just reset registers
                 if s.selectionCount == 0:
-                    self.selectedEdges = {}
-                    self.selectedFaces = {}
-                    self.selectedOccurrences = {}
+                    self.selection.selectedEdges = {}
+                    self.selection.selectedFaces = {}
+                    self.selection.selectedOccurrences = {}
 
                     cast(adsk.core.SelectionCommandInput, input.commandInputs.itemById(EDGE_SELECT)).clearSelection()
                     input.commandInputs.itemById(FACE_SELECT).hasFocus = True

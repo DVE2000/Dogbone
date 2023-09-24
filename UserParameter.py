@@ -26,8 +26,8 @@ def create_user_parameter(param: DbParams):
     _create_parameter(DB_TOOL_DIA, param.toolDiaStr, favorite=True)
     _create_parameter(DB_OFFSET, param.toolDiaOffsetStr)
     _create_parameter(DB_RADIUS, f"({DB_TOOL_DIA} + {DB_OFFSET})/2")
-    _create_parameter(DB_HOLE_OFFSET, _hole_offset_expression(param))
     _min_percentage(param)
+    _create_parameter(DB_HOLE_OFFSET, _hole_offset_expression(param))
 
     return userParams
 
