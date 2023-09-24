@@ -7,7 +7,7 @@ import adsk.fusion
 logger = logging.getLogger("dogbone.dbutils")
 
 
-def getAngleBetweenFaces(edge) -> float:
+def getAngleBetweenFaces(edge: adsk.fusion.BRepEdge) -> float:
     """
     returns radian angle between faces
     """
@@ -64,14 +64,14 @@ def getAngleBetweenFaces(edge) -> float:
     return angle
 
 
-def findExtent(face, edge):
-    #    faceNormal = adsk.core.Vector3D.cast(face.evaluator.getNormalAtPoint(face.pointOnFace)[1])
-
+def findExtent(face: adsk.fusion.BRepFace, edge: adsk.fusion.BRepEdge):
     if edge.startVertex in face.vertices:
         return edge.endVertex
+
     return edge.startVertex
 
 
+# TODO: startPoint and endPoint seems to be not properties of edge
 def correctedEdgeVector(
     edge: adsk.fusion.BRepEdge, refPoint: adsk.core.Point3D
 ) -> adsk.core.Vector3D:
@@ -86,7 +86,7 @@ def correctedSketchEdgeVector(edge, refPoint):
     return edge.endSketchPoint.geometry.vectorTo(edge.startSketchPoint.geometry)
 
 
-def isEdgeAssociatedWithFace(face, edge):
+def isEdgeAssociatedWithFace(face: adsk.fusion.BRepFace, edge: adsk.fusion.BRepEdge) -> bool:
     # have to check both ends - not sure which way around the start and end vertices are
     if edge.startVertex in face.vertices:
         return True
@@ -95,7 +95,7 @@ def isEdgeAssociatedWithFace(face, edge):
     return False
 
 
-def getCornerEdgesAtFace(face, edge):
+def getCornerEdgesAtFace(face: adsk.fusion.BRepFace, edge: adsk.fusion.BRepEdge):
     # not sure which end is which - so test edge ends for inclusion in face
     startVertex = (
         edge.startVertex if edge.startVertex in face.vertices else edge.endVertex
@@ -110,7 +110,7 @@ def getCornerEdgesAtFace(face, edge):
     return (faceEdges[token] for token in commonEdges)
 
 
-def getVertexAtFace(face, edge):
+def getVertexAtFace(face: adsk.fusion.BRepFace, edge: adsk.fusion.BRepEdge):
     if edge.startVertex in face.vertices:
         return edge.startVertex
     else:
@@ -133,7 +133,7 @@ def getEdgeVector(
     return startPoint.vectorTo(endPoint)
 
 
-def getFaceNormal(face):
+def getFaceNormal(face: adsk.fusion.BRepFace):
     return face.evaluator.getNormalAtPoint(face.pointOnFace)[1]
 
 
@@ -171,7 +171,8 @@ def getTopFace(selectedFace: adsk.fusion.BRepFace) -> adsk.fusion.BRepFace:
     return (top[0], refPoint)
 
 
-def getTranslateVectorBetweenFaces(fromFace, toFace):
+# TODO: strange contract, boolean or Vector3D
+def getTranslateVectorBetweenFaces(fromFace: adsk.fusion.BRepFace, toFace: adsk.fusion.BRepFace) -> adsk.core.Vector3D or bool:
     #   returns absolute distance
 
     normal = getFaceNormal(fromFace)
