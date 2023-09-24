@@ -1,6 +1,7 @@
 import logging
 import traceback
 from math import tan, pi
+from typing import cast
 
 import adsk.core
 import adsk.fusion
@@ -9,7 +10,7 @@ from . import dbutils as dbUtils
 logger = logging.getLogger("dogbone.DbClasses")
 
 _app = adsk.core.Application.get()
-_design: adsk.fusion.Design = _app.activeProduct
+_design: adsk.fusion.Design = cast(adsk.fusion.Design, _app.activeProduct)
 _ui = _app.userInterface
 _rootComp = _design.rootComponent
 
