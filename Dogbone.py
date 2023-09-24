@@ -15,8 +15,6 @@ import logging
 import os
 import sys
 
-
-
 _appPath = os.path.dirname(os.path.abspath(__file__))
 _subpath = os.path.join(f"{_appPath}", "py_packages")
 if _subpath not in sys.path:
@@ -67,9 +65,6 @@ class DogboneCommand(object):
     def __init__(self):
         # set in various methods, but should be initialized in __init__
         self.selections = None
-
-        # TODO: check where this is used and find the correct place
-        self.faceSelections = adsk.core.ObjectCollection.create()
 
     def run(self, context):
         try:
@@ -192,8 +187,6 @@ class DogboneCommand(object):
         key: edgeId - hash of entityToken
         value: [DbEdge objects, ....]
         """
-        # inputs:adsk.core.CommandCreatedEventArgs = args
-        self.faceSelections.clear()
 
         if _design.designType != adsk.fusion.DesignTypes.ParametricDesignType:
             returnValue = _ui.messageBox(
