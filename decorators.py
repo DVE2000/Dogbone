@@ -144,6 +144,7 @@ def eventHandler(handler_cls=adsk.core.Base):
                 # adds to class handlers list, needs to be persistent otherwise GC will remove the handler
                 # - deleting handlers (if necessary) will ensure that garbage collection will happen.
             except Exception as e:
+                logger.exception(e)
                 print(f"{notify_method.__name__}: {traceback.format_exc()}")
                 logger.exception(f"handler creation error {notify_method.__name__}")
             return h
