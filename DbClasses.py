@@ -386,7 +386,6 @@ class DbEdge:
 
         params: DbParams
         edgeObj: DbEdge
-        box = None
 
         tempBrepMgr = adsk.fusion.TemporaryBRepManager.get()
         startPoint, endPoint = edgeObj.nativeEndPoints
