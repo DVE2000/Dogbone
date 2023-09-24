@@ -115,7 +115,6 @@ def getVertexAtFace(face, edge):
         return edge.startVertex
     else:
         return edge.endVertex
-    return False
 
 
 def getEdgeVector(

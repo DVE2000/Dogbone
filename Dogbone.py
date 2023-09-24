@@ -22,7 +22,7 @@ if _subpath not in sys.path:
     sys.path.insert(0, "")
 
 from .log import logger
-from .Selection import Selection
+from .DbClasses import Selection
 
 import time
 import traceback
@@ -35,6 +35,7 @@ from . import dbutils as dbUtils
 from .DbData import DbParams
 from .DogboneUi import DogboneUi
 from .decorators import eventHandler
+from .createDogbone import createParametricDogbones, createStaticDogbones
 
 # Globals
 _app = adsk.core.Application.get()
@@ -193,9 +194,9 @@ class DogboneCommand(object):
         self.write_defaults(params)
 
         if params.parametric:
-            self.createParametricDogbones(params, selection)
+            createParametricDogbones(params, selection)
         else:  # Static dogbones
-            self.createStaticDogbones(params, selection)
+            createStaticDogbones(params, selection)
 
         logger.info(
             "all dogbones complete\n-------------------------------------------\n"

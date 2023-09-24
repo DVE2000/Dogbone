@@ -3,14 +3,13 @@ from typing import cast
 
 import adsk.core
 import adsk.fusion
-from .Selection import Selection
+from . import dbutils as dbUtils
+from .DbClasses import DbFace
+from .DbClasses import Selection
+from .DbData import DbParams
+from .decorators import eventHandler, parseDecorator
 from .log import LEVELS, logger
 from .util import calcId
-from .DbData import DbParams
-from .DbClasses import DbFace
-from . import dbutils as dbUtils
-
-from .decorators import eventHandler, parseDecorator
 
 ACUTE_ANGLE = "acuteAngle"
 ANGLE_DETECTION_GROUP = "angleDetectionGroup"
@@ -56,11 +55,7 @@ class DogboneUi:
         self.command = command
         self.executeHandler = executeHandler
 
-        self.selectedOccurrences = {}  # key hash(occurrence.entityToken) value:[DbFace,...]
-        self.selectedFaces = {}  # key: hash(face.entityToken) value:[DbFace,...]
-        self.selectedEdges = {}  # kay: hash(edge.entityToken) value:[DbEdge, ...]
-        self.edges = []
-        self.faces = []
+        self.selection = Selection()
 
         self.inputs = command.commandInputs
 
@@ -110,18 +105,15 @@ class DogboneUi:
 
         self.logParams()
 
-        self.edges = []
-        self.faces = []
-
         for i in range(inputs[EDGE_SELECT].selectionCount):
             entity = inputs[EDGE_SELECT].selection(i).entity
             if entity.objectType == adsk.fusion.BRepEdge.classType():
-                self.edges.append(entity)
+                self.selection.edges.append(entity)
 
         for i in range(inputs[FACE_SELECT].selectionCount):
             entity = inputs[FACE_SELECT].selection(i).entity
             if entity.objectType == adsk.fusion.BRepFace.classType():
-                self.faces.append(entity)
+                self.selection.faces.append(entity)
 
     # noinspection DuplicatedCode
     def logParams(self):
@@ -143,15 +135,7 @@ class DogboneUi:
 
     @eventHandler(handler_cls=adsk.core.CommandEventHandler)
     def onExecute(self, args):
-        selection = Selection()
-
-        selection.selectedEdges = self.selectedEdges
-        selection.selectedFaces = self.selectedFaces
-        selection.selectedOccurrences = self.selectedOccurrences
-        selection.faces = self.faces
-        selection.edges = self.edges
-
-        self.executeHandler(self.param, selection)
+        self.executeHandler(self.param, self.selection)
 
     @eventHandler(handler_cls=adsk.core.SelectionEventHandler)
     def onFaceSelect(self, args):
@@ -257,17 +241,11 @@ class DogboneUi:
             # ==============================================================================
             #             processing edges associated with face - edges selection has focus
             # ==============================================================================
-            if self.addingEdges:
+            if self.selection.addingEdges:
                 return
+
             selected = eventArgs.selection
             currentEdge: adsk.fusion.BRepEdge = selected.entity
-            activeOccurrence = eventArgs.selection.entity.assemblyContext
-
-            # TODO: seems unused
-            if eventArgs.selection.entity.assemblyContext:
-                activeOccurrenceId = hash(activeOccurrence.entityToken)
-            else:
-                activeOccurrenceId = hash(eventArgs.selection.entity.body.entityToken)
 
             edgeId = hash(currentEdge.entityToken)
             if edgeId in self.selectedEdges.keys():
@@ -359,14 +337,14 @@ class DogboneUi:
                 FACE_SELECT
             )).hasFocus
             edgeSelectCommand.hasFocus = True
-            [
+
+            for edgeObj in self.selection.selectedEdges.values():
                 _ui.activeSelections.removeByEntity(edgeObj.edge)
-                for edgeObj in self.selectedEdges.values()
-            ]
-            [faceObj.reSelectEdges() for faceObj in self.selectedFaces.values()]
-            input.parentCommand.commandInputs.itemById(
-                FACE_SELECT
-            ).hasFocus = focusState
+
+            for faceObj in self.selection.selectedFaces.values():
+                faceObj.reSelectEdges()
+
+            input.parentCommand.commandInputs.itemById(FACE_SELECT).hasFocus = focusState
             return
 
         if input.id != FACE_SELECT and input.id != EDGE_SELECT:
@@ -379,7 +357,7 @@ class DogboneUi:
             #            processing changes to face selections
             # ==============================================================================
 
-            if len(self.selectedFaces) > s.selectionCount:
+            if len(self.selection.selectedFaces) > s.selectionCount:
                 # a face has been removed
 
                 # If all faces are removed, just reset registers
@@ -398,19 +376,16 @@ class DogboneUi:
                     hash(cast(adsk.fusion.BRepEdge, s.selection(i).entity).entityToken)
                     for i in range(s.selectionCount)
                 }
-                missingFaces = set(self.selectedFaces.keys()) ^ selectionSet
+                missingFaces = set(self.selection.selectedFaces.keys()) ^ selectionSet
                 input.commandInputs.itemById(EDGE_SELECT).isVisible = True
                 input.commandInputs.itemById(EDGE_SELECT).hasFocus = True
-                [
-                    (
-                        self.selectedFaces[
-                            missingFace
-                        ].removeFaceFromSelectedOccurrences(),
-                        self.selectedFaces[missingFace].deleteEdges(),
-                        self.selectedFaces.pop(missingFace),
-                    )
-                    for missingFace in missingFaces
-                ]
+
+                for missingFace in missingFaces:
+                    faceObj = self.selection.selectedFaces[missingFace]
+                    faceObj.removeFaceFromSelectedOccurrences()
+                    faceObj.deleteEdges()
+                    self.selection.selectedFaces.pop(missingFace)
+
                 input.commandInputs.itemById(FACE_SELECT).hasFocus = True
                 return
 
@@ -427,7 +402,7 @@ class DogboneUi:
                 for i in range(s.selectionCount)
             }
 
-            addedFaces = set(self.selectedFaces.keys()) ^ set(
+            addedFaces = set(self.selection.selectedFaces.keys()) ^ set(
                 selectionDict.keys()
             )  # get difference -> results in
 
@@ -441,12 +416,12 @@ class DogboneUi:
                     else hash(changedEntity.body.entityToken)
                 )
 
-                faces = self.selectedOccurrences.get(activeOccurrenceId, [])
+                faces = self.selection.selectedOccurrences.get(activeOccurrenceId, [])
 
                 faces += (
                     t := [
                         DbFace(
-                            parent=self,
+                            selection=self.selection,
                             face=changedEntity,
                             params=self.param,
                             commandInputsEdgeSelect=input.commandInputs.itemById(
@@ -455,11 +430,14 @@ class DogboneUi:
                         )
                     ]
                 )
-                self.selectedOccurrences[
+                self.selection.selectedOccurrences[
                     activeOccurrenceId
                 ] = faces  # adds a face to a list of faces associated with this occurrence
-                self.selectedFaces.update({faceObj.faceId: faceObj for faceObj in t})
-                [self.selectedFaces[faceId].selectAll() for faceId in addedFaces]
+                self.selection.selectedFaces.update({faceObj.faceId: faceObj for faceObj in t})
+
+                for face_id in addedFaces:
+                    self.selection.selectedFaces[face_id].selectAll()
+
                 input.commandInputs.itemById(FACE_SELECT).hasFocus = True
             return
             # end of processing faces
@@ -467,7 +445,7 @@ class DogboneUi:
         #         Processing changed edge selection
         # ==============================================================================
 
-        if len(self.selectedEdges) > s.selectionCount:
+        if len(self.selection.selectedEdges) > s.selectionCount:
             # ==============================================================================
             #             an edge has been removed
             # ==============================================================================
@@ -479,9 +457,12 @@ class DogboneUi:
             changedEdgeIdSet = set(
                 map(calcId, changedSelectionList)
             )  # converts list of edges to a list of their edgeIds
-            missingEdges = set(self.selectedEdges.keys()) - changedEdgeIdSet
+            missingEdges = set(self.selection.selectedEdges.keys()) - changedEdgeIdSet
             # noinspection PyStatementEffect
-            [self.selectedEdges[missingEdge].deselect for missingEdge in missingEdges]
+
+            for missingEdge in missingEdges:
+                self.selection.selectedEdges[missingEdge].deselect()
+
             # Note - let the user manually unselect the face if they want to choose a different face
 
             return
@@ -496,9 +477,9 @@ class DogboneUi:
                 selection_command_input.selectionCount - 1
             ).entity)
             # noinspection PyStatementEffect
-            self.selectedEdges[
+            self.selection.selectedEdges[
                 calcId(edge)
-            ].select  # Get selectedFace then get selectedEdge, then call function
+            ].select()  # Get selectedFace then get selectedEdge, then call function
 
     def detection_mode(self):
         angleDetectionGroupInputs: adsk.core.GroupCommandInput = (

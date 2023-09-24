@@ -6,7 +6,7 @@ import adsk.core
 import adsk.fusion
 from . import dbutils as dbUtils
 from .DbData import DbParams
-from .Selection import Selection
+from .DbClasses import Selection
 from .UserParameter import create_user_parameter, DB_RADIUS
 from .log import logger
 from .util import makeNative, reValidateFace
