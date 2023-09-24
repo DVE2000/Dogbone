@@ -108,6 +108,23 @@ class DogboneUi:
 
         logger.setLevel(self.param.logging)
 
+        self.logParams()
+
+        self.edges = []
+        self.faces = []
+
+        for i in range(inputs[EDGE_SELECT].selectionCount):
+            entity = inputs[EDGE_SELECT].selection(i).entity
+            if entity.objectType == adsk.fusion.BRepEdge.classType():
+                self.edges.append(entity)
+
+        for i in range(inputs[FACE_SELECT].selectionCount):
+            entity = inputs[FACE_SELECT].selection(i).entity
+            if entity.objectType == adsk.fusion.BRepFace.classType():
+                self.faces.append(entity)
+
+    # noinspection DuplicatedCode
+    def logParams(self):
         logger.debug(f"param.fromTop = {self.param.fromTop}")
         logger.debug(f"param.dbType = {self.param.dbType}")
         logger.debug(f"param.parametric = {self.param.parametric}")
@@ -123,19 +140,6 @@ class DogboneUi:
         logger.debug(
             f"param.expandSettingsGroup = {self.param.expandSettingsGroup}"
         )
-
-        self.edges = []
-        self.faces = []
-
-        for i in range(inputs[EDGE_SELECT].selectionCount):
-            entity = inputs[EDGE_SELECT].selection(i).entity
-            if entity.objectType == adsk.fusion.BRepEdge.classType():
-                self.edges.append(entity)
-
-        for i in range(inputs[FACE_SELECT].selectionCount):
-            entity = inputs[FACE_SELECT].selection(i).entity
-            if entity.objectType == adsk.fusion.BRepFace.classType():
-                self.faces.append(entity)
 
     @eventHandler(handler_cls=adsk.core.CommandEventHandler)
     def onExecute(self, args):
