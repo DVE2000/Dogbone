@@ -22,7 +22,7 @@ _rootComp = _design.rootComponent
 pp = pprint.PrettyPrinter()
 
 logger = logging.getLogger("dogbone.decorators")
-logger.setLevel(logging.NOTSET)
+logger.setLevel(logging.DEBUG)
 
 
 @dataclass()
@@ -101,10 +101,10 @@ def eventHandler(handler_cls=adsk.core.Base):
             notify_method
         )  # spoofs wrapped method so that __name__, __doc__ (ie docstring) etc. behaves like it came from the method that is being wrapped.
         def handlerWrapper(
-            *handler_args,
-            event=adsk.core.Event,
-            group: str = "default",
-            **handler_kwargs,
+                *handler_args,
+                event=adsk.core.Event,
+                group: str = "default",
+                **handler_kwargs,
         ):
             """When called returns instantiated _Handler
             - assumes that the method being wrapped comes from an instantiated Class method
