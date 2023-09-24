@@ -58,9 +58,6 @@ CONFIG_PATH = os.path.join(_appPath, "defaults.dat")
 
 # noinspection PyMethodMayBeStatic
 class DogboneCommand(object):
-    # REFRESH_COMMAND_ID = "refreshDogboneBtn"
-
-    registeredEdgesDict = {}
 
     def __init__(self):
         # set in various methods, but should be initialized in __init__
