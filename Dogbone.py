@@ -59,10 +59,6 @@ CONFIG_PATH = os.path.join(_appPath, "defaults.dat")
 # noinspection PyMethodMayBeStatic
 class DogboneCommand(object):
 
-    def __init__(self):
-        # set in various methods, but should be initialized in __init__
-        self.selections = None
-
     def run(self, context):
         try:
             self.cleanup_commands()
