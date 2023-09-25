@@ -1,11 +1,7 @@
 Dogbone addin for fusion 360
 ===
-## Version 2.1.2
-* completed parametric Dogbones fix - 2.1.1 note has been corrected
-
-## Version 2.1.2
+## Version 2.1.1
 * Fixed runtime error on parametric Dogbones - Note: dogbones will be created on corners that are not 90 degrees, but they will not be correct.  Working to fix that though.
-
 ## Version: 2.1
 
 * Added detection mode - now allows acute and obtuse angles to be generated
