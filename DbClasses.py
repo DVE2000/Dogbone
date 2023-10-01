@@ -49,6 +49,8 @@ class DbFace:
         self._component = face.body.parentComponent
         self.commandInputsEdgeSelect = commandInputsEdgeSelect
         self._selected = True
+        self._params = params
+        self._body = self.face.body.nativeObject if self.face.nativeObject else self.face.body
 
         self._associatedEdgesDict = {}  # Keyed with edge
         processedEdges = (
@@ -196,6 +198,10 @@ class DbFace:
             for edgeObj in self._associatedEdgesDict.values()
             if edgeObj.isSelected
         ]
+    
+    @property
+    def body(self):
+        return self._body
 
     def deleteEdges(self):
         [
@@ -285,15 +291,15 @@ class DbEdge:
         self._customGraphicGroup = None
 
         self._dogboneCentre = (
-            self.native.startVertex.geometry
-            if self.native.startVertex in self._parentFace.native.vertices
-            else self.native.endVertex.geometry
+            self._native.startVertex.geometry
+            if self._native.startVertex in self._parentFace.native.vertices
+            else self._native.endVertex.geometry
         )
 
         self._nativeEndPoints = (
-            (self.native.startVertex.geometry, self.native.endVertex.geometry)
-            if self.native.startVertex in self._parentFace.native.vertices
-            else (self.native.endVertex.geometry, self.native.startVertex.geometry)
+            (self._native.startVertex.geometry, self._native.endVertex.geometry)
+            if self._native.startVertex in self._parentFace.native.vertices
+            else (self._native.endVertex.geometry, self._native.startVertex.geometry)
         )
 
         startPoint, endPoint = self._nativeEndPoints
@@ -306,6 +312,15 @@ class DbEdge:
             if self.edge.startVertex in self._parentFace.face.vertices
             else (self.edge.endVertex.geometry, self.edge.startVertex.geometry)
         )
+
+        sx,sy,sz = self._nativeEndPoints[0].asArray()
+        ex,ey,ez = self._nativeEndPoints[1].asArray()
+
+        logger.debug(f'\nedge: {self.edge.tempId}'
+                    f'\n native: {self.edge.nativeObject != None}'
+                    f'\n startPoint: ({sx:.2f},{sy:.2f},{sz:.2f}),({ex:.2f},{ey:.2f},{ez:.2f})'
+                    f'\n edgeLength: {startPoint.distanceTo(endPoint):.2f}'
+                    f'\n parentFace: {self._parentFace.face.tempId}')
 
     def __hash__(self):
         return self._edgeId
@@ -390,15 +405,27 @@ class DbEdge:
         return self._hash
 
     @classmethod
-    def __getToolBody(cls, edgeObj, params, topFace: adsk.fusion.BRepFace = None):
+    def __getToolBody(cls, self, params, topFace: adsk.fusion.BRepFace = None):
         from .DbData import DbParams
 
         params: DbParams
-        edgeObj: DbEdge
+        self: DbEdge
+        box = None
 
         tempBrepMgr = adsk.fusion.TemporaryBRepManager.get()
-        startPoint, endPoint = edgeObj.nativeEndPoints
+        startPoint, endPoint = self.nativeEndPoints
         startPoint, endPoint = startPoint.copy(), endPoint.copy()
+
+        sx,sy,sz = self._nativeEndPoints[0].asArray()
+        ex,ey,ez = self._nativeEndPoints[1].asArray()
+
+        logger.debug(f'\nGet Tool Body:++++++++++++++++'
+                f'\n native: {self.edge.nativeObject != None}'
+                f'\n edge: {self.edge.tempId}'
+                f'\n startPoint: ({sx:.2f},{sy:.2f},{sz:.2f}),({ex:.2f},{ey:.2f},{ez:.2f})'
+                f'\n edgeLength: {startPoint.distanceTo(endPoint): .2f}'
+                f'\n parentFace: {self._parentFace.face.tempId}')
+        
         effectiveRadius = (params.toolDia + params.toolDiaOffset) / 2
         centreDistance = effectiveRadius * (
             (1 + params.minimalPercent / 100)
@@ -408,12 +435,12 @@ class DbEdge:
 
         if topFace:
             translateVector = dbUtils.getTranslateVectorBetweenFaces(
-                edgeObj._parentFace.face, topFace
+                self._parentFace.native, topFace
             )
             startPoint.translateBy(translateVector)
 
         if params.dbType == "Mortise Dogbone":
-            (edge0, edge1) = edgeObj.cornerEdges
+            (edge0, edge1) = self.cornerEdges
             direction0 = dbUtils.correctedEdgeVector(edge0, startPoint)
             direction1 = dbUtils.correctedEdgeVector(edge1, startPoint)
             if params.longSide:
@@ -428,7 +455,7 @@ class DbEdge:
                     dirVect = direction0
             dirVect.normalize()
         else:
-            dirVect = edgeObj.cornerVector.copy()
+            dirVect = self.cornerVector.copy()
             dirVect.normalize()
 
         dirVect.scaleBy(centreDistance)
@@ -439,7 +466,7 @@ class DbEdge:
             endPoint, effectiveRadius, startPoint, effectiveRadius
         )
 
-        if edgeObj.cornerAngle >= pi / 2:
+        if self.cornerAngle >= pi / 2:
             return toolbody
 
         # creating a box that will be used to clear the path the tool takes to the dogbone hole
@@ -450,20 +477,20 @@ class DbEdge:
         edgeHeight = startPoint.distanceTo(endPoint)
 
         logger.debug("Adding acute angle clearance box")
-        cornerTan = tan(edgeObj.cornerAngle / 2)
+        cornerTan = tan(self.cornerAngle / 2)
 
         boxCentrePoint = startPoint.copy()
         boxLength = effectiveRadius / cornerTan - centreDistance
         boxWidth = effectiveRadius * 2
 
-        lengthDirectionVector = edgeObj.cornerVector.copy()
+        lengthDirectionVector = self.cornerVector.copy()
         lengthDirectionVector.normalize()
         lengthDirectionVector.scaleBy(boxLength / 2)
 
         if lengthDirectionVector.length < 0.01:
             return toolbody
 
-        heightDirectionVector = edgeObj.edgeVector.copy()
+        heightDirectionVector = self.edgeVector.copy()
         heightDirectionVector.normalize()
         heightDirectionVector.scaleBy(edgeHeight / 2)
 
@@ -475,9 +502,9 @@ class DbEdge:
 
         #   rotate centreLine Vector (cornerVector) by 90deg to get width direction vector
         orthogonalMatrix = adsk.core.Matrix3D.create()
-        orthogonalMatrix.setToRotation(pi / 2, edgeObj.edgeVector, boxCentrePoint)
+        orthogonalMatrix.setToRotation(pi / 2, self.edgeVector, boxCentrePoint)
 
-        widthDirectionVector = edgeObj.cornerVector.copy()
+        widthDirectionVector = self.cornerVector.copy()
         widthDirectionVector.transformBy(orthogonalMatrix)
 
         boxLength = 0.001 if (boxLength < 0.001) else boxLength
