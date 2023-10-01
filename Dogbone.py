@@ -24,8 +24,6 @@ import time
 from . import dbutils as dbUtils
 from .decorators import eventHandler, parseDecorator
 from math import sqrt as sqrt
-from .DbClasses import DbFace
-from .DbData import DbParams
 
 # Globals
 _app = adsk.core.Application.get()
@@ -38,6 +36,8 @@ if _subpath not in sys.path:
     sys.path.insert(0, _subpath)
     # sys.path.insert(0, os.path.join(f'{_appPath}','py_packages','dataclasses_json'))
     sys.path.insert(0, "")
+from .DbClasses import DbFace
+from .DbData import DbParams
 
 # constants - to keep attribute group and names consistent
 DOGBONE_GROUP = "dogBoneGroup"
@@ -88,15 +88,26 @@ class DogboneCommand(object):
 
         self.levels = {}
         self.logger = logging.getLogger("dogbone")
+
+        for handler in self.logger.handlers:
+            handler.flush()
+            handler.close()
+            self.logger.removeHandler(handler)
+
         self.formatter = logging.Formatter(
             "%(asctime)s ; %(name)s ; %(levelname)s ; %(lineno)d; %(message)s"
         )
         self.logHandler = logging.FileHandler(
-            os.path.join(_appPath, "dogbone.log"), mode="w"
+            os.path.join(_appPath, "dogbone.log"), mode="a"
         )
         self.logHandler.setFormatter(self.formatter)
         self.logHandler.flush()
         self.logger.addHandler(self.logHandler)
+
+        self.logger.debug("\n"*3 + "*"*80)
+
+        # for _ in ("decorators"):
+        #     self.logger.getLogger(_).setLevel(logging.NOTSET)
 
     def writeDefaults(self):
         self.logger.info("config file write")
@@ -128,9 +139,24 @@ class DogboneCommand(object):
         if self.logger.level < logging.DEBUG:
             return
         for edge in face.edges:
+            sx,sy,sz = edge.startVertex.geometry.asArray()
+            ex,ey,ez = edge.endVertex.geometry.asArray()
+
             self.logger.debug(
-                f"edge {edge.tempId}; startVertex: {edge.startVertex.geometry.asArray()}; endVertex: {edge.endVertex.geometry.asArray()}"
+                f"\nFace - native"
+                f"\nedge: {edge.tempId}"
+                f"\nstartVertex:({sx:.2f},{sy:.2f},{sz:.2f}) endVertex: ({ex:.2f},{ey:.2f},{ez:.2f})"
             )
+
+        # for edge in face.nativeObject.edges:
+        #     sx,sy,sz = edge.startVertex.geometry.asArray()
+        #     ex,ey,ez = edge.endVertex.geometry.asArray()
+            
+        #     self.logger.debug(
+        #         f"\nFace - Native"
+        #         f"\nedge: {edge.tempId}"
+        #         f"\nstartVertex:({sx:.2f},{sy:.2f},{sz:.2f}) endVertex: ({ex:.2f},{ey:.2f},{ez:.2f})"
+        #     )
 
         return
 
@@ -263,6 +289,8 @@ class DogboneCommand(object):
             _design.designType = adsk.fusion.DesignTypes.ParametricDesignType
         self.readDefaults()
 
+        self.edges = []
+        self.faces = []
         self.selectedEdges = {}
         self.selectedFaces = {}
         self.selectedOccurrences = {}
@@ -1244,43 +1272,50 @@ class DogboneCommand(object):
                 self.debugFace(topFace)
 
             for selectedFace in occurrenceFaces:
+                component = selectedFace.component
                 toolCollection = adsk.core.ObjectCollection.create()
                 toolBodies = None
 
                 for edge in selectedFace.selectedEdges:
                     if not toolBodies:
                         toolBodies = edge.getToolBody(
-                            params=self.param, topFace=topFace
+                            params=self.param,
+                            topFace=topFace
                         )
                     else:
                         tempBrepMgr.booleanOperation(
                             toolBodies,
-                            edge.getToolBody(params=self.param, topFace=topFace),
+                            edge.getToolBody(params=self.param,
+                                             topFace=topFace),
                             adsk.fusion.BooleanTypes.UnionBooleanType,
                         )
 
-                baseFeatures = _rootComp.features.baseFeatures
+                targetBody: adsk.fusion.BRepBody = selectedFace.body
+                baseFeatures = component.features.baseFeatures
                 baseFeature = baseFeatures.add()
                 baseFeature.name = "dogbone"
 
                 baseFeature.startEdit()
-                dbB = _rootComp.bRepBodies.add(toolBodies, baseFeature)
+                
+                dbB = component.bRepBodies.add(toolBodies, baseFeature)
                 dbB.name = "dogboneTool"
+
                 baseFeature.finishEdit()
 
-                toolCollection.add(baseFeature.bodies.item(0))
+                [toolCollection.add(body) for body in baseFeature.bodies]  #add baseFeature bodies into toolCollection
 
-                activeBody = selectedFace.native.body
-
-                combineInput = _rootComp.features.combineFeatures.createInput(
-                    targetBody=activeBody, toolBodies=toolCollection
+                combineFeatureInput = component.features.combineFeatures.createInput(
+                    targetBody=targetBody,
+                    toolBodies=toolCollection
                 )
-                combineInput.isKeepToolBodies = False
-                combineInput.isNewComponent = False
-                combineInput.operation = (
+
+                combineFeatureInput.isKeepToolBodies = False
+                combineFeatureInput.isNewComponent = False
+                combineFeatureInput.operation = (
                     adsk.fusion.FeatureOperations.CutFeatureOperation
                 )
-                combine = _rootComp.features.combineFeatures.add(combineInput)
+                combine = component.features.combineFeatures.add(combineFeatureInput)
+                self.logger.debug(f"combine: {combine.healthState}")
 
             endTlMarker = _design.timeline.markerPosition - 1
             if endTlMarker - startTlMarker > 0:
