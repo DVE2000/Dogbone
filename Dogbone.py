@@ -1064,7 +1064,7 @@ class DogboneCommand(object):
             occ: adsk.fusion.Occurrence = occurrenceFaces[0].occurrence
 
             if self.param.fromTop:
-                (topFace, topFaceRefPoint) = dbUtils.getTopFace(
+                topFace, topFaceRefPoint = dbUtils.getTopFace(
                     occurrenceFaces[0].native
                 )
                 self.logger.info(
@@ -1082,6 +1082,9 @@ class DogboneCommand(object):
                     face = selectedFace.revalidate()
                 self.logger.debug(f"Processing Face = {face.tempId}")
 
+                holeDirection = selectedFace.faceNormal
+                holeDirection.scaleBy(-1)
+
                 # faceNormal = dbUtils.getFaceNormal(face.nativeObject)
                 if self.param.fromTop:
                     self.logger.debug(f"topFace type {type(topFace)}")
@@ -1089,7 +1092,7 @@ class DogboneCommand(object):
                         self.logger.debug("revalidating topFace")
                         topFace = reValidateFace(comp, topFaceRefPoint)
 
-                    topFace = makeNative(topFace)
+                    # topFace = makeNative(topFace)
 
                     self.logger.debug(f"topFace isValid = {topFace.isValid}")
                     transformVector = dbUtils.getTranslateVectorBetweenFaces(
@@ -1101,6 +1104,7 @@ class DogboneCommand(object):
 
                 for selectedEdge in selectedFace.selectedEdges:
                     self.logger.debug(f"Processing edge - {selectedEdge.edge.tempId}")
+                    edge: adsk.fusion.BRepEdge = selectedEdge.native
 
                     if not selectedEdge.isSelected:
                         self.logger.debug("  Not selected. Skipping...")
@@ -1112,37 +1116,36 @@ class DogboneCommand(object):
                             selectedFace.revalidate()
                         )  # = reValidateFace(comp, selectedFace.refPoint)
 
-                    if not selectedEdge.edge.isValid:
+                    if not edge.isValid:
                         continue  # edges that have been processed already will not be valid any more - at the moment this is easier than removing the
                     #                    affected edge from self.edges after having been processed
-                    edge = selectedEdge.native
                     try:
                         if not dbUtils.isEdgeAssociatedWithFace(face, edge):
                             continue  # skip if edge is not associated with the face currently being processed
                     except:
                         pass
 
-                    startVertex: adsk.fusion.BRepVertex = dbUtils.getVertexAtFace(
-                        face, edge
-                    )
                     extentToEntity = dbUtils.findExtent(face, edge)
+                    extentToEntity = [face for face in selectedEdge.endVertex.faces if selectedFace.faceNormal.isParallelTo(dbUtils.getFaceNormal(face))][0]
 
-                    extentToEntity = makeNative(extentToEntity)
+                    # extentToEntity = makeNative(extentToEntity)
                     self.logger.debug(f"extentToEntity - {extentToEntity.isValid}")
                     if not extentToEntity.isValid:
                         self.logger.debug("To face invalid")
 
                     try:
-                        (edge1, edge2) = dbUtils.getCornerEdgesAtFace(face, edge)
+                        edge1, edge2 = dbUtils.getCornerEdgesAtFace(face, edge)
                     except:
                         self.logger.exception("Failed at findAdjecentFaceEdges")
                         dbUtils.messageBox(
                             f"Failed at findAdjecentFaceEdges:\n{traceback.format_exc()}"
                         )
 
-                    centrePoint = makeNative(startVertex).geometry.copy()
+                    centrePoint: adsk.fusion.BRepVertex = selectedEdge.startVertex.geometry
+                    # centrePoint = startVertex.geometry.copy()
 
-                    selectedEdgeFaces = makeNative(selectedEdge.edge).faces
+                    #calculate center placement vector away from corner 
+                    selectedEdgeFaces = edge.faces
 
                     dirVect: adsk.core.Vector3D = dbUtils.getFaceNormal(
                         selectedEdgeFaces[0]
@@ -1154,8 +1157,8 @@ class DogboneCommand(object):
                     )  # ideally radius should be linked to parameters,
 
                     if self.param.dbType == "Mortise Dogbone":
-                        direction0 = dbUtils.correctedEdgeVector(edge1, startVertex)
-                        direction1 = dbUtils.correctedEdgeVector(edge2, startVertex)
+                        direction0 = dbUtils.correctedEdgeVector(edge1, selectedEdge.startVertex)
+                        direction1 = dbUtils.correctedEdgeVector(edge2, selectedEdge.startVertex)
 
                         if self.longSide:
                             if edge1.length > edge2.length:
@@ -1176,11 +1179,9 @@ class DogboneCommand(object):
                                 edge1OffsetByStr = adsk.core.ValueInput.createByReal(0)
                                 edge2OffsetByStr = offsetByStr
                     else:
-                        dirVect: adsk.core.Vector3D = dbUtils.getFaceNormal(
-                            makeNative(selectedEdgeFaces[0])
-                        ).copy()
+                        dirVect: adsk.core.Vector3D = dbUtils.getFaceNormal(selectedEdgeFaces[0]).copy()
                         dirVect.add(
-                            dbUtils.getFaceNormal(makeNative(selectedEdgeFaces[1]))
+                            dbUtils.getFaceNormal(selectedEdgeFaces[1])
                         )
                         edge1OffsetByStr = offsetByStr
                         edge2OffsetByStr = offsetByStr
@@ -1209,7 +1210,7 @@ class DogboneCommand(object):
                     holeInput.isDefaultDirection = True
                     holeInput.tipAngle = adsk.core.ValueInput.createByString("180 deg")
                     #                    holeInput.participantBodies = [face.nativeObject.body if occ else face.body]  #Restore this once AD fixes occurrence bugs
-                    holeInput.participantBodies = [makeNative(face.body)]
+                    holeInput.participantBodies = [face.body]
 
                     self.logger.debug(
                         f"extentToEntity before setPositionByPlaneAndOffsets - {extentToEntity.isValid}"
@@ -1225,7 +1226,7 @@ class DogboneCommand(object):
                     self.logger.debug(
                         f"extentToEntity after setPositionByPlaneAndOffsets - {extentToEntity.isValid}"
                     )
-                    holeInput.setOneSideToExtent(extentToEntity, False)
+                    holeInput.setOneSideToExtent(extentToEntity, False, holeDirection)
                     self.logger.info(f"hole added to list - {centrePoint.asArray()}")
 
                     holeFeature = holes.add(holeInput)

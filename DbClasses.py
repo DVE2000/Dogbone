@@ -281,10 +281,14 @@ class DbEdge:
             else self._native.endVertex.geometry
         )
 
-        self._nativeEndPoints = (
-            (self._native.startVertex.geometry, self._native.endVertex.geometry)
+        self._startVertex, self._endVertex = (( self._native.startVertex, self._native.endVertex)
             if self._native.startVertex in self._parentFace.native.vertices
-            else (self._native.endVertex.geometry, self._native.startVertex.geometry)
+            else (self._native.endVertex, self._native.startVertex))
+
+        self._nativeEndPoints = (
+            (self._startVertex.geometry, self._endVertex.geometry)
+            if self._startVertex in self._parentFace.native.vertices
+            else (self._endVertex.geometry, self._startVertex.geometry)
         )
 
         startPoint, endPoint = self._nativeEndPoints
@@ -292,11 +296,11 @@ class DbEdge:
         self._nativeEdgeVector: adsk.core.Vector3D = startPoint.vectorTo(endPoint)
         self._nativeEdgeVector.normalize()
 
-        self._endPoints = (
-            (self.edge.startVertex.geometry, self.edge.endVertex.geometry)
-            if self.edge.startVertex in self._parentFace.face.vertices
-            else (self.edge.endVertex.geometry, self.edge.startVertex.geometry)
-        )
+        # self._endPoints = (
+        #     (self.edge.startVertex.geometry, self.edge.endVertex.geometry)
+        #     if self.edge.startVertex in self._parentFace.face.vertices
+        #     else (self.edge.endVertex.geometry, self.edge.startVertex.geometry)
+        # )
 
         sx,sy,sz = self._nativeEndPoints[0].asArray()
         ex,ey,ez = self._nativeEndPoints[1].asArray()
@@ -375,6 +379,20 @@ class DbEdge:
         the dogbone needs to be located on
         """
         return self._nativeEdgeVector
+    
+    @property
+    def startVertex(self) -> adsk.fusion.BRepVertex:
+        """
+        returns native startVertex - the one on the parent Face
+        """
+        return self._startVertex
+
+    @property
+    def endVertex(self) -> adsk.fusion.BRepVertex:
+        """
+        returns native endVertex - the one away from the selected Face
+        """
+        return self._endVertex
 
     def faceObj(self):
         return self._parentFace
