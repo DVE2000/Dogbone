@@ -1,30 +1,46 @@
 import logging
 import traceback
 from math import tan, pi
+from typing import cast, Dict, List
 
 import adsk.core
 import adsk.fusion
+from .DbData import DbParams
 from . import dbutils as dbUtils
 
 logger = logging.getLogger("dogbone.DbClasses")
 
 _app = adsk.core.Application.get()
-_design: adsk.fusion.Design = _app.activeProduct
+_design: adsk.fusion.Design = cast(adsk.fusion.Design, _app.activeProduct)
 _ui = _app.userInterface
 _rootComp = _design.rootComponent
 
 
+class Selection:
+    addingEdges: bool = False
+
+    selectedOccurrences = {}  # key hash(occurrence.entityToken) value:[DbFace,...]
+    selectedFaces: Dict[int, "DbFace"] = {}
+    selectedEdges: Dict[int, "DbEdge"] = {}
+
+    edges: List[adsk.fusion.BRepEdge] = []
+    faces: List[adsk.fusion.BRepFace] = []
+
+
 class DbFace:
+
     def __init__(
-        self, parent, face: adsk.fusion.BRepFace, params, commandInputsEdgeSelect
+            self, selection: Selection, face: adsk.fusion.BRepFace, params: DbParams, commandInputsEdgeSelect
     ):
-        from .Dogbone import DogboneCommand
+
+        self._params = params
+        self.selection = selection
+        self._entityToken = face.entityToken
 
         self.face = face = (
             face if face.isValid else _design.findEntityByToken(self._entityToken)[0]
-        )  # self.component.findBRepUsingPoint(self._refPoint, adsk.fusion.BRepEntityTypes.BRepFaceEntityType,-1.0 ,False ).item(0)
-        self.parent: DogboneCommand = parent
-        self._entityToken = face.entityToken
+        )
+
         self._faceId = hash(self._entityToken)
         self.faceNormal = dbUtils.getFaceNormal(face)
         self._refPoint = (
@@ -33,7 +49,7 @@ class DbFace:
         self._component = face.body.parentComponent
         self.commandInputsEdgeSelect = commandInputsEdgeSelect
         self._selected = True
-        self._params = params
+
         self._associatedEdgesDict = {}  # Keyed with edge
         processedEdges = (
             []
@@ -80,23 +96,23 @@ class DbFace:
 
                 angle = dbUtils.getAngleBetweenFaces(edge) * 180 / pi
                 if (
-                    (abs(angle - 90) > 0.001)
-                    and not (params.acuteAngle or params.obtuseAngle)
-                    or (
+                        (abs(angle - 90) > 0.001)
+                        and not (params.acuteAngle or params.obtuseAngle)
+                        or (
                         not (params.minAngleLimit < angle <= 90)
                         and params.acuteAngle
                         and not params.obtuseAngle
-                    )
-                    or (
+                )
+                        or (
                         not (90 <= angle < params.maxAngleLimit)
                         and not params.acuteAngle
                         and params.obtuseAngle
-                    )
-                    or (
+                )
+                        or (
                         not (params.minAngleLimit < angle < params.maxAngleLimit)
                         and params.acuteAngle
                         and params.obtuseAngle
-                    )
+                )
                 ):
                     continue
 
@@ -104,14 +120,15 @@ class DbFace:
                     continue
 
                 edgeId = hash(edge.entityToken)
-                parent.selectedEdges[edgeId] = self._associatedEdgesDict[
+                selection.selectedEdges[edgeId] = self._associatedEdgesDict[
                     edgeId
                 ] = DbEdge(edge=edge, parentFace=self)
                 processedEdges.append(edge)
-                parent.addingEdges = True
+                selection.addingEdges = True
                 self.commandInputsEdgeSelect.addSelection(edge)
-                parent.addingEdges = False
-            except:
+                selection.addingEdges = False
+            except Exception as e:
+                logger.exception(e)
                 dbUtils.messageBox("Failed at edge:\n{}".format(traceback.format_exc()))
 
     def __hash__(self):
@@ -127,43 +144,40 @@ class DbFace:
 
     def selectAll(self):
         self._selected = True
-        self.parent.addingEdges = True
+        self.selection.addingEdges = True
         # selectedEdgesCollection = _ui.activeSelections.all
         # selectedEdgesDict = {hash(e.entityToken): e for e in selectedEdgesCollection if e.objectType == adsk.fusion.BRepEdge.classType()}
-        [selectedEdge.select for selectedEdge in self._associatedEdgesDict.values()]
+        [selectedEdge.select() for selectedEdge in self._associatedEdgesDict.values()]
         # changedEdgeSelection = set(self._associatedEdgesDict.keys()) ^ set(selectedEdgesDict.keys())
         # updatedCollection = adsk.core.ObjectCollection.create()
         # [updatedCollection.add(self.parent.selectedEdges[e]) for e in changedEdgeSelection]
         # _ui.activeSelections.all = updatedCollection
-        self.parent.addingEdges = False
+        self.selection.addingEdges = False
 
     def deselectAll(self):
         self._selected = False
-        self.parent.addingEdges = True
+        self.selection.addingEdges = True
         [
             (
-                selectedEdge.deselect,
+                selectedEdge.deselect(),
                 _ui.activeSelections.removeByEntity(selectedEdge.edge),
             )
             for selectedEdge in self._associatedEdgesDict.values()
         ]
-        self.parent.addingEdges = False
+        self.selection.addingEdges = False
 
     def reSelectEdges(self):
-        # self._associatedEdgesDict = {}
         self.__init__(
-            self.parent, self.face, self._params, self.commandInputsEdgeSelect
+            self.selection, self.face, self._params, self.commandInputsEdgeSelect
         )
 
     @property
     def refPoint(self):
         return self._refPoint
 
-    @property
     def select(self):
         self._selected = True
 
-    @property
     def deselect(self):
         self._selected = False
 
@@ -187,7 +201,7 @@ class DbFace:
         [
             (
                 _ui.activeSelections.removeByEntity(edgeObj.edge),
-                self.parent.selectedEdges.pop(edgeId),
+                self.selection.selectedEdges.pop(edgeId),
             )
             for edgeId, edgeObj in self._associatedEdgesDict.items()
         ]
@@ -215,7 +229,7 @@ class DbFace:
         )
 
     @property
-    def occurrenceId(self) -> adsk.fusion.Occurrence:
+    def occurrenceId(self) -> int:
         return (
             hash(self.face.assemblyContext.entityToken)
             if self.face.assemblyContext
@@ -223,7 +237,7 @@ class DbFace:
         )
 
     def removeFaceFromSelectedOccurrences(self):
-        faceList = self.parent.selectedOccurrences[self.occurrenceId]
+        faceList = self.selection.selectedOccurrences[self.occurrenceId]
         faceList.remove(self)
 
     @property
@@ -231,13 +245,18 @@ class DbFace:
         return self.face.nativeObject if self.face.nativeObject else self.face
 
     def revalidate(self) -> adsk.fusion.BRepFace:
-        return self.component.findBRepUsingPoint(
+        return cast(adsk.fusion.BRepFace, self.component.findBRepUsingPoint(
             self._refPoint, adsk.fusion.BRepEntityTypes.BRepFaceEntityType, -1.0, False
-        ).item(0)
+        ).item(0))
 
 
 class DbEdge:
     def __init__(self, edge: adsk.fusion.BRepEdge, parentFace: DbFace):
+
+        self._refPoint = (
+            edge.nativeObject.pointOnEdge if edge.assemblyContext else edge.pointOnEdge
+        )
+
         self.edge = edge = (
             edge
             if edge.isValid
@@ -247,10 +266,6 @@ class DbEdge:
                 -1.0,
                 False,
             ).item(0)
-        )
-
-        self._refPoint = (
-            edge.nativeObject.pointOnEdge if edge.assemblyContext else edge.pointOnEdge
         )
 
         self._edgeId = hash(edge.entityToken)
@@ -295,7 +310,6 @@ class DbEdge:
     def __hash__(self):
         return self._edgeId
 
-    @property
     def select(self):
         self._selected = True
 
@@ -308,7 +322,6 @@ class DbEdge:
     def cornerAngle(self):
         return self._cornerAngle
 
-    @property
     def deselect(self):
         self._selected = False
 
@@ -328,14 +341,14 @@ class DbEdge:
         return self._dogboneCentre
 
     @property
-    def nativeEndPoints(self) -> adsk.fusion.BRepVertex:
+    def nativeEndPoints(self) -> tuple[adsk.core.Point3D, adsk.core.Point3D]:
         """
         returns native Edge Point associated with parent Face - initial centre of the dogbone
         """
         return self._nativeEndPoints
 
     @property
-    def endPoints(self) -> adsk.fusion.BRepVertex:
+    def endPoints(self) -> tuple[adsk.core.Point3D, adsk.core.Point3D]:
         """
         returns occurrence Edge Point associated with parent Face - initial centre of the dogbone
         """
@@ -376,17 +389,12 @@ class DbEdge:
     def __hash__(self) -> int:
         return self._hash
 
-    @property
-    def native(self):
-        return self.edge.nativeObject if self.edge.nativeObject else self.edge
-
     @classmethod
     def __getToolBody(cls, edgeObj, params, topFace: adsk.fusion.BRepFace = None):
         from .DbData import DbParams
 
         params: DbParams
         edgeObj: DbEdge
-        box = None
 
         tempBrepMgr = adsk.fusion.TemporaryBRepManager.get()
         startPoint, endPoint = edgeObj.nativeEndPoints
