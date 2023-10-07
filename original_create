@@ -1,30 +1,3 @@
-import logging
-import traceback
-from typing import cast
-
-import adsk.core
-import adsk.fusion
-from . import dbutils as dbUtils
-from .DbData import DbParams
-from .DbClasses import Selection
-from .UserParameter import create_user_parameter, DB_RADIUS
-from .log import logger
-from .util import makeNative, reValidateFace
-
-_app = adsk.core.Application.get()
-_design: adsk.fusion.Design = cast(adsk.fusion.Design, _app.activeProduct)
-_rootComp = _design.rootComponent
-
-
-def debugFace(face):
-    if logger.level < logging.DEBUG:
-        return
-    for edge in face.edges:
-        logger.debug(
-            f"edge {edge.tempId}; startVertex: {edge.startVertex.geometry.asArray()}; endVertex: {edge.endVertex.geometry.asArray()}"
-        )
-
-
 def createParametricDogbones(param: DbParams, selection: Selection):
     userParams = create_user_parameter(param)
     radius = userParams.itemByName(DB_RADIUS).value
@@ -54,17 +27,36 @@ def createParametricDogbones(param: DbParams, selection: Selection):
                 f"Processing holes from top face - {topFace.body.name}"
             )
 
-            logger.debug(f"topFace isValid = {topFace.isValid}")
-            transformVector = dbUtils.getTranslateVectorBetweenFaces(
-                face, topFace
-            )
-            logger.debug(
-                f"creating transformVector to topFace = ({transformVector.x},{transformVector.y},{transformVector.z}) length = {transformVector.length}"
-            )
+        for selectedFace in occurrenceFaces:
+            if len(selectedFace.selectedEdges) < 1:
+                logger.debug("Face has no edges")
 
-            for selectedEdge in selection.selectedEdges:
+            face = selectedFace.native
+
+            if not face.isValid:
+                logger.debug("revalidating Face")
+                face = selectedFace.revalidate()
+            logger.debug(f"Processing Face = {face.tempId}")
+
+            # faceNormal = dbUtils.getFaceNormal(face.nativeObject)
+            if param.fromTop:
+                logger.debug(f"topFace type {type(topFace)}")
+                if not topFace.isValid:
+                    logger.debug("revalidating topFace")
+                    topFace = reValidateFace(comp, topFaceRefPoint)
+
+                topFace = makeNative(topFace)
+
+                logger.debug(f"topFace isValid = {topFace.isValid}")
+                transformVector = dbUtils.getTranslateVectorBetweenFaces(
+                    face, topFace
+                )
+                logger.debug(
+                    f"creating transformVector to topFace = ({transformVector.x},{transformVector.y},{transformVector.z}) length = {transformVector.length}"
+                )
+
+            for selectedEdge in selectedFace.selectedEdges:
                 logger.debug(f"Processing edge - {selectedEdge.edge.tempId}")
-                edge: adsk.fusion.BRepEdge = selectedEdge.native
 
                 if not selectedEdge.isSelected:
                     logger.debug("  Not selected. Skipping...")
@@ -73,39 +65,40 @@ def createParametricDogbones(param: DbParams, selection: Selection):
                 if not face.isValid:
                     logger.debug("Revalidating face")
                     face = (
-                        selection.revalidate()
-                    )  # = reValidateFace(comp, selection.refPoint)
+                        selectedFace.revalidate()
+                    )  # = reValidateFace(comp, selectedFace.refPoint)
 
-                if not edge.isValid:
+                if not selectedEdge.edge.isValid:
                     continue  # edges that have been processed already will not be valid any more - at the moment this is easier than removing the
                 #                    affected edge from self.edges after having been processed
+                edge = selectedEdge.native
                 try:
                     if not dbUtils.isEdgeAssociatedWithFace(face, edge):
                         continue  # skip if edge is not associated with the face currently being processed
                 except:
                     pass
 
+                startVertex: adsk.fusion.BRepVertex = dbUtils.getVertexAtFace(
+                    face, edge
+                )
                 extentToEntity = dbUtils.findExtent(face, edge)
-                extentToEntity = [face for face in selectedEdge.endVertex.faces if selection.faceNormal.isParallelTo(dbUtils.getFaceNormal(face))][0]
 
-                # extentToEntity = makeNative(extentToEntity)
+                extentToEntity = makeNative(extentToEntity)
                 logger.debug(f"extentToEntity - {extentToEntity.isValid}")
                 if not extentToEntity.isValid:
                     logger.debug("To face invalid")
 
                 try:
-                    edge1, edge2 = dbUtils.getCornerEdgesAtFace(face, edge)
+                    (edge1, edge2) = dbUtils.getCornerEdgesAtFace(face, edge)
                 except:
                     logger.exception("Failed at findAdjecentFaceEdges")
                     dbUtils.messageBox(
                         f"Failed at findAdjecentFaceEdges:\n{traceback.format_exc()}"
                     )
 
-                centrePoint: adsk.fusion.BRepVertex = selectedEdge.startVertex.geometry
-                # centrePoint = startVertex.geometry.copy()
+                centrePoint = makeNative(startVertex).geometry.copy()
 
-                #calculate center placement vector away from corner 
-                selectedEdgeFaces = edge.faces
+                selectedEdgeFaces = makeNative(selectedEdge.edge).faces
 
                 dirVect: adsk.core.Vector3D = dbUtils.getFaceNormal(
                     selectedEdgeFaces[0]
@@ -117,8 +110,8 @@ def createParametricDogbones(param: DbParams, selection: Selection):
                 )  # ideally radius should be linked to parameters,
 
                 if param.dbType == "Mortise Dogbone":
-                    direction0 = dbUtils.correctedEdgeVector(edge1, selectedEdge.startVertex)
-                    direction1 = dbUtils.correctedEdgeVector(edge2, selectedEdge.startVertex)
+                    direction0 = dbUtils.correctedEdgeVector(edge1, startVertex)
+                    direction1 = dbUtils.correctedEdgeVector(edge2, startVertex)
 
                     if param.longSide:
                         if edge1.length > edge2.length:
@@ -139,9 +132,11 @@ def createParametricDogbones(param: DbParams, selection: Selection):
                             edge1OffsetByStr = adsk.core.ValueInput.createByReal(0)
                             edge2OffsetByStr = offsetByStr
                 else:
-                    dirVect: adsk.core.Vector3D = dbUtils.getFaceNormal(selectedEdgeFaces[0]).copy()
+                    dirVect: adsk.core.Vector3D = dbUtils.getFaceNormal(
+                        makeNative(selectedEdgeFaces[0])
+                    ).copy()
                     dirVect.add(
-                        dbUtils.getFaceNormal(selectedEdgeFaces[1])
+                        dbUtils.getFaceNormal(makeNative(selectedEdgeFaces[1]))
                     )
                     edge1OffsetByStr = offsetByStr
                     edge2OffsetByStr = offsetByStr
@@ -150,9 +145,6 @@ def createParametricDogbones(param: DbParams, selection: Selection):
                 logger.debug(
                     f"centrePoint = ({centrePoint.x},{centrePoint.y},{centrePoint.z})"
                 )
-
-                holeDirection = selection.faceNormal
-                holeDirection.scaleBy(-1)
 
                 if param.fromTop:
                     centrePoint.translateBy(transformVector)
@@ -173,7 +165,7 @@ def createParametricDogbones(param: DbParams, selection: Selection):
                 holeInput.isDefaultDirection = True
                 holeInput.tipAngle = adsk.core.ValueInput.createByString("180 deg")
                 #                    holeInput.participantBodies = [face.nativeObject.body if occ else face.body]  #Restore this once AD fixes occurrence bugs
-                holeInput.participantBodies = [face.body]
+                holeInput.participantBodies = [makeNative(face.body)]
 
                 logger.debug(
                     f"extentToEntity before setPositionByPlaneAndOffsets - {extentToEntity.isValid}"
@@ -189,7 +181,7 @@ def createParametricDogbones(param: DbParams, selection: Selection):
                 logger.debug(
                     f"extentToEntity after setPositionByPlaneAndOffsets - {extentToEntity.isValid}"
                 )
-                holeInput.setOneSideToExtent(extentToEntity, False, holeDirection)
+                holeInput.setOneSideToExtent(extentToEntity, False)
                 logger.info(f"hole added to list - {centrePoint.asArray()}")
 
                 holeFeature = holes.add(holeInput)
@@ -227,50 +219,43 @@ def createStaticDogbones(param: DbParams, selection: Selection):
             debugFace(topFace)
 
         for selectedFace in occurrenceFaces:
-            component = selectedFace.component
             toolCollection = adsk.core.ObjectCollection.create()
             toolBodies = None
 
             for edge in selectedFace.selectedEdges:
                 if not toolBodies:
                     toolBodies = edge.getToolBody(
-                        params=param,
-                        topFace=topFace
+                        params=param, topFace=topFace
                     )
                 else:
                     tempBrepMgr.booleanOperation(
                         toolBodies,
-                        edge.getToolBody(params=param,
-                                            topFace=topFace),
+                        edge.getToolBody(params=param, topFace=topFace),
                         adsk.fusion.BooleanTypes.UnionBooleanType,
                     )
 
-            targetBody: adsk.fusion.BRepBody = selectedFace.body
-            baseFeatures = component.features.baseFeatures
+            baseFeatures = _rootComp.features.baseFeatures
             baseFeature = baseFeatures.add()
             baseFeature.name = "dogbone"
 
             baseFeature.startEdit()
-            
-            dbB = component.bRepBodies.add(toolBodies, baseFeature)
+            dbB = _rootComp.bRepBodies.add(toolBodies, baseFeature)
             dbB.name = "dogboneTool"
-
             baseFeature.finishEdit()
 
-            [toolCollection.add(body) for body in baseFeature.bodies]  #add baseFeature bodies into toolCollection
+            toolCollection.add(baseFeature.bodies.item(0))
 
-            combineFeatureInput = component.features.combineFeatures.createInput(
-                targetBody=targetBody,
-                toolBodies=toolCollection
+            activeBody = selectedFace.native.body
+
+            combineInput = _rootComp.features.combineFeatures.createInput(
+                targetBody=activeBody, toolBodies=toolCollection
             )
-
-            combineFeatureInput.isKeepToolBodies = False
-            combineFeatureInput.isNewComponent = False
-            combineFeatureInput.operation = (
+            combineInput.isKeepToolBodies = False
+            combineInput.isNewComponent = False
+            combineInput.operation = (
                 adsk.fusion.FeatureOperations.CutFeatureOperation
             )
-            combine = component.features.combineFeatures.add(combineFeatureInput)
-            logger.debug(f"combine: {combine.healthState}")
+            combine = _rootComp.features.combineFeatures.add(combineInput)
 
         endTlMarker = _design.timeline.markerPosition - 1
         if endTlMarker - startTlMarker > 0:

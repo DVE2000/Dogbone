@@ -17,14 +17,15 @@ _rootComp = _design.rootComponent
 
 
 class Selection:
-    addingEdges: bool = False
+    def __init__(self):
+        self.addingEdges: bool = False
 
-    selectedOccurrences = {}  # key hash(occurrence.entityToken) value:[DbFace,...]
-    selectedFaces: Dict[int, "DbFace"] = {}
-    selectedEdges: Dict[int, "DbEdge"] = {}
+        self.selectedOccurrences = {}  # key hash(occurrence.entityToken) value:[DbFace,...]
+        self.selectedFaces: Dict[int, "DbFace"] = {}
+        self.selectedEdges: Dict[int, "DbEdge"] = {}
 
-    edges: List[adsk.fusion.BRepEdge] = []
-    faces: List[adsk.fusion.BRepFace] = []
+        self.edges: List[adsk.fusion.BRepEdge] = []
+        self.faces: List[adsk.fusion.BRepFace] = []
 
 
 class DbFace:
