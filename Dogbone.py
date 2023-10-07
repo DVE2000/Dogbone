@@ -28,6 +28,21 @@ import time
 import traceback
 from typing import cast
 
+_appPath = os.path.dirname(os.path.abspath(__file__))
+_subpath = os.path.join(f"{_appPath}", "py_packages")
+if _subpath not in sys.path:
+    sys.path.insert(0, _subpath)
+    sys.path.insert(0, "")
+from .DbClasses import DbFace
+from .DbData import DbParams
+
+from .log import logger
+from .DbClasses import Selection
+
+import time
+import traceback
+from typing import cast
+
 import adsk.core
 import adsk.fusion
 
@@ -186,10 +201,6 @@ class DogboneCommand(object):
 
     def createDogbones(self, params: DbParams, selection: Selection):
         start = time.time()
-
-        # logger.log(0, "logging Level = %(levelname)")
-        # self.parseInputs(args.firingEvent.sender.commandInputs)
-        # logger.setLevel(self.param.logging)
 
         self.write_defaults(params)
 

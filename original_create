@@ -1,30 +1,3 @@
-import logging
-import traceback
-from typing import cast
-
-import adsk.core
-import adsk.fusion
-from . import dbutils as dbUtils
-from .DbData import DbParams
-from .DbClasses import Selection
-from .UserParameter import create_user_parameter, DB_RADIUS
-from .log import logger
-from .util import makeNative, reValidateFace
-
-_app = adsk.core.Application.get()
-_design: adsk.fusion.Design = cast(adsk.fusion.Design, _app.activeProduct)
-_rootComp = _design.rootComponent
-
-
-def debugFace(face):
-    if logger.level < logging.DEBUG:
-        return
-    for edge in face.edges:
-        logger.debug(
-            f"edge {edge.tempId}; startVertex: {edge.startVertex.geometry.asArray()}; endVertex: {edge.endVertex.geometry.asArray()}"
-        )
-
-
 def createParametricDogbones(param: DbParams, selection: Selection):
     userParams = create_user_parameter(param)
     radius = userParams.itemByName(DB_RADIUS).value
@@ -109,8 +82,8 @@ def createParametricDogbones(param: DbParams, selection: Selection):
                     face, edge
                 )
                 extentToEntity = dbUtils.findExtent(face, edge)
-                extentToEntity = [face for face in selectedEdge.endVertex.faces if selection.faceNormal.isParallelTo(dbUtils.getFaceNormal(face))][0]
 
+                extentToEntity = makeNative(extentToEntity)
                 logger.debug(f"extentToEntity - {extentToEntity.isValid}")
                 if not extentToEntity.isValid:
                     logger.debug("To face invalid")
@@ -246,49 +219,43 @@ def createStaticDogbones(param: DbParams, selection: Selection):
             debugFace(topFace)
 
         for selectedFace in occurrenceFaces:
-            component = selectedFace.component
             toolCollection = adsk.core.ObjectCollection.create()
+            toolBodies = None
 
             for edge in selectedFace.selectedEdges:
                 if not toolBodies:
                     toolBodies = edge.getToolBody(
-                        params=param,
-                        topFace=topFace
+                        params=param, topFace=topFace
                     )
                 else:
                     tempBrepMgr.booleanOperation(
                         toolBodies,
-                        edge.getToolBody(params=param,
-                                            topFace=topFace),
+                        edge.getToolBody(params=param, topFace=topFace),
                         adsk.fusion.BooleanTypes.UnionBooleanType,
                     )
 
-        targetBody: adsk.fusion.BRepBody = selectedFace.body
-        baseFeatures = component.features.baseFeatures
-        baseFeature = baseFeatures.add()
-        baseFeature.name = "dogbone"
+            baseFeatures = _rootComp.features.baseFeatures
+            baseFeature = baseFeatures.add()
+            baseFeature.name = "dogbone"
 
-        baseFeature.startEdit()
-        
-        dbB = component.bRepBodies.add(toolBodies, baseFeature)
-        dbB.name = "dogboneTool"
+            baseFeature.startEdit()
+            dbB = _rootComp.bRepBodies.add(toolBodies, baseFeature)
+            dbB.name = "dogboneTool"
+            baseFeature.finishEdit()
 
-        baseFeature.finishEdit()
+            toolCollection.add(baseFeature.bodies.item(0))
 
-        [toolCollection.add(body) for body in baseFeature.bodies]  #add baseFeature bodies into toolCollection
+            activeBody = selectedFace.native.body
 
-        combineFeatureInput = component.features.combineFeatures.createInput(
-            targetBody=targetBody,
-            toolBodies=toolCollection
-        )
-
-        combineFeatureInput.isKeepToolBodies = False
-        combineFeatureInput.isNewComponent = False
-        combineFeatureInput.operation = (
-            adsk.fusion.FeatureOperations.CutFeatureOperation
-        )
-        combine = component.features.combineFeatures.add(combineFeatureInput)
-        logger.debug(f"combine: {combine.healthState}")
+            combineInput = _rootComp.features.combineFeatures.createInput(
+                targetBody=activeBody, toolBodies=toolCollection
+            )
+            combineInput.isKeepToolBodies = False
+            combineInput.isNewComponent = False
+            combineInput.operation = (
+                adsk.fusion.FeatureOperations.CutFeatureOperation
+            )
+            combine = _rootComp.features.combineFeatures.add(combineInput)
 
         endTlMarker = _design.timeline.markerPosition - 1
         if endTlMarker - startTlMarker > 0:

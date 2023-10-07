@@ -409,7 +409,7 @@ class DogboneUi:
             for faceId in addedFaces:
                 changedEntity = selectionDict[
                     faceId
-                ]  # changedInput.selection(changedInput.selectionCount-1).entity
+                ] 
                 activeOccurrenceId = (
                     hash(changedEntity.assemblyContext.entityToken)
                     if changedEntity.assemblyContext
