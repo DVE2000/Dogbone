@@ -17,14 +17,16 @@ _rootComp = _design.rootComponent
 
 
 class Selection:
-    addingEdges: bool = False
+    def __init__(self) -> None:
 
-    selectedOccurrences = {}  # key hash(occurrence.entityToken) value:[DbFace,...]
-    selectedFaces: Dict[int, "DbFace"] = {}
-    selectedEdges: Dict[int, "DbEdge"] = {}
+        self.addingEdges: bool = False
 
-    edges: List[adsk.fusion.BRepEdge] = []
-    faces: List[adsk.fusion.BRepFace] = []
+        self.selectedOccurrences = {}  # key hash(occurrence.entityToken) value:[DbFace,...]
+        self.selectedFaces: Dict[int, "DbFace"] = {}
+        self.selectedEdges: Dict[int, "DbEdge"] = {}
+
+        self.edges: List[adsk.fusion.BRepEdge] = []
+        self.faces: List[adsk.fusion.BRepFace] = []
 
 
 class DbFace:
@@ -44,7 +46,7 @@ class DbFace:
         self._faceId = hash(self._entityToken)
         self.faceNormal = dbUtils.getFaceNormal(face)
         self._refPoint = (
-            face.nativeObject.pointOnFace if face.assemblyContext else face.pointOnFace
+            face.nativeObject.pointOnFace if face.nativeObject else face.pointOnFace
         )
         self._component = face.body.parentComponent
         self.commandInputsEdgeSelect = commandInputsEdgeSelect
@@ -254,7 +256,7 @@ class DbEdge:
     def __init__(self, edge: adsk.fusion.BRepEdge, parentFace: DbFace):
 
         self._refPoint = (
-            edge.nativeObject.pointOnEdge if edge.assemblyContext else edge.pointOnEdge
+            edge.nativeObject.pointOnEdge if edge.nativeObject else edge.pointOnEdge
         )
 
         self.edge = edge = (
