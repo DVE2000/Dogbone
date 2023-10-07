@@ -238,6 +238,7 @@ def createStaticDogbones(param: DbParams, selection: Selection):
     for occurrenceFaces in selection.selectedOccurrences.values():
         startTlMarker = _design.timeline.markerPosition
         topFace = None
+        toolBodies = None
 
         if param.fromTop:
             topFace, topFaceRefPoint = dbUtils.getTopFace(occurrenceFaces[0].native)
