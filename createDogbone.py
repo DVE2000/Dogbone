@@ -219,6 +219,7 @@ def createStaticDogbones(param: DbParams, selection: Selection):
     for occurrenceFaces in selection.selectedOccurrences.values():
         startTlMarker = _design.timeline.markerPosition
         topFace = None
+        toolBodies = None
 
         if param.fromTop:
             topFace, topFaceRefPoint = dbUtils.getTopFace(occurrenceFaces[0].native)
@@ -229,7 +230,6 @@ def createStaticDogbones(param: DbParams, selection: Selection):
         for selectedFace in occurrenceFaces:
             component = selectedFace.component
             toolCollection = adsk.core.ObjectCollection.create()
-            toolBodies = None
 
             for edge in selectedFace.selectedEdges:
                 if not toolBodies:
@@ -245,32 +245,32 @@ def createStaticDogbones(param: DbParams, selection: Selection):
                         adsk.fusion.BooleanTypes.UnionBooleanType,
                     )
 
-            targetBody: adsk.fusion.BRepBody = selectedFace.body
-            baseFeatures = component.features.baseFeatures
-            baseFeature = baseFeatures.add()
-            baseFeature.name = "dogbone"
+        targetBody: adsk.fusion.BRepBody = selectedFace.body
+        baseFeatures = component.features.baseFeatures
+        baseFeature = baseFeatures.add()
+        baseFeature.name = "dogbone"
 
-            baseFeature.startEdit()
-            
-            dbB = component.bRepBodies.add(toolBodies, baseFeature)
-            dbB.name = "dogboneTool"
+        baseFeature.startEdit()
+        
+        dbB = component.bRepBodies.add(toolBodies, baseFeature)
+        dbB.name = "dogboneTool"
 
-            baseFeature.finishEdit()
+        baseFeature.finishEdit()
 
-            [toolCollection.add(body) for body in baseFeature.bodies]  #add baseFeature bodies into toolCollection
+        [toolCollection.add(body) for body in baseFeature.bodies]  #add baseFeature bodies into toolCollection
 
-            combineFeatureInput = component.features.combineFeatures.createInput(
-                targetBody=targetBody,
-                toolBodies=toolCollection
-            )
+        combineFeatureInput = component.features.combineFeatures.createInput(
+            targetBody=targetBody,
+            toolBodies=toolCollection
+        )
 
-            combineFeatureInput.isKeepToolBodies = False
-            combineFeatureInput.isNewComponent = False
-            combineFeatureInput.operation = (
-                adsk.fusion.FeatureOperations.CutFeatureOperation
-            )
-            combine = component.features.combineFeatures.add(combineFeatureInput)
-            logger.debug(f"combine: {combine.healthState}")
+        combineFeatureInput.isKeepToolBodies = False
+        combineFeatureInput.isNewComponent = False
+        combineFeatureInput.operation = (
+            adsk.fusion.FeatureOperations.CutFeatureOperation
+        )
+        combine = component.features.combineFeatures.add(combineFeatureInput)
+        logger.debug(f"combine: {combine.healthState}")
 
         endTlMarker = _design.timeline.markerPosition - 1
         if endTlMarker - startTlMarker > 0:
