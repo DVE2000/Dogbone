@@ -17,8 +17,6 @@ _rootComp = _design.rootComponent
 
 
 class Selection:
-    def __init__(self):
-        self.addingEdges: bool = False
     def __init__(self) -> None:
 
         self.addingEdges: bool = False
@@ -152,6 +150,12 @@ class DbFace:
         if type(other) != DbFace:
             return NotImplemented
         return other.faceId == self.faceId
+    
+    def saveAttr(self):
+        pass
+
+    def recallAttr(self):
+        pass
 
     def selectAll(self):
         self._selected = True
@@ -432,8 +436,8 @@ class DbEdge:
                 f'\n native: {self.edge.nativeObject != None}'
                 f'\n edge: {self.edge.tempId}'
                 f'\n startPoint: ({sx:.2f},{sy:.2f},{sz:.2f}),({ex:.2f},{ey:.2f},{ez:.2f})'
-                f'\n edgeLength: {startPoint.distanceTo(endPoint): .2f}')
-                # f'\n parentFace: {self._parentFace.face.tempId}')
+                f'\n edgeLength: {startPoint.distanceTo(endPoint): .2f}'
+                f'\n parentFace: {self._parentFace.face.tempId}')
         
         effectiveRadius = (params.toolDia + params.toolDiaOffset) / 2
         centreDistance = effectiveRadius * (
