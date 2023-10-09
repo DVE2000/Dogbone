@@ -56,23 +56,26 @@ class DbFace:
         self._component = face.body.parentComponent
         self.commandInputsEdgeSelect = commandInputsEdgeSelect
         self._selected = True
-        self._params = params
+        # self._params = params
         self._body = self.face.body.nativeObject if self.face.nativeObject else self.face.body
 
         self._associatedEdgesDict = {}  # Keyed with edge
-        processedEdges = (
+        self.processedEdges = (
             []
         )  # used for quick checking if an edge is already included (below)
         self._customGraphicGroup = None  #
 
+        self.makeEdges()
+
+    def makeEdges(self):
         # ==============================================================================
         #             this is where inside corner edges, dropping down from the face are processed
         # ==============================================================================
 
-        faceNormal = dbUtils.getFaceNormal(face)
+        # faceNormal = dbUtils.getFaceNormal(face)
 
-        faceEdgesSet = {hash(edge.entityToken) for edge in face.edges}
-        faceVertices = [vertex for vertex in face.vertices]
+        faceEdgesSet = {hash(edge.entityToken) for edge in self.face.edges}
+        faceVertices = [vertex for vertex in self.face.vertices]
         allEdges = {}
         for vertex in faceVertices:
             allEdges.update({hash(edge.entityToken): edge for edge in vertex.edges})
@@ -86,16 +89,16 @@ class DbFace:
                 continue
             if edge.isDegenerate:
                 continue
-            if edge in processedEdges:
+            if edge in self.processedEdges:
                 continue
             try:
                 if edge.geometry.curveType != adsk.core.Curve3DTypes.Line3DCurveType:
                     continue
-                vector: adsk.core.Vector3D = dbUtils.getEdgeVector(edge, refFace=face)
+                vector: adsk.core.Vector3D = dbUtils.getEdgeVector(edge, refFace=self.face)
                 vector.normalize()
-                if not vector.isParallelTo(faceNormal):
+                if not vector.isParallelTo(self.faceNormal):
                     continue
-                if vector.isEqualTo(faceNormal):
+                if vector.isEqualTo(self.faceNormal):
                     continue
                 face1, face2 = edge.faces
                 if face1.geometry.objectType != adsk.core.Plane.classType():
@@ -105,37 +108,42 @@ class DbFace:
 
                 angle = dbUtils.getAngleBetweenFaces(edge) * 180 / pi
                 if (
-                        (abs(angle - 90) > 0.001)
-                        and not (params.acuteAngle or params.obtuseAngle)
-                        or (
-                        not (params.minAngleLimit < angle <= 90)
-                        and params.acuteAngle
-                        and not params.obtuseAngle
-                )
-                        or (
-                        not (90 <= angle < params.maxAngleLimit)
-                        and not params.acuteAngle
-                        and params.obtuseAngle
-                )
-                        or (
-                        not (params.minAngleLimit < angle < params.maxAngleLimit)
-                        and params.acuteAngle
-                        and params.obtuseAngle
-                )
+                    (abs(angle - 90) > 0.001)
+                    and not (self._params.acuteAngle or self._params.obtuseAngle)
+                    ):
+                        continue
+
+                if (
+                        not (self._params.minAngleLimit < angle <= 90)
+                        and self._params.acuteAngle
+                        and not self._params.obtuseAngle
+                    ):
+                    continue
+
+                if (
+                        not (90 <= angle < self._params.maxAngleLimit)
+                        and not self._params.acuteAngle
+                        and self._params.obtuseAngle
+                ):
+                        continue
+                if (
+                        not (self._params.minAngleLimit < angle < self._params.maxAngleLimit)
+                        and self._params.acuteAngle
+                        and self._params.obtuseAngle
                 ):
                     continue
 
-                if (abs(angle - 90) > 0.001) and params.parametric:
+                if (abs(angle - 90) > 0.001) and self._params.parametric:
                     continue
 
                 edgeId = hash(edge.entityToken)
-                selection.selectedEdges[edgeId] = self._associatedEdgesDict[
+                self.selection.selectedEdges[edgeId] = self._associatedEdgesDict[
                     edgeId
                 ] = DbEdge(edge=edge, parentFace=self)
-                processedEdges.append(edge)
-                selection.addingEdges = True
+                self.processedEdges.append(edge)
+                self.selection.addingEdges = True
                 self.commandInputsEdgeSelect.addSelection(edge)
-                selection.addingEdges = False
+                self.selection.addingEdges = False
             except Exception as e:
                 logger.exception(e)
                 dbUtils.messageBox("Failed at edge:\n{}".format(traceback.format_exc()))
@@ -152,21 +160,16 @@ class DbFace:
         return other.faceId == self.faceId
     
     def saveAttr(self):
+        params = self._params
         pass
 
-    def recallAttr(self):
+    def getAttr(self):
         pass
 
     def selectAll(self):
         self._selected = True
         self.selection.addingEdges = True
-        # selectedEdgesCollection = _ui.activeSelections.all
-        # selectedEdgesDict = {hash(e.entityToken): e for e in selectedEdgesCollection if e.objectType == adsk.fusion.BRepEdge.classType()}
         [selectedEdge.select() for selectedEdge in self._associatedEdgesDict.values()]
-        # changedEdgeSelection = set(self._associatedEdgesDict.keys()) ^ set(selectedEdgesDict.keys())
-        # updatedCollection = adsk.core.ObjectCollection.create()
-        # [updatedCollection.add(self.parent.selectedEdges[e]) for e in changedEdgeSelection]
-        # _ui.activeSelections.all = updatedCollection
         self.selection.addingEdges = False
 
     def deselectAll(self):
@@ -401,6 +404,12 @@ class DbEdge:
         the dogbone needs to be located on
         """
         return self._nativeEdgeVector
+    
+    def saveAttr(self):
+        pass
+
+    def getAttr(self):
+        pass
 
     def faceObj(self):
         return self._parentFace
@@ -436,8 +445,8 @@ class DbEdge:
                 f'\n native: {self.edge.nativeObject != None}'
                 f'\n edge: {self.edge.tempId}'
                 f'\n startPoint: ({sx:.2f},{sy:.2f},{sz:.2f}),({ex:.2f},{ey:.2f},{ez:.2f})'
-                f'\n edgeLength: {startPoint.distanceTo(endPoint): .2f}'
-                f'\n parentFace: {self._parentFace.face.tempId}')
+                f'\n edgeLength: {startPoint.distanceTo(endPoint): .2f}')
+                # f'\n parentFace: {self._parentFace.face.tempId}')
         
         effectiveRadius = (params.toolDia + params.toolDiaOffset) / 2
         centreDistance = effectiveRadius * (

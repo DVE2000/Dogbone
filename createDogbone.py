@@ -1,5 +1,6 @@
 import logging
 import traceback
+import re
 from typing import cast
 
 import adsk.core
@@ -265,7 +266,7 @@ def createStaticDogbones(param: DbParams, selection: Selection):
                     )
 
         targetBody: adsk.fusion.BRepBody = selectedFace.body
-        baseFeatures = component.features.baseFeatures
+        baseFeatures: adsk.fusion.BaseFeature = component.features.baseFeatures
         baseFeature = baseFeatures.add()
         baseFeature.name = "dogbone"
 
@@ -275,6 +276,10 @@ def createStaticDogbones(param: DbParams, selection: Selection):
         dbB.name = "dogboneTool"
 
         baseFeature.finishEdit()
+        
+        baseFeature.attributes.add(groupName="Dogbone",
+                               name="basefeature-"+ str(selectedFace.faceId),
+                               value="test")
 
         [toolCollection.add(body) for body in baseFeature.bodies]  #add baseFeature bodies into toolCollection
 
@@ -288,8 +293,9 @@ def createStaticDogbones(param: DbParams, selection: Selection):
         combineFeatureInput.operation = (
             adsk.fusion.FeatureOperations.CutFeatureOperation
         )
-        combine = component.features.combineFeatures.add(combineFeatureInput)
-        logger.debug(f"combine: {combine.healthState}")
+        combine:adsk.fusion.CombineFeature = component.features.combineFeatures.add(combineFeatureInput)
+
+        logger.debug(f"combine: {combine.name}")
 
         endTlMarker = _design.timeline.markerPosition - 1
         if endTlMarker - startTlMarker > 0:
