@@ -65,25 +65,24 @@ class DbFace:
         )  # used for quick checking if an edge is already included (below)
         self._customGraphicGroup = None  #
 
-        self.makeEdges()
+        self.registerEdges()
 
-    def makeEdges(self):
+    def registerEdges(self):
         # ==============================================================================
         #             this is where inside corner edges, dropping down from the face are processed
         # ==============================================================================
 
-        # faceNormal = dbUtils.getFaceNormal(face)
-
         faceEdgesSet = {hash(edge.entityToken) for edge in self.face.edges}
         faceVertices = [vertex for vertex in self.face.vertices]
-        allEdges = {}
+        allEdges = {}  #dict key:hash(entity code): BrepEdge
+
+        #populate allEdges dict with all edges associated with face vertices
         for vertex in faceVertices:
             allEdges.update({hash(edge.entityToken): edge for edge in vertex.edges})
 
-        candidateEdgesId = set(allEdges.keys()) - faceEdgesSet
-        candidateEdges = [allEdges[edgeId] for edgeId in candidateEdgesId]
+        candidateEdgesId = set(allEdges.keys()) - faceEdgesSet  #remove edges associated with face - just leaves corner edges
+        candidateEdges = [allEdges[edgeId] for edgeId in candidateEdgesId] #create list of corner edges
 
-        # for edge in self.face.body.edges:
         for edge in candidateEdges:
             if not edge.isValid:
                 continue
@@ -93,13 +92,15 @@ class DbFace:
                 continue
             try:
                 if edge.geometry.curveType != adsk.core.Curve3DTypes.Line3DCurveType:
-                    continue
+                    continue # make sure corner edge is only a straight line
                 vector: adsk.core.Vector3D = dbUtils.getEdgeVector(edge, refFace=self.face)
                 vector.normalize()
                 if not vector.isParallelTo(self.faceNormal):
-                    continue
+                    continue  #make sure corner edge is perpendicular to top face
                 if vector.isEqualTo(self.faceNormal):
-                    continue
+                    continue #make sure corner edge is down (face normals are always pointing out of body )
+                
+                #make sure faces adjoining corner edge are planes
                 face1, face2 = edge.faces
                 if face1.geometry.objectType != adsk.core.Plane.classType():
                     continue
@@ -110,40 +111,42 @@ class DbFace:
                 if (
                     (abs(angle - 90) > 0.001)
                     and not (self._params.acuteAngle or self._params.obtuseAngle)
-                    ):
-                        continue
+                    ):  
+                    continue #Angle outside tolerance and we're just doing 90 corners
 
                 if (
                         not (self._params.minAngleLimit < angle <= 90)
                         and self._params.acuteAngle
                         and not self._params.obtuseAngle
                     ):
-                    continue
+                    continue  #angle less than lowest limit and doing acute angles
 
                 if (
                         not (90 <= angle < self._params.maxAngleLimit)
                         and not self._params.acuteAngle
                         and self._params.obtuseAngle
-                ):
-                        continue
+                    ):
+                    continue # angle greater than max limit and doing obtuse angles
+
                 if (
                         not (self._params.minAngleLimit < angle < self._params.maxAngleLimit)
                         and self._params.acuteAngle
                         and self._params.obtuseAngle
-                ):
-                    continue
+                    ):
+                    continue #angle between min and max and doing both acute and obtuse
 
                 if (abs(angle - 90) > 0.001) and self._params.parametric:
-                    continue
+                    continue # angle greater than tolerance and doing parametric
 
-                edgeId = hash(edge.entityToken)
-                self.selection.selectedEdges[edgeId] = self._associatedEdgesDict[
+                edgeId = hash(edge.entityToken) #this normally created by the DbEdge instantiation, but it's needed earlier (I thmk!)
+                self.selection.selectedEdges[edgeId] = self._associatedEdgesDict[ 
                     edgeId
                 ] = DbEdge(edge=edge, parentFace=self)
                 self.processedEdges.append(edge)
                 self.selection.addingEdges = True
                 self.commandInputsEdgeSelect.addSelection(edge)
                 self.selection.addingEdges = False
+
             except Exception as e:
                 logger.exception(e)
                 dbUtils.messageBox("Failed at edge:\n{}".format(traceback.format_exc()))
