@@ -54,6 +54,7 @@ ID = "id"
 DEBUGLEVEL = logging.DEBUG
 
 COMMAND_ID = "dogboneBtn"
+UPD_COMMAND_ID = "dogboneUpdateBtn"
 CONFIG_PATH = os.path.join(_appPath, "defaults.dat")
 
 
@@ -106,12 +107,20 @@ class DogboneCommand(object):
             COMMAND_ID,
             "Dogbone",
             "Creates dogbones at all inside corners of a face",
-            "resources"
+            "resources/ui/create_button"
+        )
+
+        upd_button = _ui.commandDefinitions.addButtonDefinition(
+            UPD_COMMAND_ID,
+            "DogboneUpdate",
+            "Updates previously created dogbones",
+            "resources/ui/update_button"
         )
 
         self.onCreate(event=button.commandCreated)
-        # Create controls for Manufacturing Workspace
+        self.onUpdate(event=upd_button.commandCreated)
 
+        # Create controls for Manufacturing Workspace
         control = self.get_solid_create_panel().controls.addCommand(
             button, COMMAND_ID
         )
@@ -120,13 +129,15 @@ class DogboneCommand(object):
         control.isPromotedByDefault = True
         control.isPromoted = True
 
-        # Create controls for the Design Workspace
-        createPanel = _ui.allToolbarPanels.itemById("SolidCreatePanel")
-        buttonControl = createPanel.controls.addCommand(button, COMMAND_ID)
+        upd_control = self.get_solid_create_panel().controls.addCommand(
+            upd_button,
+            UPD_COMMAND_ID
+        )
 
-        # Make the button available in the panel.
-        buttonControl.isPromotedByDefault = True
-        buttonControl.isPromoted = True
+        upd_control.isPromotedByDefault = True
+        upd_control.isPromoted = True
+        
+        # Create button definition and command event handler
 
     def get_solid_create_panel(self):
         env = _ui.workspaces.itemById("MfgWorkingModelEnv")
@@ -146,13 +157,45 @@ class DogboneCommand(object):
         command = panel.controls.itemById(COMMAND_ID)
         command and command.deleteMe()
 
+        command = panel.controls.itemById(UPD_COMMAND_ID)
+        command and command.deleteMe()
+
     def remove_from_solid(self):
         control = self.get_solid_create_panel().controls.itemById(COMMAND_ID)
+        control and control.deleteMe()
+
+        control = self.get_solid_create_panel().controls.itemById(UPD_COMMAND_ID)
         control and control.deleteMe()
 
     def remove_command_definition(self):
         if cmdDef := _ui.commandDefinitions.itemById(COMMAND_ID):
             cmdDef.deleteMe()
+
+        if cmdDef := _ui.commandDefinitions.itemById(UPD_COMMAND_ID):
+            cmdDef.deleteMe()
+
+    @eventHandler(handler_cls=adsk.core.CommandCreatedEventHandler)
+    def onUpdate(self, args: adsk.core.CommandCreatedEventArgs):
+        baseFeaturesAttrs: adsk.core.Attributes = _design.findAttributes("Dogbone", "re:basefeature-.*")
+        currentTLMarker = _design.timeline.markerPosition
+
+        for bfAttr in baseFeaturesAttrs:
+
+            baseFeature: adsk.fusion.BaseFeature = bfAttr.parent
+            baseFeatTLO = baseFeature.timelineObject
+            parentGroup = baseFeatTLO.parentGroup
+            collapsed = parentGroup.isCollapsed
+            parentGroup.isCollapsed = False
+
+            baseFeatTLO.rollTo(False)
+
+            parentGroup.isCollapsed = collapsed
+
+
+        _design.timeline.item(currentTLMarker).rollTo(False)
+
+                
+        baseFeatEntity = baseFeatTLO.entity
 
     @eventHandler(handler_cls=adsk.core.CommandCreatedEventHandler)
     def onCreate(self, args: adsk.core.CommandCreatedEventArgs):

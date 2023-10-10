@@ -530,10 +530,10 @@ class DogboneUi:
             modeGroupChildInputs.addButtonRowCommandInput(MODE_ROW, "Mode", False)
         )
         modeRowInput.listItems.add(
-            STATIC, not self.param.parametric, "resources/staticMode"
+            STATIC, not self.param.parametric, "resources/ui/mode/staticMode"
         )
         modeRowInput.listItems.add(
-            PARAMETRIC, self.param.parametric, "resources/parametricMode"
+            PARAMETRIC, self.param.parametric, "resources/ui/mode/parametricMode"
         )
         modeRowInput.tooltipDescription = (
             "Static dogbones do not move with the underlying component geometry. \n"
@@ -544,17 +544,17 @@ class DogboneUi:
             modeGroupChildInputs.addButtonRowCommandInput(DOGBONE_TYPE, "Type", False)
         )
         typeRowInput.listItems.add(
-            NORMAL_DOGBONE, self.param.dbType == NORMAL_DOGBONE, "resources/normal"
+            NORMAL_DOGBONE, self.param.dbType == NORMAL_DOGBONE, "resources/ui/type/normal"
         )
         typeRowInput.listItems.add(
             MINIMAL_DOGBONE,
             self.param.dbType == MINIMAL_DOGBONE,
-            "resources/minimal",
+            "resources/ui/type/minimal",
         )
         typeRowInput.listItems.add(
             MORTISE_DOGBONE,
             self.param.dbType == MORTISE_DOGBONE,
-            "resources/hidden",
+            "resources/ui/type/hidden",
         )
         typeRowInput.tooltipDescription = (
             "Minimal dogbones creates visually less prominent dogbones, but results in an interference fit "
@@ -568,10 +568,10 @@ class DogboneUi:
             )
         )
         mortiseRowInput.listItems.add(
-            ON_LONG_SIDE, self.param.longSide, "resources/hidden/longSide"
+            ON_LONG_SIDE, self.param.longSide, "resources/ui/type/hidden/longside"
         )
         mortiseRowInput.listItems.add(
-            ON_SHORT_SIDE, not self.param.longSide, "resources/hidden/shortside"
+            ON_SHORT_SIDE, not self.param.longSide, "resources/ui/type/hidden/shortside"
         )
         mortiseRowInput.tooltipDescription = (
             "Along Longest will have the dogbones cut into the longer sides."
@@ -593,10 +593,10 @@ class DogboneUi:
             )
         )
         depthRowInput.listItems.add(
-            FROM_SELECTED_FACE, not self.param.fromTop, "resources/fromFace"
+            FROM_SELECTED_FACE, not self.param.fromTop, "resources/ui/mode/fromFace"
         )
         depthRowInput.listItems.add(
-            FROM_TOP_FACE, self.param.fromTop, "resources/fromTop"
+            FROM_TOP_FACE, self.param.fromTop, "resources/ui/mode/fromTop"
         )
         depthRowInput.tooltipDescription = (
             'When "From Top Face" is selected, all dogbones will be extended to the top most face\n'

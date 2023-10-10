@@ -1,6 +1,7 @@
 import logging
 import traceback
 from math import tan, pi
+import json
 from typing import cast, Dict, List
 
 import adsk.core
@@ -14,7 +15,6 @@ _app = adsk.core.Application.get()
 _design: adsk.fusion.Design = cast(adsk.fusion.Design, _app.activeProduct)
 _ui = _app.userInterface
 _rootComp = _design.rootComponent
-
 
 class Selection:
     def __init__(self) -> None:
@@ -37,7 +37,11 @@ class Selection:
 class DbFace:
 
     def __init__(
-            self, selection: Selection, face: adsk.fusion.BRepFace, params: DbParams, commandInputsEdgeSelect
+            self, selection: Selection,
+            face: adsk.fusion.BRepFace,
+            params: DbParams,
+            commandInputsEdgeSelect,
+            restore = False
     ):
 
         self._params = params
@@ -64,6 +68,8 @@ class DbFace:
             []
         )  # used for quick checking if an edge is already included (below)
         self._customGraphicGroup = None  #
+
+        self._restore = restore
 
         self.registerEdges()
 
@@ -162,20 +168,37 @@ class DbFace:
             return NotImplemented
         return other.faceId == self.faceId
     
-    def saveAttr(self):
-        params = self._params
-        pass
 
-    def getAttr(self):
-        pass
+    def save(self):
+        """
+        Saves parameters and state to edge attribute 
+        """
+        params = self._params.to_dict()
+        params.update({"selected":self._selected})
+        self.face.attributes.add("Dogbone", "face-"+str(self._faceId), json.dumps(params))
+
+    def restore(self):
+        """
+        restores edge parameters and state from attribute 
+        """
+        value = self.edge.attributes.itemByName("Dogbone", "face-"+str(self._faceId)).value
+        params = json.loads(value)
+        self._selected = params.pop("selected")
+        self._params.from_dict(self.selected)
 
     def selectAll(self):
+        """
+        Marks all registered Edges as selected
+        """
         self._selected = True
         self.selection.addingEdges = True
         [selectedEdge.select() for selectedEdge in self._associatedEdgesDict.values()]
         self.selection.addingEdges = False
 
     def deselectAll(self):
+        """
+        Marks all registered Edges as deselected
+        """
         self._selected = False
         self.selection.addingEdges = True
         [
@@ -241,6 +264,9 @@ class DbFace:
 
     @property
     def component(self) -> adsk.fusion.Component:
+        """
+        Returns component associated with this face, or rootComp if not in assemblyContext
+        """
         return (
             self.face.assemblyContext.component
             if self.face.assemblyContext
@@ -298,6 +324,7 @@ class DbEdge:
         self._parentFace = parentFace
         self._native = self.edge.nativeObject if self.edge.nativeObject else self.edge
         self._component = edge.body.parentComponent
+        self._params = self._parentFace._params
 
         face1, face2 = (face for face in self._native.faces)
         _, face1normal = face1.evaluator.getNormalAtPoint(face1.pointOnFace)
@@ -340,6 +367,9 @@ class DbEdge:
                     f'\n startPoint: ({sx:.2f},{sy:.2f},{sz:.2f}),({ex:.2f},{ey:.2f},{ez:.2f})'
                     f'\n edgeLength: {startPoint.distanceTo(endPoint):.2f}'
                     f'\n parentFace: {self._parentFace.face.tempId}')
+        
+        if self._parentFace.restore:
+            self.restore
 
     def __hash__(self):
         return self._edgeId
@@ -347,10 +377,26 @@ class DbEdge:
     def select(self):
         self._selected = True
 
+    def save(self):
+        """
+        Saves parameters and state to edge attribute 
+        """
+        params = self._params.to_dict()
+        params.update({"selected":self._selected})
+        self.edge.attributes.add("Dogbone", "edge-"+str(self._edgeId), json.dumps(params))
+
+    def restore(self):
+        """
+        restores edge parameters and state from attribute 
+        """
+        value = self.edge.attributes.itemByName("Dogbone", "edge-"+str(self._edgeId)).value
+        params = json.loads(value)
+        self._selected = params.pop("selected")
+        self._params.from_dict(self.selected)
+        
     @property
     def component(self) -> adsk.fusion.Component:
         return self._component
-        # return self.edge.assemblyContext.component if self.edge.assemblyContext else _rootComp
 
     @property
     def cornerAngle(self):
@@ -408,12 +454,6 @@ class DbEdge:
         """
         return self._nativeEdgeVector
     
-    def saveAttr(self):
-        pass
-
-    def getAttr(self):
-        pass
-
     def faceObj(self):
         return self._parentFace
 

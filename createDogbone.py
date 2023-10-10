@@ -59,6 +59,8 @@ def createParametricDogbones(param: DbParams, selection: Selection):
             if len(selectedFace.selectedEdges) < 1:
                 logger.debug("Face has no edges")
 
+            selectedFace.save()
+
             face = selectedFace.native
 
             if not face.isValid:
@@ -84,6 +86,7 @@ def createParametricDogbones(param: DbParams, selection: Selection):
                 )
 
             for selectedEdge in selectedFace.selectedEdges:
+                selectedEdge.save()
                 logger.debug(f"Processing edge - {selectedEdge.edge.tempId}")
 
                 if not selectedEdge.isSelected:
@@ -249,6 +252,7 @@ def createStaticDogbones(param: DbParams, selection: Selection):
 
         for selectedFace in occurrenceFaces:
             component = selectedFace.component
+            selectedFace.save()
             toolCollection = adsk.core.ObjectCollection.create()
 
             for edge in selectedFace.selectedEdges:
@@ -276,10 +280,14 @@ def createStaticDogbones(param: DbParams, selection: Selection):
         dbB.name = "dogboneTool"
 
         baseFeature.finishEdit()
-        
+
+        faces = [str(f.faceId) for f in occurrenceFaces]
+        faceList = "|".join(faces)
+        regex = "re:face-("+faceList+")"
+
         baseFeature.attributes.add(groupName="Dogbone",
                                name="basefeature-"+ str(selectedFace.faceId),
-                               value="test")
+                               value=regex)
 
         [toolCollection.add(body) for body in baseFeature.bodies]  #add baseFeature bodies into toolCollection
 
