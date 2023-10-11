@@ -1,6 +1,7 @@
 import logging
 import traceback
 import re
+import json
 from typing import cast
 
 import adsk.core
@@ -255,17 +256,16 @@ def createStaticDogbones(param: DbParams, selection: Selection):
             selectedFace.save()
             toolCollection = adsk.core.ObjectCollection.create()
 
-            for edge in selectedFace.selectedEdges:
+            for edgeObj in selectedFace.selectedEdges:
                 if not toolBodies:
-                    toolBodies = edge.getToolBody(
-                        params=param,
+                    toolBodies = edgeObj.getToolBody(
                         topFace=topFace
                     )
                 else:
                     tempBrepMgr.booleanOperation(
                         toolBodies,
-                        edge.getToolBody(params=param,
-                                            topFace=topFace),
+                        edgeObj.getToolBody(
+                            topFace=topFace),
                         adsk.fusion.BooleanTypes.UnionBooleanType,
                     )
 
@@ -281,13 +281,11 @@ def createStaticDogbones(param: DbParams, selection: Selection):
 
         baseFeature.finishEdit()
 
-        faces = [str(f.faceId) for f in occurrenceFaces]
-        faceList = "|".join(faces)
-        regex = "re:face-("+faceList+")"
+        faces = [f.faceId for f in occurrenceFaces]
 
         baseFeature.attributes.add(groupName="Dogbone",
-                               name="basefeature-"+ str(selectedFace.faceId),
-                               value=regex)
+                               name="basefeature:"+ str(selectedFace.faceId),
+                               value=json.dumps(faces))
 
         [toolCollection.add(body) for body in baseFeature.bodies]  #add baseFeature bodies into toolCollection
 

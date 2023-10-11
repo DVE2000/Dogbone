@@ -14,6 +14,7 @@
 import logging
 import os
 import sys
+import json
 
 _appPath = os.path.dirname(os.path.abspath(__file__))
 _subpath = os.path.join(f"{_appPath}", "py_packages")
@@ -138,6 +139,15 @@ class DogboneCommand(object):
         upd_control.isPromoted = True
         
         # Create button definition and command event handler
+        createPanel = _ui.allToolbarPanels.itemById("SolidCreatePanel")
+        buttonControl = createPanel.controls.addCommand(button, COMMAND_ID)
+        upd_buttonControl = createPanel.controls.addCommand(upd_button, UPD_COMMAND_ID)
+
+        buttonControl.isPromotedByDefault = True
+        buttonControl.isPromoted = True
+
+        upd_buttonControl.isPromotedByDefault = True
+        upd_buttonControl.isPromoted = True
 
     def get_solid_create_panel(self):
         env = _ui.workspaces.itemById("MfgWorkingModelEnv")
@@ -176,8 +186,9 @@ class DogboneCommand(object):
 
     @eventHandler(handler_cls=adsk.core.CommandCreatedEventHandler)
     def onUpdate(self, args: adsk.core.CommandCreatedEventArgs):
-        baseFeaturesAttrs: adsk.core.Attributes = _design.findAttributes("Dogbone", "re:basefeature-.*")
+        baseFeaturesAttrs: adsk.core.Attributes = _design.findAttributes("Dogbone", "re:basefeature:.*")
         currentTLMarker = _design.timeline.markerPosition
+        selection =  Selection()
 
         for bfAttr in baseFeaturesAttrs:
 
@@ -185,11 +196,38 @@ class DogboneCommand(object):
             baseFeatTLO = baseFeature.timelineObject
             parentGroup = baseFeatTLO.parentGroup
             collapsed = parentGroup.isCollapsed
-            parentGroup.isCollapsed = False
+            marker = _design.timeline.markerPosition
+            faces = json.loads(bfAttr.value)
+            faceList = '|'.join(map(str, faces))
+            regex = "re:face-("+faceList+")"
+            faceAttrs = _design.findAttributes("Dogbone", regex)
 
+            tempBrepMgr = adsk.fusion.TemporaryBRepManager.get()
+            toolBodies = None
+            
+            parentGroup.isCollapsed = False
             baseFeatTLO.rollTo(False)
 
+            _design.timeline.item(marker).rollTo(False)
             parentGroup.isCollapsed = collapsed
+
+            for faceAtt in faceAttrs:
+                selectedFace: DbFace = DbFace(selection=selection,
+                                face=faceAtt.parent,
+                                restoreState=True)
+                topFace = dbUtils.getTopFace(selectedFace=selectedFace.face)
+                for edge in selectedFace.selectedEdges:
+                    if not toolBodies:
+                        toolBodies = edge.getToolBody(
+                            topFace=topFace
+                        )
+                    else:
+                        tempBrepMgr.booleanOperation(
+                            toolBodies,
+                            edge.getToolBody(topFace=topFace),
+                            adsk.fusion.BooleanTypes.UnionBooleanType,
+                        )
+
 
 
         _design.timeline.item(currentTLMarker).rollTo(False)

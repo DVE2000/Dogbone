@@ -24,12 +24,7 @@ class Selection:
         self.selectedOccurrences = {}  # key hash(occurrence.entityToken) value:[DbFace,...]
         self.selectedFaces: Dict[int, "DbFace"] = {}
         self.selectedEdges: Dict[int, "DbEdge"] = {}
-        self.selectedOccurrences = {}  # key hash(occurrence.entityToken) value:[DbFace,...]
-        self.selectedFaces: Dict[int, "DbFace"] = {}
-        self.selectedEdges: Dict[int, "DbEdge"] = {}
 
-        self.edges: List[adsk.fusion.BRepEdge] = []
-        self.faces: List[adsk.fusion.BRepFace] = []
         self.edges: List[adsk.fusion.BRepEdge] = []
         self.faces: List[adsk.fusion.BRepFace] = []
 
@@ -39,9 +34,9 @@ class DbFace:
     def __init__(
             self, selection: Selection,
             face: adsk.fusion.BRepFace,
-            params: DbParams,
-            commandInputsEdgeSelect,
-            restore = False
+            params: DbParams=DbParams(),
+            commandInputsEdgeSelect = None,
+            restoreState = False
     ):
 
         self._params = params
@@ -69,7 +64,10 @@ class DbFace:
         )  # used for quick checking if an edge is already included (below)
         self._customGraphicGroup = None  #
 
-        self._restore = restore
+        self._restoreState = restoreState
+
+        if self._restoreState:
+            self.restore()
 
         self.registerEdges()
 
@@ -150,7 +148,8 @@ class DbFace:
                 ] = DbEdge(edge=edge, parentFace=self)
                 self.processedEdges.append(edge)
                 self.selection.addingEdges = True
-                self.commandInputsEdgeSelect.addSelection(edge)
+                if not self._restoreState:
+                    self.commandInputsEdgeSelect.addSelection(edge)
                 self.selection.addingEdges = False
 
             except Exception as e:
@@ -175,16 +174,16 @@ class DbFace:
         """
         params = self._params.to_dict()
         params.update({"selected":self._selected})
-        self.face.attributes.add("Dogbone", "face-"+str(self._faceId), json.dumps(params))
+        self.face.attributes.add("Dogbone", "face:"+str(self._faceId), json.dumps(params))
 
     def restore(self):
         """
         restores edge parameters and state from attribute 
         """
-        value = self.edge.attributes.itemByName("Dogbone", "face-"+str(self._faceId)).value
+        value = self.face.attributes.itemByName("Dogbone", "face:"+str(self._faceId)).value
         params = json.loads(value)
         self._selected = params.pop("selected")
-        self._params.from_dict(self.selected)
+        self._params = DbParams(self._selected)
 
     def selectAll(self):
         """
@@ -368,8 +367,8 @@ class DbEdge:
                     f'\n edgeLength: {startPoint.distanceTo(endPoint):.2f}'
                     f'\n parentFace: {self._parentFace.face.tempId}')
         
-        if self._parentFace.restore:
-            self.restore
+        if self._parentFace._restoreState:
+            self.restore()
 
     def __hash__(self):
         return self._edgeId
@@ -383,16 +382,16 @@ class DbEdge:
         """
         params = self._params.to_dict()
         params.update({"selected":self._selected})
-        self.edge.attributes.add("Dogbone", "edge-"+str(self._edgeId), json.dumps(params))
+        self.edge.attributes.add("Dogbone", "edge:"+str(self._edgeId), json.dumps(params))
 
     def restore(self):
         """
         restores edge parameters and state from attribute 
         """
-        value = self.edge.attributes.itemByName("Dogbone", "edge-"+str(self._edgeId)).value
+        value = self.edge.attributes.itemByName("Dogbone", "edge:"+str(self._edgeId)).value
         params = json.loads(value)
         self._selected = params.pop("selected")
-        self._params.from_dict(self.selected)
+        self._params = DbParams(self.selected)
         
     @property
     def component(self) -> adsk.fusion.Component:
@@ -470,12 +469,13 @@ class DbEdge:
         return self._hash
 
     @classmethod
-    def __getToolBody(cls, self, params, topFace: adsk.fusion.BRepFace = None):
+    def __getToolBody(cls,
+                      self,
+                      topFace: adsk.fusion.BRepFace = None):
         from .DbData import DbParams
 
-        params: DbParams
-        self: DbEdge
         box = None
+        topFace = topFace if topFace else dbUtils.getTopFace(self._parentFace.face)
 
         tempBrepMgr = adsk.fusion.TemporaryBRepManager.get()
         startPoint, endPoint = self.nativeEndPoints
@@ -483,6 +483,7 @@ class DbEdge:
 
         sx,sy,sz = self._nativeEndPoints[0].asArray()
         ex,ey,ez = self._nativeEndPoints[1].asArray()
+        params = self._params
 
         logger.debug(f'\nGet Tool Body:++++++++++++++++'
                 f'\n native: {self.edge.nativeObject != None}'
@@ -593,8 +594,8 @@ class DbEdge:
 
         return toolbody
 
-    def getToolBody(self, params, topFace: adsk.fusion.BRepFace = None):
-        return DbEdge.__getToolBody(self, params, topFace)
+    def getToolBody(self, topFace: adsk.fusion.BRepFace = None):
+        return DbEdge.__getToolBody(self, topFace)
 
     def addCustomGraphic(self):
         if not self._parentFace._customGraphicGroup:
