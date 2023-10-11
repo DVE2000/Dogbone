@@ -199,7 +199,7 @@ class DogboneCommand(object):
             marker = _design.timeline.markerPosition
             faces = json.loads(bfAttr.value)
             faceList = '|'.join(map(str, faces))
-            regex = "re:face-("+faceList+")"
+            regex = "re:face:("+faceList+")"
             faceAttrs = _design.findAttributes("Dogbone", regex)
 
             tempBrepMgr = adsk.fusion.TemporaryBRepManager.get()
@@ -208,12 +208,9 @@ class DogboneCommand(object):
             parentGroup.isCollapsed = False
             baseFeatTLO.rollTo(False)
 
-            _design.timeline.item(marker).rollTo(False)
-            parentGroup.isCollapsed = collapsed
 
             for faceAtt in faceAttrs:
-                selectedFace: DbFace = DbFace(selection=selection,
-                                face=faceAtt.parent,
+                selectedFace: DbFace = DbFace(face=faceAtt.parent,
                                 restoreState=True)
                 topFace = dbUtils.getTopFace(selectedFace=selectedFace.face)
                 for edge in selectedFace.selectedEdges:
@@ -228,6 +225,7 @@ class DogboneCommand(object):
                             adsk.fusion.BooleanTypes.UnionBooleanType,
                         )
 
+            parentGroup.isCollapsed = collapsed
 
 
         _design.timeline.item(currentTLMarker).rollTo(False)

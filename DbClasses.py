@@ -32,8 +32,9 @@ class Selection:
 class DbFace:
 
     def __init__(
-            self, selection: Selection,
+            self,
             face: adsk.fusion.BRepFace,
+            selection: Selection = Selection(),
             params: DbParams=DbParams(),
             commandInputsEdgeSelect = None,
             restoreState = False
@@ -391,7 +392,7 @@ class DbEdge:
         value = self.edge.attributes.itemByName("Dogbone", "edge:"+str(self._edgeId)).value
         params = json.loads(value)
         self._selected = params.pop("selected")
-        self._params = DbParams(self.selected)
+        self._params = DbParams(self._selected)
         
     @property
     def component(self) -> adsk.fusion.Component:

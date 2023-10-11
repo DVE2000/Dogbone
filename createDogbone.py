@@ -257,6 +257,7 @@ def createStaticDogbones(param: DbParams, selection: Selection):
             toolCollection = adsk.core.ObjectCollection.create()
 
             for edgeObj in selectedFace.selectedEdges:
+                edgeObj.save()
                 if not toolBodies:
                     toolBodies = edgeObj.getToolBody(
                         topFace=topFace
