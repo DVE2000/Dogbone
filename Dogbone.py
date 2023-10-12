@@ -222,17 +222,12 @@ class DogboneCommand(object):
                             edge.getToolBody(topFace=topFace),
                             adsk.fusion.BooleanTypes.UnionBooleanType,
                         )
-            for body in baseFeature.sourceBodies:
-                _ = baseFeature.updateBody(body, toolBodies)
+            [baseFeature.updateBody(body, toolBodies) for body in baseFeature.sourceBodies]
 
+            # _design.timeline.movetoNextStep()
             parentGroup.isCollapsed = collapsed
-
-
-        _design.timeline.item(currentTLMarker).rollTo(False)
-
+        _design.timeline.item(currentTLMarker-1).rollTo(False)
                 
-        baseFeatEntity = baseFeatTLO.entity
-
     @eventHandler(handler_cls=adsk.core.CommandCreatedEventHandler)
     def onCreate(self, args: adsk.core.CommandCreatedEventArgs):
         """
