@@ -141,7 +141,10 @@ def messageBox(*args):
     adsk.core.Application.get().userInterface.messageBox(*args)
 
 
-def getTopFace(selectedFace: adsk.fusion.BRepFace) -> adsk.fusion.BRepFace:
+def getTopFace(selectedFace: adsk.fusion.BRepFace) -> [adsk.fusion.BRepFace, adsk.core.Point3D]:
+    """
+    Returns the top-most face of a body and a Point3D reference point on that face, based on the supplied BrepFace 
+    """
     normal = getFaceNormal(selectedFace)
     refPlane = adsk.core.Plane.create(selectedFace.vertices.item(0).geometry, normal)
     refLine = adsk.core.InfiniteLine3D.create(
@@ -168,7 +171,7 @@ def getTopFace(selectedFace: adsk.fusion.BRepFace) -> adsk.fusion.BRepFace:
         else top[0].pointOnFace
     )
 
-    return (top[0], refPoint)
+    return top[0], refPoint
 
 
 # TODO: strange contract, boolean or Vector3D

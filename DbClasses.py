@@ -176,12 +176,14 @@ class DbFace:
         params = self._params.to_dict()
         params.update({"selected":self._selected})
         self.face.attributes.add("Dogbone", "face:"+str(self._faceId), json.dumps(params))
+        # self.face.attributes.add("Dogbone", "face:", json.dumps(params))
 
     def restore(self):
         """
         restores edge parameters and state from attribute 
         """
         value = self.face.attributes.itemByName("Dogbone", "face:"+str(self._faceId)).value
+        # value = self.face.attributes.itemByName("Dogbone", "face:").value
         params = json.loads(value)
         self._selected = params.pop("selected")
         self._params = DbParams(self._selected)
@@ -383,16 +385,21 @@ class DbEdge:
         """
         params = self._params.to_dict()
         params.update({"selected":self._selected})
-        self.edge.attributes.add("Dogbone", "edge:"+str(self._edgeId), json.dumps(params))
+        # self.edge.attributes.add("Dogbone", "edge:"+str(self._edgeId), json.dumps(params))
+        self.edge.attributes.add("Dogbone", "params:", json.dumps(params))
 
     def restore(self):
         """
         restores edge parameters and state from attribute 
         """
-        value = self.edge.attributes.itemByName("Dogbone", "edge:"+str(self._edgeId)).value
-        params = json.loads(value)
-        self._selected = params.pop("selected")
-        self._params = DbParams(self._selected)
+        # value = self.edge.attributes.itemByName("Dogbone", "edge:"+str(self._edgeId)).value
+        if attr := self.edge.attributes.itemByName("Dogbone", "params:"):
+            value = attr.value
+            params = json.loads(value)
+            self._selected = params.pop("selected")
+            self._params = DbParams(**params)
+            return
+        raise Exception('Failed to restore edge parameters')
         
     @property
     def component(self) -> adsk.fusion.Component:

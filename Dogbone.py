@@ -188,7 +188,6 @@ class DogboneCommand(object):
     def onUpdate(self, args: adsk.core.CommandCreatedEventArgs):
         baseFeaturesAttrs: adsk.core.Attributes = _design.findAttributes("Dogbone", "re:basefeature:.*")
         currentTLMarker = _design.timeline.markerPosition
-        selection =  Selection()
 
         for bfAttr in baseFeaturesAttrs:
 
@@ -208,11 +207,10 @@ class DogboneCommand(object):
             parentGroup.isCollapsed = False
             baseFeatTLO.rollTo(False)
 
-
             for faceAtt in faceAttrs:
                 selectedFace: DbFace = DbFace(face=faceAtt.parent,
                                 restoreState=True)
-                topFace = dbUtils.getTopFace(selectedFace=selectedFace.face)
+                topFace, _ = dbUtils.getTopFace(selectedFace=selectedFace.face)
                 for edge in selectedFace.selectedEdges:
                     if not toolBodies:
                         toolBodies = edge.getToolBody(
@@ -224,6 +222,8 @@ class DogboneCommand(object):
                             edge.getToolBody(topFace=topFace),
                             adsk.fusion.BooleanTypes.UnionBooleanType,
                         )
+            for body in baseFeature.sourceBodies:
+                _ = baseFeature.updateBody(body, toolBodies)
 
             parentGroup.isCollapsed = collapsed
 
