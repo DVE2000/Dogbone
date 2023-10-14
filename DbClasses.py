@@ -7,6 +7,8 @@ from typing import cast, Dict, List
 import adsk.core
 import adsk.fusion
 from .DbData import DbParams
+from .errors import FaceInvalidError, EdgeInvalidError
+from .constants import DB_GROUP
 from . import dbutils as dbUtils
 
 logger = logging.getLogger("dogbone.DbClasses")
@@ -153,6 +155,9 @@ class DbFace:
                     self.commandInputsEdgeSelect.addSelection(edge)
                 self.selection.addingEdges = False
 
+            except EdgeNotFound:
+                continue
+
             except Exception as e:
                 logger.exception(e)
                 dbUtils.messageBox("Failed at edge:\n{}".format(traceback.format_exc()))
@@ -175,15 +180,15 @@ class DbFace:
         """
         params = self._params.to_dict()
         params.update({"selected":self._selected})
-        self.face.attributes.add("Dogbone", "face:"+str(self._faceId), json.dumps(params))
-        # self.face.attributes.add("Dogbone", "face:", json.dumps(params))
+        self.face.attributes.add(DB_GROUP, "face:"+str(self._faceId), json.dumps(params))
 
     def restore(self):
         """
-        restores edge parameters and state from attribute 
+        restores face parameters and state from attribute 
         """
-        value = self.face.attributes.itemByName("Dogbone", "face:"+str(self._faceId)).value
-        # value = self.face.attributes.itemByName("Dogbone", "face:").value
+        if not( attr := self.face.attributes.itemByName(DB_GROUP, "face:"+str(self._faceId))):
+            raise FaceInvalidError
+        value = attr.value
         params = json.loads(value)
         self._selected = params.pop("selected")
         self._params = DbParams(self._selected)
@@ -321,7 +326,8 @@ class DbEdge:
             ).item(0)
         )
 
-        self._edgeId = hash(edge.entityToken)
+        self.entityToken = edge.entityToken
+        self._edgeId = hash(self.entityToken)
         self._selected = True
         self._parentFace = parentFace
         self._native = self.edge.nativeObject if self.edge.nativeObject else self.edge
@@ -385,21 +391,18 @@ class DbEdge:
         """
         params = self._params.to_dict()
         params.update({"selected":self._selected})
-        # self.edge.attributes.add("Dogbone", "edge:"+str(self._edgeId), json.dumps(params))
-        self.edge.attributes.add("Dogbone", "params:", json.dumps(params))
+        self.edge.attributes.add(DB_GROUP, "params:", json.dumps(params))
 
     def restore(self):
         """
         restores edge parameters and state from attribute 
         """
-        # value = self.edge.attributes.itemByName("Dogbone", "edge:"+str(self._edgeId)).value
-        if attr := self.edge.attributes.itemByName("Dogbone", "params:"):
-            value = attr.value
-            params = json.loads(value)
-            self._selected = params.pop("selected")
-            self._params = DbParams(**params)
-            return
-        raise Exception('Failed to restore edge parameters')
+        if not(attr := self.edge.attributes.itemByName(DB_GROUP, "params:")):
+            raise EdgeInvalidError
+        value = attr.value
+        params = json.loads(value)
+        self._selected = params.pop("selected")
+        self._params = DbParams(**params)
         
     @property
     def component(self) -> adsk.fusion.Component:

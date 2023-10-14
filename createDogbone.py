@@ -8,15 +8,16 @@ import adsk.core
 import adsk.fusion
 from . import dbutils as dbUtils
 from .DbData import DbParams
-from .DbClasses import Selection
+from .DbClasses import Selection, DbEdge, DbFace
 from .UserParameter import create_user_parameter, DB_RADIUS
 from .log import logger
 from .util import makeNative, reValidateFace
+from .errors import FaceInvalidError
+from .constants import DB_GROUP, DB_NAME
 
 _app = adsk.core.Application.get()
 _design: adsk.fusion.Design = cast(adsk.fusion.Design, _app.activeProduct)
 _rootComp = _design.rootComponent
-
 
 def debugFace(face):
     if logger.level < logging.DEBUG:
@@ -217,11 +218,11 @@ def createParametricDogbones(param: DbParams, selection: Selection):
                 logger.info(f"hole added to list - {centrePoint.asArray()}")
 
                 holeFeature = holes.add(holeInput)
-                holeFeature.name = "dogbone"
+                holeFeature.name = DB_NAME
                 holeFeature.isSuppressed = True
 
             for hole in holes:
-                if hole.name[:7] != "dogbone":
+                if hole.name[:7] != DB_NAME:
                     break
                 hole.isSuppressed = False
 
@@ -230,7 +231,7 @@ def createParametricDogbones(param: DbParams, selection: Selection):
             timelineGroup = _design.timeline.timelineGroups.add(
                 startTlMarker, endTlMarker
             )
-            timelineGroup.name = "dogbone"
+            timelineGroup.name = DB_NAME
     # logger.debug('doEvents - allowing display to refresh')
     #            adsk.doEvents()
 
@@ -273,7 +274,7 @@ def createStaticDogbones(param: DbParams, selection: Selection):
         targetBody: adsk.fusion.BRepBody = selectedFace.body
         baseFeatures: adsk.fusion.BaseFeature = component.features.baseFeatures
         baseFeature = baseFeatures.add()
-        baseFeature.name = "dogbone"
+        baseFeature.name = DB_NAME
 
         baseFeature.startEdit()
         
@@ -284,7 +285,7 @@ def createStaticDogbones(param: DbParams, selection: Selection):
 
         faces = [f.faceId for f in occurrenceFaces]
 
-        baseFeature.attributes.add(groupName="Dogbone",
+        baseFeature.attributes.add(groupName=DB_GROUP,
                                name="basefeature:"+ str(selectedFace.faceId),
                                value=json.dumps(faces))
 
@@ -309,4 +310,62 @@ def createStaticDogbones(param: DbParams, selection: Selection):
             timelineGroup = _design.timeline.timelineGroups.add(
                 startTlMarker, endTlMarker
             )
-            timelineGroup.name = "dogbone"
+            timelineGroup.name = DB_NAME
+
+def updateDogBones():
+    """
+    Recalculates and updates existing dogbones
+    
+    """
+    baseFeaturesAttrs: adsk.core.Attributes = _design.findAttributes(DB_GROUP, "re:basefeature:.*")
+    currentTLMarker = _design.timeline.markerPosition
+
+    for bfAttr in baseFeaturesAttrs:
+
+        baseFeature: adsk.fusion.BaseFeature = bfAttr.parent
+        baseFeatTLO = baseFeature.timelineObject
+        parentGroup = baseFeatTLO.parentGroup
+        collapsed = parentGroup.isCollapsed
+        marker = _design.timeline.markerPosition
+        faces = json.loads(bfAttr.value)
+        faceList = '|'.join(map(str, faces))
+        regex = "re:face:("+faceList+")"
+        faceAttrs = _design.findAttributes(DB_GROUP, regex)
+
+        tempBrepMgr = adsk.fusion.TemporaryBRepManager.get()
+        toolBodies = None
+        
+        parentGroup.isCollapsed = False
+        baseFeatTLO.rollTo(False)
+
+        for faceAtt in faceAttrs:
+            if not faceAtt.parent:
+                continue
+            try:
+                selectedFace: DbFace = DbFace(face=faceAtt.parent,
+                            restoreState=True)
+            # if errorState:
+            #     continue
+                topFace, _ = dbUtils.getTopFace(selectedFace=selectedFace.face)
+                for edge in selectedFace.selectedEdges:
+                    if not toolBodies:
+                        toolBodies = edge.getToolBody(
+                            topFace=topFace
+                        )
+                    else:
+                        tempBrepMgr.booleanOperation(
+                            toolBodies,
+                            edge.getToolBody(topFace=topFace),
+                            adsk.fusion.BooleanTypes.UnionBooleanType,
+                        )
+            except FaceInvalidError:
+                continue
+            finally:
+                if toolBodies:
+                    [baseFeature.updateBody(body, toolBodies) for body in baseFeature.sourceBodies]
+                parentGroup.isCollapsed = collapsed
+        # except RuntimeError as e:
+        #     continue
+
+    _design.timeline.item(currentTLMarker-1).rollTo(False)
+
