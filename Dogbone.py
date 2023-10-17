@@ -39,7 +39,9 @@ from . import dbutils as dbUtils
 from .DbData import DbParams
 from .DogboneUi import DogboneUi
 from .decorators import eventHandler
-from .createDogbone import createParametricDogbones, createStaticDogbones
+from .constants import DB_NAME, COMMAND_ID, UPD_COMMAND_ID
+from .createDogbone import createParametricDogbones, createStaticDogbones, updateDogBones
+
 
 # Globals
 _app = adsk.core.Application.get()
@@ -47,15 +49,10 @@ _design: adsk.fusion.Design = cast(adsk.fusion.Design, _app.activeProduct)
 _ui = _app.userInterface
 _rootComp = _design.rootComponent
 
-# constants - to keep attribute group and names consistent
-DOGBONE_GROUP = "dogBoneGroup"
-# FACE_ID = 'faceID'
 REV_ID = "revId"
 ID = "id"
 DEBUGLEVEL = logging.DEBUG
 
-COMMAND_ID = "dogboneBtn"
-UPD_COMMAND_ID = "dogboneUpdateBtn"
 CONFIG_PATH = os.path.join(_appPath, "defaults.dat")
 
 
@@ -106,7 +103,7 @@ class DogboneCommand(object):
         # Create button definition and command event handler
         button = _ui.commandDefinitions.addButtonDefinition(
             COMMAND_ID,
-            "Dogbone",
+            DB_NAME,
             "Creates dogbones at all inside corners of a face",
             "resources/ui/create_button"
         )
@@ -186,48 +183,9 @@ class DogboneCommand(object):
 
     @eventHandler(handler_cls=adsk.core.CommandCreatedEventHandler)
     def onUpdate(self, args: adsk.core.CommandCreatedEventArgs):
-        baseFeaturesAttrs: adsk.core.Attributes = _design.findAttributes("Dogbone", "re:basefeature:.*")
-        currentTLMarker = _design.timeline.markerPosition
+        updateDogBones()
 
-        for bfAttr in baseFeaturesAttrs:
-
-            baseFeature: adsk.fusion.BaseFeature = bfAttr.parent
-            baseFeatTLO = baseFeature.timelineObject
-            parentGroup = baseFeatTLO.parentGroup
-            collapsed = parentGroup.isCollapsed
-            marker = _design.timeline.markerPosition
-            faces = json.loads(bfAttr.value)
-            faceList = '|'.join(map(str, faces))
-            regex = "re:face:("+faceList+")"
-            faceAttrs = _design.findAttributes("Dogbone", regex)
-
-            tempBrepMgr = adsk.fusion.TemporaryBRepManager.get()
-            toolBodies = None
-            
-            parentGroup.isCollapsed = False
-            baseFeatTLO.rollTo(False)
-
-            for faceAtt in faceAttrs:
-                selectedFace: DbFace = DbFace(face=faceAtt.parent,
-                                restoreState=True)
-                topFace, _ = dbUtils.getTopFace(selectedFace=selectedFace.face)
-                for edge in selectedFace.selectedEdges:
-                    if not toolBodies:
-                        toolBodies = edge.getToolBody(
-                            topFace=topFace
-                        )
-                    else:
-                        tempBrepMgr.booleanOperation(
-                            toolBodies,
-                            edge.getToolBody(topFace=topFace),
-                            adsk.fusion.BooleanTypes.UnionBooleanType,
-                        )
-            [baseFeature.updateBody(body, toolBodies) for body in baseFeature.sourceBodies]
-
-            # _design.timeline.movetoNextStep()
-            parentGroup.isCollapsed = collapsed
-        _design.timeline.item(currentTLMarker-1).rollTo(False)
-                
+        
     @eventHandler(handler_cls=adsk.core.CommandCreatedEventHandler)
     def onCreate(self, args: adsk.core.CommandCreatedEventArgs):
         """
