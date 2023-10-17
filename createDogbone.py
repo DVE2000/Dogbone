@@ -8,7 +8,9 @@ import adsk.core
 import adsk.fusion
 from . import dbutils as dbUtils
 from .DbData import DbParams
-from .DbClasses import Selection, DbEdge, DbFace
+from .DbClasses import Selection, DbFace
+from .DbContext import baseFeatureContext
+
 from .UserParameter import create_user_parameter, DB_RADIUS
 from .log import logger
 from .util import makeNative, reValidateFace
@@ -286,7 +288,7 @@ def createStaticDogbones(param: DbParams, selection: Selection):
         faces = [f.faceId for f in occurrenceFaces]
 
         baseFeature.attributes.add(groupName=DB_GROUP,
-                               name="basefeature:"+ str(selectedFace.faceId),
+                               name="basefeature:",
                                value=json.dumps(faces))
 
         [toolCollection.add(body) for body in baseFeature.bodies]  #add baseFeature bodies into toolCollection
@@ -323,10 +325,6 @@ def updateDogBones():
     for bfAttr in baseFeaturesAttrs:
 
         baseFeature: adsk.fusion.BaseFeature = bfAttr.parent
-        baseFeatTLO = baseFeature.timelineObject
-        parentGroup = baseFeatTLO.parentGroup
-        collapsed = parentGroup.isCollapsed
-        marker = _design.timeline.markerPosition
         faces = json.loads(bfAttr.value)
         faceList = '|'.join(map(str, faces))
         regex = "re:face:("+faceList+")"
@@ -335,17 +333,12 @@ def updateDogBones():
         tempBrepMgr = adsk.fusion.TemporaryBRepManager.get()
         toolBodies = None
         
-        parentGroup.isCollapsed = False
-        baseFeatTLO.rollTo(False)
-
-        for faceAtt in faceAttrs:
-            if not faceAtt.parent:
-                continue
-            try:
+        with baseFeatureContext(baseFeature= baseFeature):
+            for faceAtt in faceAttrs:
+                if not faceAtt.parent:
+                    continue
                 selectedFace: DbFace = DbFace(face=faceAtt.parent,
                             restoreState=True)
-            # if errorState:
-            #     continue
                 topFace, _ = dbUtils.getTopFace(selectedFace=selectedFace.face)
                 for edge in selectedFace.selectedEdges:
                     if not toolBodies:
@@ -358,14 +351,6 @@ def updateDogBones():
                             edge.getToolBody(topFace=topFace),
                             adsk.fusion.BooleanTypes.UnionBooleanType,
                         )
-            except FaceInvalidError:
-                continue
-            finally:
                 if toolBodies:
                     [baseFeature.updateBody(body, toolBodies) for body in baseFeature.sourceBodies]
-                parentGroup.isCollapsed = collapsed
-        # except RuntimeError as e:
-        #     continue
-
-    _design.timeline.item(currentTLMarker-1).rollTo(False)
 

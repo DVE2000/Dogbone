@@ -155,7 +155,7 @@ class DbFace:
                     self.commandInputsEdgeSelect.addSelection(edge)
                 self.selection.addingEdges = False
 
-            except EdgeNotFound:
+            except EdgeInvalidError:
                 continue
 
             except Exception as e:
@@ -181,17 +181,22 @@ class DbFace:
         params = self._params.to_dict()
         params.update({"selected":self._selected})
         self.face.attributes.add(DB_GROUP, "face:"+str(self._faceId), json.dumps(params))
+        self.face.attributes.add(DB_GROUP, "token:", self._entityToken)
 
     def restore(self):
         """
         restores face parameters and state from attribute 
         """
         if not( attr := self.face.attributes.itemByName(DB_GROUP, "face:"+str(self._faceId))):
-            raise FaceInvalidError
+            try:
+                attr = [att for att in self.face.attributes if 'face:' in att.name ][0]
+            except:
+                raise FaceInvalidError
+            
         value = attr.value
         params = json.loads(value)
         self._selected = params.pop("selected")
-        self._params = DbParams(self._selected)
+        self._params = DbParams(**params)
 
     def selectAll(self):
         """
@@ -221,6 +226,10 @@ class DbFace:
         self.__init__(
             self.selection, self.face, self._params, self.commandInputsEdgeSelect
         )
+
+    @property
+    def entityToken(self):
+        return self._entityToken
 
     @property
     def refPoint(self):
@@ -398,7 +407,10 @@ class DbEdge:
         restores edge parameters and state from attribute 
         """
         if not(attr := self.edge.attributes.itemByName(DB_GROUP, "params:")):
-            raise EdgeInvalidError
+            self._selected = True
+            self.save()
+            return
+            # raise EdgeInvalidError
         value = attr.value
         params = json.loads(value)
         self._selected = params.pop("selected")
