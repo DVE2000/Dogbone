@@ -421,8 +421,8 @@ class DogboneUi:
                 faces += (
                     t := [
                         DbFace(
-                            selection=self.selection,
                             face=changedEntity,
+                            selection=self.selection,
                             params=self.param,
                             commandInputsEdgeSelect=input.commandInputs.itemById(
                                 EDGE_SELECT

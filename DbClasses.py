@@ -224,7 +224,10 @@ class DbFace:
 
     def reSelectEdges(self):
         self.__init__(
-            self.selection, self.face, self._params, self.commandInputsEdgeSelect
+            face = self.face,
+            selection = self.selection,  
+            params = self._params, 
+            commandInputsEdgeSelect = self.commandInputsEdgeSelect
         )
 
     @property
