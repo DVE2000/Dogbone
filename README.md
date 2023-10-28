@@ -1,5 +1,8 @@
 Dogbone addin for fusion 360
 ===
+## Version 2.2
+Added update feature - will simplify dogbone updates after changes to bodies and/or components.
+Many thanks to [Tony ]()
 ## Version 2.1.2
 * completed parametric Dogbones fix - 2.1.1 note has been corrected
 

@@ -126,6 +126,7 @@ def eventHandler(handler_cls=adsk.core.Base):
                             notify_method(
                                 *handler_args, eventArgs
                             )  # notify_method_self and eventArgs come from the parent scope
+                            return
                         except Exception as e:
                             print(traceback.format_exc())
                             logger.exception(f"{self.name} error termination")
