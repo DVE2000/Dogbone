@@ -65,11 +65,11 @@ class DogboneUi:
         self.onValidate(event=command.validateInputs)
         self.onFaceSelect(event=command.selectionEvent)
         self.onExecute(event=command.execute)
-        self.markingMenu(event=_ui.markingMenuDisplaying)
+        # self.markingMenu(event=_ui.markingMenuDisplaying)
 
-    @eventHandler(handler_cls=adsk.core.MarkingMenuEventHandler)
-    def markingMenu(self, args: adsk.core.MarkingMenuEventArgs):
-        pass
+    # @eventHandler(handler_cls=adsk.core.MarkingMenuEventHandler)
+    # def markingMenu(self, args: adsk.core.MarkingMenuEventArgs):
+    #     pass
 
     def create_ui(self):
         global _app, _design 
@@ -100,7 +100,7 @@ class DogboneUi:
         self.param.dbType = inputs[DOGBONE_TYPE].selectedItem.name
         self.param.minimalPercent = inputs[MINIMAL_PERCENT].value
         self.param.fromTop = inputs[DEPTH_EXTENT].selectedItem.name == FROM_TOP_FACE
-        self.param.parametric = inputs[MODE_ROW].selectedItem.name == PARAMETRIC
+        # self.param.parametric = inputs[MODE_ROW].selectedItem.name == PARAMETRIC
         self.param.longSide = inputs[MORTISE_TYPE].selectedItem.name == ON_LONG_SIDE
         self.param.angleDetectionGroup = inputs[ANGLE_DETECTION_GROUP].isExpanded
         self.param.acuteAngle = inputs[ACUTE_ANGLE].value
@@ -128,7 +128,7 @@ class DogboneUi:
     def logParams(self):
         logger.debug(f"param.fromTop = {self.param.fromTop}")
         logger.debug(f"param.dbType = {self.param.dbType}")
-        logger.debug(f"param.parametric = {self.param.parametric}")
+        # logger.debug(f"param.parametric = {self.param.parametric}")
         logger.debug(f"param.toolDiaStr = {self.param.toolDiaStr}")
         logger.debug(f"param.toolDia = {self.param.toolDia}")
         logger.debug(
@@ -496,9 +496,9 @@ class DogboneUi:
             self.inputs.addGroupCommandInput(ANGLE_DETECTION_GROUP, "Detection Mode")
         )
         angleDetectionGroupInputs.isExpanded = self.param.angleDetectionGroup
-        angleDetectionGroupInputs.isVisible = (
-            not self.param.parametric
-        )  # disables angle selection if in parametric mode
+        # angleDetectionGroupInputs.isVisible = (
+        #     not self.param.parametric
+        # )  # disables angle selection if in parametric mode
         enableAcuteAngleInput: adsk.core.BoolValueCommandInput = (
             angleDetectionGroupInputs.children.addBoolValueInput(
                 ACUTE_ANGLE, "Acute Angle", True, "", self.param.acuteAngle
@@ -536,20 +536,20 @@ class DogboneUi:
         )
         modeGroup.isExpanded = self.param.expandModeGroup
         modeGroupChildInputs = modeGroup.children
-        modeRowInput: adsk.core.ButtonRowCommandInput = (
-            modeGroupChildInputs.addButtonRowCommandInput(MODE_ROW, "Mode", False)
-        )
-        modeRowInput.listItems.add(
-            STATIC, not self.param.parametric, "resources/ui/mode/staticMode"
-        )
-        modeRowInput.listItems.add(
-            PARAMETRIC, self.param.parametric, "resources/ui/mode/parametricMode"
-        )
-        modeRowInput.tooltipDescription = (
-            "Static dogbones do not move with the underlying component geometry. \n"
-            "\nParametric dogbones will automatically adjust position with parametric changes to underlying geometry. "
-            "Geometry changes must be made via the parametric dialog.\nFusion has more issues/bugs with these!"
-        )
+        # modeRowInput: adsk.core.ButtonRowCommandInput = (
+        #     modeGroupChildInputs.addButtonRowCommandInput(MODE_ROW, "Mode", False)
+        # )
+        # modeRowInput.listItems.add(
+        #     STATIC, not self.param.parametric, "resources/ui/mode/staticMode"
+        # )
+        # modeRowInput.listItems.add(
+        #     PARAMETRIC, self.param.parametric, "resources/ui/mode/parametricMode"
+        # )
+        # modeRowInput.tooltipDescription = (
+        #     "Static dogbones do not move with the underlying component geometry. \n"
+        #     "\nParametric dogbones will automatically adjust position with parametric changes to underlying geometry. "
+        #     "Geometry changes must be made via the parametric dialog.\nFusion has more issues/bugs with these!"
+        # )
         typeRowInput: adsk.core.ButtonRowCommandInput = (
             modeGroupChildInputs.addButtonRowCommandInput(DOGBONE_TYPE, "Type", False)
         )

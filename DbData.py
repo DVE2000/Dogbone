@@ -33,7 +33,7 @@ class DbParams:
     minAngleLimit: float = 89.0
     maxAngleLimit: float = 91.0
 
-    parametric: bool = False
+    # parametric: bool = False
     expandModeGroup: bool = True
     expandSettingsGroup: bool = True
     logging: int = 0
