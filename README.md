@@ -1,8 +1,18 @@
 Dogbone addin for fusion 360
 ===
-## Version 2.1.1
+## Version 2.2
+Added update feature - will simplify dogbone updates after changes to bodies and/or components.
+Many thanks to [Tony Findeisen](github.com/it-ony) for his amazing refactoring - he's made the code look sooo much better, and easier for others to navigate.  
+This update feature will also work in the Manufacturing Model Editor - HOWEVER, There's a bug in F360 - the Toolbar will be blank and/or corrupted 
+- do an "Undo" (ctrl-z/cmd-z) followed by a "Redo" (ctrl-y/cmd-y) and the display will refesh, and all will be well again.
+
+### Version 2.1.2
+* completed parametric Dogbones fix - 2.1.1 note has been corrected
+
+### Version 2.1.2
 * Fixed runtime error on parametric Dogbones - Note: dogbones will be created on corners that are not 90 degrees, but they will not be correct.  Working to fix that though.
-## Version: 2.1
+
+### Version: 2.1
 
 * Added detection mode - now allows acute and obtuse angles to be generated
 * Changed internal mechanism to uniquely identify faces and edges
@@ -98,9 +108,7 @@ The add-in will then create the specified dogbones. If you choose parameterized,
 * Edges are selected **down** from a face. Generally, selecting a bottom face will not add any edges, but de-selecting one may remove some edges.
 
 ## To do:
-1. Handle acute angles (<90 degrees) by generating a slot.
-1. Handle obtuse angles (>90 degrees) 
-2. ... who knows
+1. add editing capabilities
 
 ## License
 

@@ -40,8 +40,7 @@ from .DbData import DbParams
 from .DogboneUi import DogboneUi
 from .decorators import eventHandler
 from .constants import DB_NAME, COMMAND_ID, UPD_COMMAND_ID
-# from .createDogbone import createParametricDogbones, createStaticDogbones, updateDogBones
-from .createDogbone import createStaticDogbones, updateDogBones
+from .createDogbone import createParametricDogbones, createStaticDogbones, updateDogBones
 from pynput.keyboard import Key, Controller
 
 
@@ -119,8 +118,8 @@ class DogboneCommand(object):
 
         self.onCreate(event=button.commandCreated)
         self.onUpdate(event=upd_button.commandCreated)
-        # self.onTerminateCommand(event=_ui.commandTerminated)  -For potential future uses 
-        # self.onWorkspaceActivated(event=_ui.workspaceActivated)
+        self.onTerminateCommand(event=_ui.commandTerminated)
+        self.onWorkspaceActivated(event=_ui.workspaceActivated)
 
         # Create controls for Manufacturing Workspace
         control = self.get_solid_create_panel().controls.addCommand(
@@ -189,20 +188,20 @@ class DogboneCommand(object):
     def onUpdate(self, args: adsk.core.CommandCreatedEventArgs):
         updateDogBones()
 
-    # @eventHandler(handler_cls=adsk.core.ApplicationCommandEventHandler)
-    # def onTerminateCommand(self, args: adsk.core.ApplicationCommandEventArgs):
-    #     if _ui.activeCommand != COMMAND_ID:
-    #         return
-    #     # activeDoc = _app.activeDocument
-    #     # tdocs = [d for d in _app.documents if not d.isActive]
-    #     # tdoc = _app.documents.add(adsk.core.DocumentTypes.FusionDesignDocumentType) if not tdocs else tdocs[0]
-    #     # tdoc.activate()
-    #     # activeDoc.activate()
-    #     pass
+    @eventHandler(handler_cls=adsk.core.ApplicationCommandEventHandler)
+    def onTerminateCommand(self, args: adsk.core.ApplicationCommandEventArgs):
+        if _ui.activeCommand != COMMAND_ID:
+            return
+        # activeDoc = _app.activeDocument
+        # tdocs = [d for d in _app.documents if not d.isActive]
+        # tdoc = _app.documents.add(adsk.core.DocumentTypes.FusionDesignDocumentType) if not tdocs else tdocs[0]
+        # tdoc.activate()
+        # activeDoc.activate()
+        pass
 
-    # @eventHandler(handler_cls=adsk.core.WorkspaceEventHandler)
-    # def onWorkspaceActivated(self, args: adsk.core.WorkspaceEventArgs):
-    #     pass
+    @eventHandler(handler_cls=adsk.core.WorkspaceEventHandler)
+    def onWorkspaceActivated(self, args: adsk.core.WorkspaceEventArgs):
+        pass
 
         
     @eventHandler(handler_cls=adsk.core.CommandCreatedEventHandler)
@@ -245,14 +244,10 @@ class DogboneCommand(object):
 
         self.write_defaults(params)
 
-        # if params.parametric:
-        #     createParametricDogbones(params, selection)
-        # else:  # Static dogbones
-        createStaticDogbones(params, selection)
-
-        #Remove check after F360 fixes their baseFeature/UI refresh issue  
-        if _ui.activeWorkspace.id == "MfgWorkingModelEnv":  
-            _ui.messageBox("If the tool bar becomes blank\nUse Undo then Redo (ctrl-z, ctrl-y)")
+        if params.parametric:
+            createParametricDogbones(params, selection)
+        else:  # Static dogbones
+            createStaticDogbones(params, selection)
 
         logger.info(
             "all dogbones complete\n-------------------------------------------\n"

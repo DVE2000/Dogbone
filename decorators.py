@@ -6,7 +6,7 @@ import time
 import traceback
 from dataclasses import dataclass, field
 from functools import wraps
-from typing import ClassVar
+from typing import ClassVar, cast
 
 import adsk.core
 import adsk.fusion
@@ -15,14 +15,14 @@ import adsk.fusion
 
 # Globals
 _app = adsk.core.Application.get()
-_design = _app.activeProduct
+_design: adsk.fusion.Design = cast(adsk.fusion.Design, _app.activeProduct)
 _ui = _app.userInterface
 _rootComp = _design.rootComponent
 
 pp = pprint.PrettyPrinter()
 
 logger = logging.getLogger("dogbone.decorators")
-logger.setLevel(logging.NOTSET)
+logger.setLevel(logging.DEBUG)
 
 
 @dataclass()
@@ -101,10 +101,10 @@ def eventHandler(handler_cls=adsk.core.Base):
             notify_method
         )  # spoofs wrapped method so that __name__, __doc__ (ie docstring) etc. behaves like it came from the method that is being wrapped.
         def handlerWrapper(
-            *handler_args,
-            event=adsk.core.Event,
-            group: str = "default",
-            **handler_kwargs,
+                *handler_args,
+                event=adsk.core.Event,
+                group: str = "default",
+                **handler_kwargs,
         ):
             """When called returns instantiated _Handler
             - assumes that the method being wrapped comes from an instantiated Class method
@@ -126,6 +126,7 @@ def eventHandler(handler_cls=adsk.core.Base):
                             notify_method(
                                 *handler_args, eventArgs
                             )  # notify_method_self and eventArgs come from the parent scope
+                            return
                         except Exception as e:
                             print(traceback.format_exc())
                             logger.exception(f"{self.name} error termination")
@@ -144,6 +145,7 @@ def eventHandler(handler_cls=adsk.core.Base):
                 # adds to class handlers list, needs to be persistent otherwise GC will remove the handler
                 # - deleting handlers (if necessary) will ensure that garbage collection will happen.
             except Exception as e:
+                logger.exception(e)
                 print(f"{notify_method.__name__}: {traceback.format_exc()}")
                 logger.exception(f"handler creation error {notify_method.__name__}")
             return h
@@ -167,35 +169,6 @@ def parseDecorator(func):
         return rtn
 
     return wrapper
-
-
-class Button(adsk.core.ButtonControlDefinition):
-    def __init__():
-        super().__init__()
-
-    def addCmd(
-        self,
-        parentDefinition,
-        commandId,
-        commandName,
-        tooltip,
-        resourceFolder,
-        handlerMethod,
-        parentControl,
-    ):
-        commandDefinition_ = parentDefinition.itemById(commandId)
-
-        if not commandDefinition_:
-            commandDefinition_ = parentDefinition.addButtonDefinition(
-                commandId, commandName, tooltip, resourceFolder
-            )
-
-        handlerMethod(commandDefinition_.commandCreated)
-
-        control_ = parentControl.addCommand(exportCommandDefinition_)
-        exportControl_.isPromoted = True
-
-        return commandDefinition_
 
 
 def makeTempFaceVisible(method):
