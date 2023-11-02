@@ -26,15 +26,7 @@ def baseFeatureContext(baseFeature: adsk.fusion.BaseFeature):
         refresh()
 
 def refresh():
-    if _app.activeProduct.workspaces.itemById("MfgWorkingModelEnv").isActive:
-        pass
-
-
-        # currentId = [x.id for x in _app.activeProduct.workspaces if x.isActive][0]
-        # _ui.workspaces.itemById("CAMEnvironment").activate()
-        # _cam: adsk.can.CAM = cast(adsk.cam.CAM, _app.activeProduct)
-        # _cam.manufacturingModels.itemById(currentId).activate()
-
+    pass
 
 
 @contextmanager

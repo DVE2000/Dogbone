@@ -65,6 +65,7 @@ class DogboneUi:
         self.onValidate(event=command.validateInputs)
         self.onPreSelect(event=command.preSelect)
         self.onExecute(event=command.execute)
+        self.onPreview(event=command.executePreview)
         self.onKeyDown(event=command.keyDown)
         self.onKeyUp(event=command.keyUp)
         # self.markingMenu(event=_ui.markingMenuDisplaying)
@@ -148,6 +149,10 @@ class DogboneUi:
     def onExecute(self, args):
         self.executeHandler(self.param, self.selection)
 
+    @eventHandler(handler_cls=adsk.core.CommandEventHandler)
+    def onPreview(self, args):
+        pass  
+
     @eventHandler(handler_cls=adsk.core.SelectionEventHandler)
     def onPreSelect(self, args):
         """==============================================================================
@@ -159,6 +164,8 @@ class DogboneUi:
         activeIn = eventArgs.firingEvent.activeInput
         if activeIn.id != FACE_SELECT and activeIn.id != EDGE_SELECT:
             return  # jump out if not dealing with either of the two selection boxes
+        
+        self.activeEntity = eventArgs.selection.entity
 
         if activeIn.id == FACE_SELECT:
             # ==============================================================================
