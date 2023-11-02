@@ -45,8 +45,6 @@ _app = adsk.core.Application.get()
 _design: adsk.fusion.Design = cast(adsk.fusion.Design, _app.activeProduct)
 _ui = _app.userInterface
 
-# Added Comment
-
 # noinspection SqlDialectInspection,SqlNoDataSourceInspection,PyMethodMayBeStatic
 class DogboneUi:
 
@@ -178,7 +176,7 @@ class DogboneUi:
             if not eventArgs.selection.entity.assemblyContext:
                 # dealing with a root component body
 
-                if self.keyCode:
+                if self.isAltKeyPressed:
                     activeIn.addSelectionFilter("LinearEdges")
                 else:
                     activeIn.selectionFilters = ("PlanarFaces",)
@@ -190,7 +188,7 @@ class DogboneUi:
                     for face in faces:
                         if face.isSelected:
                             primaryFace = face
-                            if self.keyCode:
+                            if self.isAltKeyPressed:
                                 if eventArgs.selection.entity.classType() != adsk.fusion.BRepEdge.objectType:
                                     edges = []
                                     innerLoops = [l for l in face.face.loops if not l.isOuter]
@@ -303,23 +301,21 @@ class DogboneUi:
         modifierMask = args.modifierMask
         if modifierMask !=adsk.core.KeyboardModifiers.AltKeyboardModifier:
             return 
-        match keyCode:
-            case adsk.core.KeyCodes.SKeyCode:
-                pass
-            case adsk.core.KeyCodes.LKeyCode:
-                pass
-            case _:
-                self.keyCode = None
-                return
+        if keyCode:
+            self.isAltKeyPressed = False
+            return
 
-        self.keyCode = keyCode
+        self.isAltKeyPressed = True
 
     @eventHandler(handler_cls=adsk.core.KeyboardEventHandler)
     def onKeyUp(self, args: adsk.core.KeyboardEventArgs):
+        keyCode = args.keyCode
         modifierMask = args.modifierMask
         if modifierMask !=adsk.core.KeyboardModifiers.AltKeyboardModifier:
-            return 
-        self.keyCode = None
+            return
+        if keyCode:
+            return
+        self.isAltKeyPressed = False
 
 
     @eventHandler(handler_cls=adsk.core.InputChangedEventHandler)

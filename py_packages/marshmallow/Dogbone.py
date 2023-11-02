@@ -41,7 +41,6 @@ from .DogboneUi import DogboneUi
 from .decorators import eventHandler
 from .constants import DB_NAME, COMMAND_ID, UPD_COMMAND_ID
 from .createDogbone import createParametricDogbones, createStaticDogbones, updateDogBones
-from pynput.keyboard import Key, Controller
 
 
 # Globals
