@@ -2,14 +2,11 @@ import adsk.fusion, adsk.cam, adsk.core
 from typing import cast
 from contextlib import contextmanager
 from .constants import DB_GROUP, DB_NAME
-from pynput.keyboard import Key, Controller  #imported as a workaround for refresh problem in manufacturing model edit and editing 
 
 _app = adsk.core.Application.get()
 _design: adsk.fusion.Design = cast(adsk.fusion.Design, _app.activeProduct)
 _cam: adsk.cam.CAM = cast(adsk.cam.CAM, _app.activeProduct)
 _ui: adsk.core.UserInterface = _app.userInterface
-
-kbd: Controller = Controller()
 
 @contextmanager
 def baseFeatureContext(baseFeature: adsk.fusion.BaseFeature):
