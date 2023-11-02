@@ -18,7 +18,8 @@ $RECYCLE.BIN/
 *.lnk
 
 # Dogbone files
-.spyderworkspace
+# .spyderworkspace
+.py_packages/pynput*
 dogbone.log
 defaults.dat
 __pycache__
