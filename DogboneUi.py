@@ -299,21 +299,18 @@ class DogboneUi:
     def onKeyDown(self, args: adsk.core.KeyboardEventArgs):
         keyCode = args.keyCode
         modifierMask = args.modifierMask
-        if modifierMask !=adsk.core.KeyboardModifiers.AltKeyboardModifier:
-            return 
-        if keyCode:
+        if modifierMask & keyCode:
             self.isAltKeyPressed = False
             return
+        self.isAltKeyPressed = (keyCode == adsk.core.KeyCodes.AltKeyCode)
+        return
 
-        self.isAltKeyPressed = True
 
     @eventHandler(handler_cls=adsk.core.KeyboardEventHandler)
     def onKeyUp(self, args: adsk.core.KeyboardEventArgs):
         keyCode = args.keyCode
         modifierMask = args.modifierMask
-        if modifierMask !=adsk.core.KeyboardModifiers.AltKeyboardModifier:
-            return
-        if keyCode:
+        if modifierMask & keyCode:
             return
         self.isAltKeyPressed = False
 
