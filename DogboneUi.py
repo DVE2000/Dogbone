@@ -55,6 +55,7 @@ class DogboneUi:
         self.param = params
         self.command = command
         self.executeHandler = executeHandler
+        self.keyCode = None
 
         self.selection = Selection()
 
@@ -63,8 +64,10 @@ class DogboneUi:
         self.create_ui()
         self.onInputChanged(event=command.inputChanged)
         self.onValidate(event=command.validateInputs)
-        self.onFaceSelect(event=command.selectionEvent)
+        self.onPreSelect(event=command.preSelect)
         self.onExecute(event=command.execute)
+        self.onKeyDown(event=command.keyDown)
+        self.onKeyUp(event=command.keyUp)
         # self.markingMenu(event=_ui.markingMenuDisplaying)
 
     # @eventHandler(handler_cls=adsk.core.MarkingMenuEventHandler)
@@ -147,7 +150,7 @@ class DogboneUi:
         self.executeHandler(self.param, self.selection)
 
     @eventHandler(handler_cls=adsk.core.SelectionEventHandler)
-    def onFaceSelect(self, args):
+    def onPreSelect(self, args):
         """==============================================================================
          Routine gets called with every mouse movement, if a commandInput select is active
         ==============================================================================
@@ -164,6 +167,7 @@ class DogboneUi:
             #        selection filter is limited to planar faces
             #        makes sure only valid occurrences and components are selectable
             # ==============================================================================
+            activeIn: adsk.core.SelectionCommandInput
 
             if not len(
                     self.selection.selectedOccurrences
@@ -173,12 +177,29 @@ class DogboneUi:
             if not eventArgs.selection.entity.assemblyContext:
                 # dealing with a root component body
 
-                activeBodyName = hash(eventArgs.selection.entity.body.entityToken)
+                if self.keyCode:
+                    activeIn.addSelectionFilter("LinearEdges")
+                else:
+                    activeIn.selectionFilters = ("PlanarFaces",)
+
+
+                activeBodyHash = hash(eventArgs.selection.entity.body.entityToken)
                 try:
-                    faces = self.selection.selectedOccurrences[activeBodyName]
+                    faces = self.selection.selectedOccurrences[activeBodyHash]
                     for face in faces:
                         if face.isSelected:
                             primaryFace = face
+                            if self.keyCode:
+                                if eventArgs.selection.entity.classType() != adsk.fusion.BRepEdge.objectType:
+                                    edges = []
+                                    innerLoops = [l for l in face.face.loops if not l.isOuter]
+                                    for innerLoop in innerLoops:
+                                        edges += [e for e in innerLoop.edges]
+                                    return eventArgs.selection.entity in edges
+                                    
+                                    break
+                                
+
                             break
                     else:
                         eventArgs.isSelectable = True
@@ -275,6 +296,30 @@ class DogboneUi:
                 if input.value <= 0:
                     args.areInputsValid = False
 
+    @eventHandler(handler_cls=adsk.core.KeyboardEventHandler)
+    def onKeyDown(self, args: adsk.core.KeyboardEventArgs):
+        keyCode = args.keyCode
+        modifierMask = args.modifierMask
+        if modifierMask !=adsk.core.KeyboardModifiers.AltKeyboardModifier:
+            return 
+        match keyCode:
+            case adsk.core.KeyCodes.SKeyCode:
+                pass
+            case adsk.core.KeyCodes.LKeyCode:
+                pass
+            case _:
+                self.keyCode = None
+                return
+
+        self.keyCode = keyCode
+
+    @eventHandler(handler_cls=adsk.core.KeyboardEventHandler)
+    def onKeyUp(self, args: adsk.core.KeyboardEventArgs):
+        modifierMask = args.modifierMask
+        if modifierMask !=adsk.core.KeyboardModifiers.AltKeyboardModifier:
+            return 
+        self.keyCode = None
+
 
     @eventHandler(handler_cls=adsk.core.InputChangedEventHandler)
     @parseDecorator
@@ -326,9 +371,9 @@ class DogboneUi:
             self.param.obtuseAngle = b.value
 
         if input.id == MAX_SLIDER:
-            self.param.maxAngleLimit = cast(adsk.core.FloatSliderCommandInput, input.commandInputs.itemById(
-                MAX_SLIDER
-            )).valueOne
+            self.param.maxAngleLimit = cast(adsk.core.FloatSliderCommandInput,
+                                            input.commandInputs.itemById(MAX_SLIDER)
+                                            ).valueOne
 
         #
         if (
@@ -337,22 +382,21 @@ class DogboneUi:
                 or input.id == MIN_SLIDER
                 or input.id == MAX_SLIDER
                 or input.id == MODE_ROW
-        ):  # refresh edges after specific input changes
+                ):  # refresh edges after specific input changes
+            
             edgeSelectCommand = input.parentCommand.commandInputs.itemById(
                 EDGE_SELECT
-            )
+                )
             if not edgeSelectCommand.isVisible:
                 return
-            focusState = cast(adsk.core.SelectionCommandInput, input.parentCommand.commandInputs.itemById(
-                FACE_SELECT
-            )).hasFocus
+            focusState = cast(adsk.core.SelectionCommandInput,
+                              input.parentCommand.commandInputs.itemById(FACE_SELECT)
+                              ).hasFocus
             edgeSelectCommand.hasFocus = True
 
-            for edgeObj in self.selection.selectedEdges.values():
-                _ui.activeSelections.removeByEntity(edgeObj.edge)
+            [_ui.activeSelections.removeByEntity(edgeObj.edge) for edgeObj in self.selection.selectedEdges.values()]
 
-            for faceObj in self.selection.selectedFaces.values():
-                faceObj.reSelectEdges()
+            [faceObj.reSelectEdges() for faceObj in self.selection.selectedFaces.values()]
 
             input.parentCommand.commandInputs.itemById(FACE_SELECT).hasFocus = focusState
             return

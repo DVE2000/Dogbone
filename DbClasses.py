@@ -479,6 +479,14 @@ class DbEdge:
         """
         return self._nativeEdgeVector
     
+    @property
+    def params(self):
+        return self._params
+    
+    @params.setter
+    def update_params(self, params):
+        self._params = params
+    
     def faceObj(self):
         return self._parentFace
 
