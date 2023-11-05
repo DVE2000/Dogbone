@@ -114,7 +114,7 @@ class DbFace:
                 if face2.geometry.objectType != adsk.core.Plane.classType():
                     continue
 
-                angle = dbUtils.getAngleBetweenFaces(edge) * 180 / pi
+                angle = round(dbUtils.getAngleBetweenFaces(edge) * 180 / pi, 3)
                 if (
                     (abs(angle - 90) > 0.001)
                     and not (self._params.acuteAngle or self._params.obtuseAngle)
@@ -142,8 +142,8 @@ class DbFace:
                     ):
                     continue #angle between min and max and doing both acute and obtuse
 
-                if (abs(angle - 90) > 0.001) and self._params.parametric:
-                    continue # angle greater than tolerance and doing parametric
+                # if (abs(angle - 90) > 0.001) and self._params.parametric:
+                #     continue # angle greater than tolerance and doing parametric
 
                 edgeId = hash(edge.entityToken) #this normally created by the DbEdge instantiation, but it's needed earlier (I thmk!)
                 self.selection.selectedEdges[edgeId] = self._associatedEdgesDict[ 
