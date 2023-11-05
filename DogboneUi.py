@@ -234,9 +234,9 @@ class DogboneUi:
             # at this point only need to check for duplicate component selection - Only one component allowed, to save on conflict checking
             try:
                 selectedComponentList = [
-                    x[0].face.assemblyContext.component
-                    for x in self.selection.selectedOccurrences.values()
-                    if x[0].face.assemblyContext
+                    x.face.assemblyContext.component
+                    for x in [item for sublist in self.selection.selectedOccurrences.values() for item in sublist]
+                    if x.face.assemblyContext
                 ]
             except KeyError:
                 eventArgs.isSelectable = True
