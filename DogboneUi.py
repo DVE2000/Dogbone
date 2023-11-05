@@ -206,10 +206,11 @@ class DogboneUi:
             # we got here because the face is either not in root or is on the existing selected list
             # at this point only need to check for duplicate component selection - Only one component allowed, to save on conflict checking
             try:
+                #the comprehension in the middle of this flattens the list of lists of self.selection.selectedOccrrences.values()
                 selectedComponentList = [
-                    x[0].face.assemblyContext.component
-                    for x in self.selection.selectedOccurrences.values()
-                    if x[0].face.assemblyContext
+                    x.face.assemblyContext.component
+                    for x in [item for sublist in self.selection.selectedOccurrences.values() for item in sublist]
+                    if x.face.assemblyContext
                 ]
             except KeyError:
                 eventArgs.isSelectable = True
