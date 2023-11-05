@@ -114,7 +114,7 @@ class DbFace:
                 if face2.geometry.objectType != adsk.core.Plane.classType():
                     continue
 
-                angle = dbUtils.getAngleBetweenFaces(edge) * 180 / pi
+                angle = round(dbUtils.getAngleBetweenFaces(edge) * 180 / pi, 3)
                 if (
                     (abs(angle - 90) > 0.001)
                     and not (self._params.acuteAngle or self._params.obtuseAngle)
