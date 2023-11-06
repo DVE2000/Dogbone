@@ -124,6 +124,7 @@ def updateDogBones():
                 selectedFace: DbFace = DbFace(face=faceAtt.parent,
                             restoreState=True)
                 topFace, _ = dbUtils.getTopFace(selectedFace=selectedFace.face)
+                topFace = topFace.nativeObject if topFace.nativeObject else topFace
                 for edge in selectedFace.selectedEdges:
                     if not toolBodies:
                         toolBodies = edge.getToolBody(
