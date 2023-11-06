@@ -189,23 +189,19 @@ class DogboneUi:
                     activeIn.selectionFilters = ("PlanarFaces",)
 
 
-                activeBodyHash = hash(eventArgs.selection.entity.body.entityToken)
+                activeBodyHash = calcId(eventArgs.selection.entity.body)
                 try:
-                    faces = self.selection.selectedOccurrences[activeBodyHash]
-                    for face in faces:
-                        if face.isSelected:
-                            primaryFace = face
+                    faceObjs = self.selection.selectedOccurrences[activeBodyHash]
+                    for faceObj in faceObjs:
+                        if faceObj.isSelected:
+                            primaryFace = faceObj
                             if self.isAltKeyPressed:
                                 if eventArgs.selection.entity.classType() != adsk.fusion.BRepEdge.objectType:
-                                    edges = []
-                                    innerLoops = [l for l in face.face.loops if not l.isOuter]
-                                    for innerLoop in innerLoops:
-                                        edges += [e for e in innerLoop.edges]
+                                    #find candidate edges
+                                    edges = [loop.edge 
+                                             for loops in faceObj.face.loops 
+                                                for loop in loops if not loop.isOuter]
                                     return eventArgs.selection.entity in edges
-                                    
-                                    break
-                                
-
                             break
                     else:
                         eventArgs.isSelectable = True
@@ -227,7 +223,7 @@ class DogboneUi:
             # Start of occurrence face processing
             # ==============================================================================
             activeOccurrence = eventArgs.selection.entity.assemblyContext
-            activeOccurrenceId = hash(activeOccurrence.entityToken)
+            activeOccurrenceId = calcId(activeOccurrence)
             activeComponent = activeOccurrence.component
 
             # we got here because the face is either not in root or is on the existing selected list
@@ -235,9 +231,11 @@ class DogboneUi:
             try:
                 #the comprehension in the middle of this flattens the list of lists of self.selection.selectedOccrrences.values()
                 selectedComponentList = [
-                    x.face.assemblyContext.component
-                    for x in [item for sublist in self.selection.selectedOccurrences.values() for item in sublist]
-                    if x.face.assemblyContext
+                    faceObject.face.assemblyContext.component
+                        for listOfObjects in self.selection.selectedOccurrences.values() 
+                            for faceObjs in listOfObjects
+                                for faceObject in faceObjs
+                    if faceObject.face.assemblyContext
                 ]
             except KeyError:
                 eventArgs.isSelectable = True
@@ -284,7 +282,7 @@ class DogboneUi:
             selected = eventArgs.selection
             currentEdge: adsk.fusion.BRepEdge = selected.entity
 
-            edgeId = hash(currentEdge.entityToken)
+            edgeId = calcId(currentEdge)
             if edgeId in self.selection.selectedEdges.keys():
                 eventArgs.isSelectable = True
             else:
@@ -429,7 +427,7 @@ class DogboneUi:
 
                 # Else find the missing face in selection
                 selectionSet = {
-                    hash(cast(adsk.fusion.BRepEdge, s.selection(i).entity).entityToken)
+                    calcId(cast(adsk.fusion.BRepEdge, s.selection(i).entity))
                     for i in range(s.selectionCount)
                 }
                 missingFaces = set(self.selection.selectedFaces.keys()) ^ selectionSet
@@ -452,8 +450,8 @@ class DogboneUi:
             input.commandInputs.itemById(EDGE_SELECT).hasFocus = True
 
             selectionDict = {
-                hash(
-                    cast(adsk.fusion.BRepEdge, s.selection(i).entity).entityToken
+                calcId(
+                    cast(adsk.fusion.BRepEdge, s.selection(i).entity)
                 ): s.selection(i).entity
                 for i in range(s.selectionCount)
             }
@@ -467,9 +465,9 @@ class DogboneUi:
                     faceId
                 ] 
                 activeOccurrenceId = (
-                    hash(changedEntity.assemblyContext.entityToken)
+                    calcId(changedEntity.assemblyContext)
                     if changedEntity.assemblyContext
-                    else hash(changedEntity.body.entityToken)
+                    else calcId(changedEntity.body)
                 )
 
                 faces = self.selection.selectedOccurrences.get(activeOccurrenceId, [])
@@ -491,8 +489,7 @@ class DogboneUi:
                 ] = faces  # adds a face to a list of faces associated with this occurrence
                 self.selection.selectedFaces.update({faceObj.faceId: faceObj for faceObj in t})
 
-                for face_id in addedFaces:
-                    self.selection.selectedFaces[face_id].selectAll()
+                [self.selection.selectedFaces[face_id].selectAll()for face_id in addedFaces]
 
                 input.commandInputs.itemById(FACE_SELECT).hasFocus = True
             return
@@ -516,8 +513,7 @@ class DogboneUi:
             missingEdges = set(self.selection.selectedEdges.keys()) - changedEdgeIdSet
             # noinspection PyStatementEffect
 
-            for missingEdge in missingEdges:
-                self.selection.selectedEdges[missingEdge].deselect()
+            [self.selection.selectedEdges[missingEdge].deselect() for missingEdge in missingEdges] 
 
             # Note - let the user manually unselect the face if they want to choose a different face
 

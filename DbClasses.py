@@ -10,6 +10,7 @@ from .DbData import DbParams
 from .errors import FaceInvalidError, EdgeInvalidError
 from .constants import DB_GROUP
 from . import dbutils as dbUtils
+from .util import calcId
 
 logger = logging.getLogger("dogbone.DbClasses")
 
@@ -74,18 +75,28 @@ class DbFace:
 
         self.registerEdges()
 
+    def __hash__(self):
+        return self.faceId
+
+    def __del__(self):
+        pass
+
+    def __eq__(self, other):
+        if type(other) != DbFace:
+            return NotImplemented
+        return other.faceId == self.faceId
+    
     def registerEdges(self):
         # ==============================================================================
         #             this is where inside corner edges, dropping down from the face are processed
         # ==============================================================================
 
-        faceEdgesSet = {hash(edge.entityToken) for edge in self.face.edges}
+        faceEdgesSet = {calcId(edge) for edge in self.face.edges}
         faceVertices = [vertex for vertex in self.face.vertices]
         allEdges = {}  #dict key:hash(entity code): BrepEdge
 
         #populate allEdges dict with all edges associated with face vertices
-        for vertex in faceVertices:
-            allEdges.update({hash(edge.entityToken): edge for edge in vertex.edges})
+        [allEdges.update({calcId(edge): edge for edge in vertex.edges}) for vertex in faceVertices]
 
         candidateEdgesId = set(allEdges.keys()) - faceEdgesSet  #remove edges associated with face - just leaves corner edges
         candidateEdges = [allEdges[edgeId] for edgeId in candidateEdgesId] #create list of corner edges
@@ -127,14 +138,14 @@ class DbFace:
                         and self._params.acuteAngle
                         and not self._params.obtuseAngle
                     ):
-                    continue  #angle less than lowest limit and doing acute angles
+                    continue  #angle greater than lowest limit and doing acute angles upto 90
 
                 if (
                         not (90 <= angle < self._params.maxAngleLimit)
                         and not self._params.acuteAngle
                         and self._params.obtuseAngle
                     ):
-                    continue # angle greater than max limit and doing obtuse angles
+                    continue # angle less than max limit and doing obtuse angles down to 90
 
                 if (
                         not (self._params.minAngleLimit < angle < self._params.maxAngleLimit)
@@ -143,10 +154,10 @@ class DbFace:
                     ):
                     continue #angle between min and max and doing both acute and obtuse
 
-                edgeId = hash(edge.entityToken) #this is normally created by the DbEdge instantiation, but it's needed earlier (I thmk!)
+                edgeId = calcId(edge) #this is normally created by the DbEdge instantiation, but it's needed earlier (I thmk!)
                 self.selection.selectedEdges[edgeId] = self._associatedEdgesDict[ 
-                    edgeId
-                ] = DbEdge(edge=edge, parentFace=self)
+                        edgeId
+                    ] = DbEdge(edge=edge, parentFace=self)
                 self.processedEdges.append(edge)
                 self.selection.addingEdges = True
                 if not self._restoreState:
@@ -160,17 +171,6 @@ class DbFace:
                 logger.exception(e)
                 dbUtils.messageBox("Failed at edge:\n{}".format(traceback.format_exc()))
 
-    def __hash__(self):
-        return self.faceId
-
-    def __del__(self):
-        pass
-
-    def __eq__(self, other):
-        if type(other) != DbFace:
-            return NotImplemented
-        return other.faceId == self.faceId
-    
 
     def save(self):
         """
@@ -299,9 +299,9 @@ class DbFace:
     @property
     def occurrenceId(self) -> int:
         return (
-            hash(self.face.assemblyContext.entityToken)
+            calcId(self.face.assemblyContext)
             if self.face.assemblyContext
-            else hash(self.face.body.entityToken)
+            else calcId(self.face.body)
         )
 
     def removeFaceFromSelectedOccurrences(self):
