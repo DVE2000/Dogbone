@@ -21,8 +21,6 @@ if _subpath not in sys.path:
     sys.path.insert(0, _subpath)
     sys.path.insert(0, "")
     
-# import json
-# from .DbClasses import DbFace
 from .DbData import DbParams
 
 from .log import logger
