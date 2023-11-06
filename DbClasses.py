@@ -96,7 +96,9 @@ class DbFace:
         allEdges = {}  #dict key:hash(entity code): BrepEdge
 
         #populate allEdges dict with all edges associated with face vertices
-        [allEdges.update({calcId(edge): edge for edge in vertex.edges}) for vertex in faceVertices]
+        allEdges = {calcId(edge): edge 
+                    for vertex in faceVertices
+                        for edge in vertex.edges }
 
         candidateEdgesId = set(allEdges.keys()) - faceEdgesSet  #remove edges associated with face - just leaves corner edges
         candidateEdges = [allEdges[edgeId] for edgeId in candidateEdgesId] #create list of corner edges
@@ -227,6 +229,10 @@ class DbFace:
             params = self._params, 
             commandInputsEdgeSelect = self.commandInputsEdgeSelect
         )
+
+    @property
+    def component(self):
+        return self._component
 
     @property
     def entityToken(self):

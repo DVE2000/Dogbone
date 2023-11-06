@@ -123,19 +123,22 @@ def updateDogBones():
                     continue
                 selectedFace: DbFace = DbFace(face=faceAtt.parent,
                             restoreState=True)
+                # component = selectedFace.component
                 topFace, _ = dbUtils.getTopFace(selectedFace=selectedFace.face)
-                for edge in selectedFace.selectedEdges:
+                topFace = topFace.nativeObject if topFace.nativeObject else topFace
+                for edgeObj in selectedFace.selectedEdges:
                     if not toolBodies:
-                        toolBodies = edge.getToolBody(
+                        toolBodies = edgeObj.getToolBody(
                             topFace=topFace
                         )
                     else:
                         tempBrepMgr.booleanOperation(
                             toolBodies,
-                            edge.getToolBody(topFace=topFace),
+                            edgeObj.getToolBody(topFace=topFace),
                             adsk.fusion.BooleanTypes.UnionBooleanType,
                         )
                 if toolBodies:
+                    # baseFeature = component.features.itemByName("dogbone")
                     [baseFeature.updateBody(body, toolBodies) for body in baseFeature.sourceBodies]
 
 def getBodyTool():
