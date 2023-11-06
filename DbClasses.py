@@ -115,8 +115,9 @@ class DbFace:
                     continue
 
                 angle = round(dbUtils.getAngleBetweenFaces(edge) * 180 / pi, 3)
+                isRightAngle = (angle == 90) #abs(angle - 90) < 0.001
                 if (
-                    (abs(angle - 90) > 0.001)
+                    (not isRightAngle)
                     and not (self._params.acuteAngle or self._params.obtuseAngle)
                     ):  
                     continue #Angle outside tolerance and we're just doing 90 corners
@@ -142,10 +143,7 @@ class DbFace:
                     ):
                     continue #angle between min and max and doing both acute and obtuse
 
-                # if (abs(angle - 90) > 0.001) and self._params.parametric:
-                #     continue # angle greater than tolerance and doing parametric
-
-                edgeId = hash(edge.entityToken) #this normally created by the DbEdge instantiation, but it's needed earlier (I thmk!)
+                edgeId = hash(edge.entityToken) #this is normally created by the DbEdge instantiation, but it's needed earlier (I thmk!)
                 self.selection.selectedEdges[edgeId] = self._associatedEdgesDict[ 
                     edgeId
                 ] = DbEdge(edge=edge, parentFace=self)

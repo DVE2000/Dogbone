@@ -14,7 +14,6 @@
 import logging
 import os
 import sys
-import json
 
 _appPath = os.path.dirname(os.path.abspath(__file__))
 _subpath = os.path.join(f"{_appPath}", "py_packages")
@@ -22,7 +21,8 @@ if _subpath not in sys.path:
     sys.path.insert(0, _subpath)
     sys.path.insert(0, "")
     
-from .DbClasses import DbFace
+# import json
+# from .DbClasses import DbFace
 from .DbData import DbParams
 
 from .log import logger
