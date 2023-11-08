@@ -229,14 +229,14 @@ class DogboneUi:
             # we got here because the face is either not in root or is on the existing selected list
             # at this point only need to check for duplicate component selection - Only one component allowed, to save on conflict checking
             try:
-                #the comprehension in the middle of this flattens the list of lists of self.selection.selectedOccrrences.values()
+                #selectedOccurrences -> dict( key hash(occurrence.entityToken) value:[DbFace,...])
                 selectedComponentList = [
-                    faceObject.face.assemblyContext.component
+                    faceObject.component
                         for listOfObjects in self.selection.selectedOccurrences.values() 
-                            for faceObjs in listOfObjects
-                                for faceObject in faceObjs
+                            for faceObject in listOfObjects
                     if faceObject.face.assemblyContext
                 ]
+
             except KeyError:
                 eventArgs.isSelectable = True
                 return
@@ -245,9 +245,7 @@ class DogboneUi:
                 eventArgs.isSelectable = True
                 return
 
-            if (
-                    activeOccurrenceId not in self.selection.selectedOccurrences
-            ):  # check if mouse is over a face that is not already selected
+            if activeOccurrenceId not in self.selection.selectedOccurrences:  # check if mouse is over a face that is not already selected
                 eventArgs.isSelectable = False
                 return
 

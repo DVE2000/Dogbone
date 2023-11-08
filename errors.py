@@ -7,3 +7,7 @@ class FaceInvalidError(Exception):
 class EdgeInvalidError(Exception):
     def __init__(self) -> None:
         super().__init__("Edge is no longer available")
+
+class UpdateError(Exception):
+    def __init__(self) -> None:
+        super().__init__("Failed to find a body to update")

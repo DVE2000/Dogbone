@@ -92,13 +92,14 @@ class DbFace:
         # ==============================================================================
 
         faceEdgesSet = {calcId(edge) for edge in self.face.edges}
-        faceVertices = [vertex for vertex in self.face.vertices]
-        allEdges = {}  #dict key:hash(entity code): BrepEdge
+        # faceVertices = [vertex for vertex in self.face.vertices]
+        # allEdges = {}  #dict key:hash(entity code): BrepEdge
 
-        #populate allEdges dict with all edges associated with face vertices
+        #populate dict with all edges associated with face vertices
         allEdges = {calcId(edge): edge 
-                    for vertex in faceVertices
-                        for edge in vertex.edges }
+                    for vertex in self.face.vertices
+                        # for vertex in faceVertices
+                            for edge in vertex.edges }
 
         candidateEdgesId = set(allEdges.keys()) - faceEdgesSet  #remove edges associated with face - just leaves corner edges
         candidateEdges = [allEdges[edgeId] for edgeId in candidateEdgesId] #create list of corner edges
@@ -161,10 +162,10 @@ class DbFace:
                         edgeId
                     ] = DbEdge(edge=edge, parentFace=self)
                 self.processedEdges.append(edge)
-                self.selection.addingEdges = True
                 if not self._restoreState:
+                    self.selection.addingEdges = True
                     self.commandInputsEdgeSelect.addSelection(edge)
-                self.selection.addingEdges = False
+                    self.selection.addingEdges = False
 
             except EdgeInvalidError:
                 continue
@@ -182,6 +183,7 @@ class DbFace:
         params.update({"selected":self._selected})
         self.face.attributes.add(DB_GROUP, "face:"+str(self._faceId), json.dumps(params))
         self.face.attributes.add(DB_GROUP, "token:", self._entityToken)
+        [edgeObj.save() for edgeObj in self._associatedEdgesDict.values()]
 
     def restore(self):
         """
@@ -260,7 +262,7 @@ class DbFace:
     def selectedEdges(self):
         return [
             edgeObj
-            for edgeObj in self._associatedEdgesDict.values()
+                for edgeObj in self._associatedEdgesDict.values()
             if edgeObj.isSelected
         ]
     

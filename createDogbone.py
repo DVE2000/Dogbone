@@ -15,6 +15,7 @@ from .UserParameter import create_user_parameter, DB_RADIUS
 from .log import logger
 from .util import makeNative, reValidateFace
 from .constants import DB_GROUP, DB_NAME
+from .errors import UpdateError
 
 _app = adsk.core.Application.get()
 _design: adsk.fusion.Design = cast(adsk.fusion.Design, _app.activeProduct)#this should be dynamically set according to the Product/Design context!  
@@ -52,7 +53,7 @@ def createStaticDogbones(param: DbParams, selection: Selection):
                 toolCollection = adsk.core.ObjectCollection.create()
 
                 for edgeObj in selectedFace.selectedEdges:
-                    edgeObj.save()
+                    # edgeObj.save()
                     if not toolBodies:
                         toolBodies = edgeObj.getToolBody(
                             topFace=topFace
@@ -115,18 +116,19 @@ def updateDogBones():
         faceAttrs = _design.findAttributes(DB_GROUP, regex)
 
         tempBrepMgr = adsk.fusion.TemporaryBRepManager.get()
-        toolBodies = None
         
         with baseFeatureContext(baseFeature= baseFeature):
+            toolBodies = None
             for faceAtt in faceAttrs:
                 if not faceAtt.parent:
                     continue
                 selectedFace: DbFace = DbFace(face=faceAtt.parent,
                             restoreState=True)
-                # component = selectedFace.component
                 topFace, _ = dbUtils.getTopFace(selectedFace=selectedFace.face)
                 topFace = topFace.nativeObject if topFace.nativeObject else topFace
                 for edgeObj in selectedFace.selectedEdges:
+                    if not edgeObj.isSelected:
+                        continue
                     if not toolBodies:
                         toolBodies = edgeObj.getToolBody(
                             topFace=topFace
@@ -137,9 +139,9 @@ def updateDogBones():
                             edgeObj.getToolBody(topFace=topFace),
                             adsk.fusion.BooleanTypes.UnionBooleanType,
                         )
-                if toolBodies:
-                    # baseFeature = component.features.itemByName("dogbone")
-                    [baseFeature.updateBody(body, toolBodies) for body in baseFeature.sourceBodies]
+            if not toolBodies:
+                raise UpdateError
+            [baseFeature.updateBody(body, toolBodies) for body in baseFeature.sourceBodies]
 
 def getBodyTool():
     pass

@@ -2,6 +2,7 @@ import adsk.fusion, adsk.cam, adsk.core
 from typing import cast
 from contextlib import contextmanager
 from .constants import DB_GROUP, DB_NAME
+from .errors import UpdateError
 
 _app = adsk.core.Application.get()
 _design: adsk.fusion.Design = cast(adsk.fusion.Design, _app.activeProduct)
@@ -18,11 +19,18 @@ def baseFeatureContext(baseFeature: adsk.fusion.BaseFeature):
         parentGroup.isCollapsed =False 
         startPosition = _design.timeline.markerPosition
         bfTLO.rollTo(False)
+        bodiesMissing = False
         yield
+
+    except UpdateError:
+        bodiesMissing = True
 
     finally:
         _design.timeline.item(startPosition-1).rollTo(False)
         parentGroup.isCollapsed = isCollapsed
+        if bodiesMissing:
+            parentGroup.isCollapsed = True
+            parentGroup.deleteMe(deleteGroupAndContents=True)
         refresh()
 
 def refresh():
