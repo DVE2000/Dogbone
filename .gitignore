@@ -21,7 +21,7 @@ $RECYCLE.BIN/
 # .spyderworkspace
 .py_packages/pynput*
 # .py_packages/packaging*
-dogbone.log*
+dogbone.log.*
 defaults.dat
 __pycache__
 install
