@@ -10,12 +10,15 @@ LEVELS = {
 }
 
 logger = logging.getLogger("dogbone")
+[logger.removeHandler(h) for h in logger.handlers]  #make sure there are no residual handlers from last run
+
 formatter = logging.Formatter(
     "%(asctime)s ; %(name)s ; %(levelname)s ; %(lineno)d; %(message)s"
 )
-logHandler = logging.FileHandler(
-    os.path.join(os.path.dirname(os.path.abspath(__file__)), "dogbone.log"), mode="w"
+logHandler = logging.handlers.RotatingFileHandler(
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), "dogbone.log"), mode="a", backupCount=3, maxBytes = 526000
 )
 logHandler.setFormatter(formatter)
 logHandler.flush()
 logger.addHandler(logHandler)
+logger.handlers[0].doRollover()

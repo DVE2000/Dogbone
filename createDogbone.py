@@ -13,13 +13,16 @@ from .DbContext import baseFeatureContext, groupContext
 
 from .UserParameter import create_user_parameter, DB_RADIUS
 from .log import logger
-from .util import makeNative, reValidateFace
+from .util import makeNative, reValidateFace, calcId
 from .constants import DB_GROUP, DB_NAME
 from .errors import UpdateError
 
 _app = adsk.core.Application.get()
 _design: adsk.fusion.Design = cast(adsk.fusion.Design, _app.activeProduct)#this should be dynamically set according to the Product/Design context!  
-                                                                        #For the moment it works, but should be fixed in the futur
+                                                                        #For the moment it works, but should be fixed in the future
+
+logger = logging.getLogger("dogbone.createDogbone")
+logger.setLevel(logging.INFO)
 
 def debugFace(face):
     if logger.level < logging.DEBUG:
@@ -32,12 +35,14 @@ def debugFace(face):
 
 def createStaticDogbones(param: DbParams, selection: Selection):
     logger.info("Creating static dogbones")
+    global tlGroup
+    tlGroup = None
 
     tempBrepMgr = adsk.fusion.TemporaryBRepManager.get()
+    previewFaces = {0, selection}
 
-    for occurrenceFaces in selection.selectedOccurrences.values():
-        # startTlMarker = _design.timeline.markerPosition
-        with groupContext():
+    for occurrence, occurrenceFaces in selection.selectedOccurrences.items():
+        with groupContext(selection):
             topFace = None
             toolBodies = None
 
@@ -49,11 +54,9 @@ def createStaticDogbones(param: DbParams, selection: Selection):
 
             for selectedFace in occurrenceFaces:
                 component = selectedFace.component
-                selectedFace.save()
                 toolCollection = adsk.core.ObjectCollection.create()
 
                 for edgeObj in selectedFace.selectedEdges:
-                    # edgeObj.save()
                     if not toolBodies:
                         toolBodies = edgeObj.getToolBody(
                             topFace=topFace
@@ -98,8 +101,15 @@ def createStaticDogbones(param: DbParams, selection: Selection):
             )
             combine:adsk.fusion.CombineFeature = component.features.combineFeatures.add(combineFeatureInput)
 
+            #get the newly created faces 
+            createdFaces = combine.faces
+            previewFaces = [calcId(face) for face in createdFaces if occurrenceFaces[0].faceNormal.isEqualTo(dbUtils.getFaceNormal(face))]
+
             logger.debug(f"combine: {combine.name}")
 
+        selection.occurrenceTLGroup.update({occurrence: selection.tlGroup})
+        selection.occurrencePreviewFaces.update({occurrence: previewFaces})
+        
 def updateDogBones():
     """
     Recalculates and updates existing dogbones
@@ -120,9 +130,9 @@ def updateDogBones():
         with baseFeatureContext(baseFeature= baseFeature):
             toolBodies = None
             for faceAtt in faceAttrs:
-                if not faceAtt.parent:
+                if not (face:= faceAtt.parent): 
                     continue
-                selectedFace: DbFace = DbFace(face=faceAtt.parent,
+                selectedFace: DbFace = DbFace(face=face,
                             restoreState=True)
                 topFace, _ = dbUtils.getTopFace(selectedFace=selectedFace.face)
                 topFace = topFace.nativeObject if topFace.nativeObject else topFace
@@ -142,8 +152,3 @@ def updateDogBones():
             if not toolBodies:
                 raise UpdateError
             [baseFeature.updateBody(body, toolBodies) for body in baseFeature.sourceBodies]
-
-def getBodyTool():
-    pass
-
-

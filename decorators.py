@@ -22,7 +22,7 @@ _rootComp = _design.rootComponent
 pp = pprint.PrettyPrinter()
 
 logger = logging.getLogger("dogbone.decorators")
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.NOTSET)
 
 
 @dataclass()
@@ -87,6 +87,20 @@ def clearDebuggerDict(method):
 
     return decoratorWrapper
 
+def isSelectedDebug(func):
+    logger = logging.getLogger("dogbone.decorators.isSelected")
+    logger.setLevel(logging.DEBUG)    
+    @wraps(
+        func
+    )  # spoofs wrapped method so that __name__, __doc__ (ie docstring) etc. behaves like it came from the method that is being wrapped.
+    def wrapper(*_args, **_kwargs):
+        """ """
+        rtn = func(*_args, **_kwargs)
+        logger.debug(f"is selectable: {_args[1].isSelectable}")
+        return rtn
+
+    return wrapper
+
 
 # Decorator to add eventHandler
 def eventHandler(handler_cls=adsk.core.Base):
@@ -118,13 +132,13 @@ def eventHandler(handler_cls=adsk.core.Base):
                 class _Handler(handler_cls):
                     name: str = f"{notify_method.__name__}_handler"
 
-                    def notify(self, eventArgs):
+                    def notify(self, *eventArgs, **kwargs):
                         try:
                             logger.debug(
-                                f"{notify_method.__name__} handler notified: {eventArgs.firingEvent.name}"
+                                f"{notify_method.__name__} handler notified: {eventArgs[0].firingEvent.name}"
                             )
                             notify_method(
-                                *handler_args, eventArgs
+                                *handler_args, *eventArgs, **kwargs
                             )  # notify_method_self and eventArgs come from the parent scope
                             return
                         except Exception as e:

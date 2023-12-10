@@ -13,6 +13,7 @@ from . import dbutils as dbUtils
 from .util import calcId
 
 logger = logging.getLogger("dogbone.DbClasses")
+logger.setLevel(logging.NOTSET)
 
 _app = adsk.core.Application.get()
 _design: adsk.fusion.Design = cast(adsk.fusion.Design, _app.activeProduct)
@@ -24,13 +25,25 @@ class Selection:
 
         self.addingEdges: bool = False
 
-        self.selectedOccurrences = {}  # key hash(occurrence.entityToken) value:[DbFace,...]
         self.selectedFaces: Dict[int, "DbFace"] = {}
         self.selectedEdges: Dict[int, "DbEdge"] = {}
 
         self.edges: List[adsk.fusion.BRepEdge] = []
         self.faces: List[adsk.fusion.BRepFace] = []
 
+        self.selectedOccurrences: Dict[int, List["DbFace"]] = {}  # key hash(occurrence.entityToken) value:[DbFace,...]
+
+        self.occurrenceTLGroup: Dict[int, adsk.fusion.TimelineGroup] = {} #occurrenceId: associated TimelineGroup
+        self.occurrencePreviewFaces: Dict[int, List[int]] = {} #occurrenceId : List of faceIds
+
+        # - this may be a work around, but it's the only way I could get this to work, anything else seemed to pass by value
+        self.tlGroup = None  #temporary variable to get timeline group out of the context manager
+
+    @property
+    def getPreviewFaces(self):
+        return [faceId 
+                for occurrenceIdList in self.occurrencePreviewFaces 
+                    for faceId in occurrenceIdList]
 
 class DbFace:
 
@@ -52,6 +65,7 @@ class DbFace:
         )
 
         self._faceId = hash(self._entityToken)
+        self.previewFaceId = None
         self.faceNormal = dbUtils.getFaceNormal(face)
         self._refPoint = (
             face.nativeObject.pointOnFace if face.nativeObject else face.pointOnFace
@@ -329,6 +343,7 @@ class DbFace:
 class DbEdge:
     def __init__(self, edge: adsk.fusion.BRepEdge, parentFace: DbFace):
 
+
         self._refPoint = (
             edge.nativeObject.pointOnEdge if edge.nativeObject else edge.pointOnEdge
         )
@@ -351,6 +366,7 @@ class DbEdge:
         self._native = self.edge.nativeObject if self.edge.nativeObject else self.edge
         self._component = edge.body.parentComponent
         self._params = self._parentFace._params
+        logger.info(f"Edge created: {self._edgeId}")
 
         face1, face2 = (face for face in self._native.faces)
         _, face1normal = face1.evaluator.getNormalAtPoint(face1.pointOnFace)
@@ -385,14 +401,14 @@ class DbEdge:
             else (self.edge.endVertex.geometry, self.edge.startVertex.geometry)
         )
 
-        sx,sy,sz = self._nativeEndPoints[0].asArray()
-        ex,ey,ez = self._nativeEndPoints[1].asArray()
+        # sx,sy,sz = self._nativeEndPoints[0].asArray()
+        # ex,ey,ez = self._nativeEndPoints[1].asArray()
 
-        logger.debug(f'\nedge: {self.edge.tempId}'
-                    f'\n native: {self.edge.nativeObject != None}'
-                    f'\n startPoint: ({sx:.2f},{sy:.2f},{sz:.2f}),({ex:.2f},{ey:.2f},{ez:.2f})'
-                    f'\n edgeLength: {startPoint.distanceTo(endPoint):.2f}'
-                    f'\n parentFace: {self._parentFace.face.tempId}')
+        # logger.debug(f'\nedge: {self.edge.tempId}'
+        #             f'\n native: {self.edge.nativeObject != None}'
+        #             f'\n startPoint: ({sx:.2f},{sy:.2f},{sz:.2f}),({ex:.2f},{ey:.2f},{ez:.2f})'
+        #             f'\n edgeLength: {startPoint.distanceTo(endPoint):.2f}'
+        #             f'\n parentFace: {self._parentFace.face.tempId}')
         
         if self._parentFace._restoreState:
             self.restore()
@@ -514,6 +530,7 @@ class DbEdge:
                       topFace: adsk.fusion.BRepFace = None):
         from .DbData import DbParams
 
+        logger.info("Getting Toolbody")
         box = None
         topFace = topFace if topFace else dbUtils.getTopFace(self._parentFace.face)
 
@@ -525,12 +542,11 @@ class DbEdge:
         ex,ey,ez = self._nativeEndPoints[1].asArray()
         params = self._params
 
-        logger.debug(f'\nGet Tool Body:++++++++++++++++'
-                f'\n native: {self.edge.nativeObject != None}'
-                f'\n edge: {self.edge.tempId}'
-                f'\n startPoint: ({sx:.2f},{sy:.2f},{sz:.2f}),({ex:.2f},{ey:.2f},{ez:.2f})'
-                f'\n edgeLength: {startPoint.distanceTo(endPoint): .2f}')
-                # f'\n parentFace: {self._parentFace.face.tempId}')
+        # logger.debug(f'\nGet Tool Body:++++++++++++++++'
+        #         f'\n native: {self.edge.nativeObject != None}'
+        #         f'\n edge: {self.edge.tempId}'
+        #         f'\n startPoint: ({sx:.2f},{sy:.2f},{sz:.2f}),({ex:.2f},{ey:.2f},{ez:.2f})'
+        #         f'\n edgeLength: {startPoint.distanceTo(endPoint): .2f}')
         
         effectiveRadius = (params.toolDia + params.toolDiaOffset) / 2
         centreDistance = effectiveRadius * (

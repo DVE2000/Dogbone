@@ -38,8 +38,8 @@ from .DbData import DbParams
 from .DogboneUi import DogboneUi
 from .decorators import eventHandler
 from .constants import DB_NAME, COMMAND_ID, UPD_COMMAND_ID
-# from .createDogbone import createParametricDogbones, createStaticDogbones, updateDogBones
 from .createDogbone import createStaticDogbones, updateDogBones
+from .log import logger
 
 
 # Globals
@@ -53,7 +53,7 @@ ID = "id"
 DEBUGLEVEL = logging.DEBUG
 
 CONFIG_PATH = os.path.join(_appPath, "defaults.dat")
-
+logger = logging.getLogger("dogbone.main")
 
 # noinspection PyMethodMayBeStatic
 class DogboneCommand(object):
@@ -116,8 +116,6 @@ class DogboneCommand(object):
 
         self.onCreate(event=button.commandCreated)
         self.onUpdate(event=upd_button.commandCreated)
-        # self.onTerminateCommand(event=_ui.commandTerminated)  -For potential future uses 
-        # self.onWorkspaceActivated(event=_ui.workspaceActivated)
 
         # Create controls for Manufacturing Workspace
         control = self.get_solid_create_panel().controls.addCommand(
@@ -186,22 +184,6 @@ class DogboneCommand(object):
     def onUpdate(self, args: adsk.core.CommandCreatedEventArgs):
         updateDogBones()
 
-    # @eventHandler(handler_cls=adsk.core.ApplicationCommandEventHandler)
-    # def onTerminateCommand(self, args: adsk.core.ApplicationCommandEventArgs):
-    #     if _ui.activeCommand != COMMAND_ID:
-    #         return
-    #     # activeDoc = _app.activeDocument
-    #     # tdocs = [d for d in _app.documents if not d.isActive]
-    #     # tdoc = _app.documents.add(adsk.core.DocumentTypes.FusionDesignDocumentType) if not tdocs else tdocs[0]
-    #     # tdoc.activate()
-    #     # activeDoc.activate()
-    #     pass
-
-    # @eventHandler(handler_cls=adsk.core.WorkspaceEventHandler)
-    # def onWorkspaceActivated(self, args: adsk.core.WorkspaceEventArgs):
-    #     pass
-
-        
     @eventHandler(handler_cls=adsk.core.CommandCreatedEventHandler)
     def onCreate(self, args: adsk.core.CommandCreatedEventArgs):
         """
@@ -220,7 +202,8 @@ class DogboneCommand(object):
         value: [DbEdge objects, ....]
         """
 
-        global _design
+        _app = adsk.core.Application.get()
+        _design: adsk.fusion.Design = cast(adsk.fusion.Design, _app.activeProduct)
 
         if _design.designType != adsk.fusion.DesignTypes.ParametricDesignType:
             returnValue = _ui.messageBox(
@@ -237,25 +220,20 @@ class DogboneCommand(object):
         cmd: adsk.core.Command = args.command
         ui = DogboneUi(params, cmd, self.createDogbones)
 
-    def createDogbones(self, params: DbParams, selection: Selection):
+    def createDogbones(self, params: DbParams, selection: Selection, exclude=None):
         start = time.time()
 
         self.write_defaults(params)
 
-        # if params.parametric:
-        #     createParametricDogbones(params, selection)
-        # else:  # Static dogbones
-        createStaticDogbones(params, selection)
+        createdFaces = createStaticDogbones(params, selection)
 
-        #Remove check after F360 fixes their baseFeature/UI refresh issue  
+#TODO Remove check after F360 fixes their baseFeature/UI refresh issue  
         if _ui.activeWorkspace.id == "MfgWorkingModelEnv":  
             _ui.messageBox("If the tool bar becomes blank\nUse Undo then Redo (ctrl-z, ctrl-y)")
 
         logger.info(
             "all dogbones complete\n-------------------------------------------\n"
         )
-
-        self.closeLogger()
 
         if params.benchmark:
             dbUtils.messageBox(
@@ -272,6 +250,8 @@ class DogboneCommand(object):
         for handler in logger.handlers:
             handler.flush()
             handler.close()
+        [logger.parent.removeHandler(h) for h in logger.handlers]
+        logging.shutdown()
 
     @property
     def originPlane(self):
@@ -295,6 +275,7 @@ def stop(context):
     try:
         _ui.terminateActiveCommand()
         adsk.terminate()
+        dog.closeLogger()
         dog.stop(context)
     except Exception as e:
         logger.exception(e)

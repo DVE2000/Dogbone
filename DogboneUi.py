@@ -1,3 +1,4 @@
+import logging
 import os
 from typing import cast
 
@@ -7,10 +8,10 @@ from . import dbutils as dbUtils
 from .DbClasses import DbFace
 from .DbClasses import Selection
 from .DbData import DbParams
-from .decorators import eventHandler, parseDecorator
+from .decorators import eventHandler, parseDecorator, isSelectedDebug
+from .createDogbone import createStaticDogbones
 from .log import LEVELS, logger
-from .util import calcId
-
+from .util import calcId, calcOccurrenceId, setSupressionState
 
 ACUTE_ANGLE = "acuteAngle"
 ANGLE_DETECTION_GROUP = "angleDetectionGroup"
@@ -45,6 +46,9 @@ _app = adsk.core.Application.get()
 _design: adsk.fusion.Design = cast(adsk.fusion.Design, _app.activeProduct)
 _ui = _app.userInterface
 
+logger = logging.getLogger("dogbone.ui")
+logger.setLevel(logging.DEBUG)
+
 # noinspection SqlDialectInspection,SqlNoDataSourceInspection,PyMethodMayBeStatic
 class DogboneUi:
 
@@ -54,7 +58,14 @@ class DogboneUi:
         self.param = params
         self.command = command
         self.executeHandler = executeHandler
-        self.keyCode = None
+        self.isAltKeyPressed = False
+        self.isModifierPressed = False
+        self.mouseMove = False
+        self.selectionActive = False
+        self.selectionEnded = False
+        self.activeOccurrenceId = None
+        self.eventArgs = None
+        self.exclude = None
 
         self.selection = Selection()
 
@@ -65,9 +76,12 @@ class DogboneUi:
         self.onValidate(event=command.validateInputs)
         self.onPreSelect(event=command.preSelect)
         self.onExecute(event=command.execute)
-        self.onPreview(event=command.executePreview)
-        self.onKeyDown(event=command.keyDown)
-        self.onKeyUp(event=command.keyUp)
+        # self.onPreview(event=command.executePreview)
+        # self.onKeyDown(event=command.keyDown)
+        # self.onKeyUp(event=command.keyUp)
+        self.preSelectStart(event=command.preSelectStart)
+        self.preSelectEnd(event=command.preSelectEnd)
+        self.onMouseMove(event=command.mouseMove)
         # self.markingMenu(event=_ui.markingMenuDisplaying)
 
     # @eventHandler(handler_cls=adsk.core.MarkingMenuEventHandler)
@@ -113,7 +127,8 @@ class DogboneUi:
         self.param.expandModeGroup = (inputs[MODE_GROUP]).isExpanded
         self.param.expandSettingsGroup = (inputs[SETTINGS_GROUP]).isExpanded
 
-        logger.setLevel(self.param.logging)
+        toplevelLogger = logging.getLogger("dogbone")
+        toplevelLogger.setLevel(self.param.logging)
 
         self.logParams()
 
@@ -151,19 +166,86 @@ class DogboneUi:
 
     @eventHandler(handler_cls=adsk.core.CommandEventHandler)
     def onPreview(self, args):
-        pass  
+        self.executeHandler(self.param, self.selection, exclude = self.exclude)  
+
+    @eventHandler(handler_cls=adsk.core.MouseEventHandler)
+    def onMouseMove(self, args: adsk.core.MouseEventArgs):
+        self.isModifierPressed = (args.keyboardModifiers) # == adsk.core.KeyboardModifiers.AltKeyboardModifier)
+        self.mouseMove = True
+        logger.info(f"Mouse - active:{self.selectionActive} ended:{self.selectionEnded}")
+        logger.debug(f'current ID: {self.activeOccurrenceId}')
+        if self.selectionEnded:
+            self.selectionEnded = False
+            self.selectionActive = False
+            self.activeOccurrenceId = None
+            logger.debug("End Triggered")
 
     @eventHandler(handler_cls=adsk.core.SelectionEventHandler)
+    def preSelectStart(self, args: adsk.core.SelectionEventArgs):
+        logger.info(f"preSelectStart - active:{self.selectionActive} ended:{self.selectionEnded}")
+        
+        self.mouseMove = False
+        if not args.selection.entity:
+            return
+        currentId = calcOccurrenceId(args.selection.entity)
+        logger.debug(f'current ID: {currentId}')
+
+        self.selectionActive = True
+        if self.activeOccurrenceId != currentId:
+            self.activeOccurrenceId = currentId
+            self.selectionEnded = False
+            logger.debug("Trigger TLG supression")
+            if self.activeOccurrenceId in self.selection.occurrenceTLGroup:
+                tlg = self.selection.occurrenceTLGroup[self.activeOccurrenceId]
+                tlg.isCollapsed = False
+                [setSupressionState(tlo, True) for tlo in tlg]
+                [adsk.doEvents() for x in range(1000)]
+
+    @eventHandler(handler_cls=adsk.core.SelectionEventHandler)
+    def preSelectEnd(self, args: adsk.core.SelectionEventArgs):
+        logger.info(f"preSelectEnd - active:{self.selectionActive} ended:{self.selectionEnded}")
+        logger.debug(f'current ID: {self.activeOccurrenceId}')
+        self.selectionActive = False
+        self.selectionEnded = True
+        logger.debug("Trigger TLG restore")
+        if self.activeOccurrenceId in self.selection.occurrenceTLGroup:
+            tlg = self.selection.occurrenceTLGroup[self.activeOccurrenceId]
+            tlg.isCollapsed = True
+            [setSupressionState(tlo, False) for tlo in tlg]
+            [adsk.doEvents() for x in range(1000)]
+
+    @eventHandler(handler_cls=adsk.core.SelectionEventHandler)
+    @isSelectedDebug
     def onPreSelect(self, args):
         """==============================================================================
          Routine gets called with every mouse movement, if a commandInput select is active
         ==============================================================================
         """
+
+        logger.info(f"onPreSelect - active:{self.selectionActive} ended:{self.selectionEnded}")
+        logger.debug(f'current ID: {self.activeOccurrenceId}')
         eventArgs: adsk.core.SelectionEventArgs = args
         # Check which selection input the event is firing for.
         activeIn = eventArgs.firingEvent.activeInput
         if activeIn.id != FACE_SELECT and activeIn.id != EDGE_SELECT:
             return  # jump out if not dealing with either of the two selection boxes
+        self.mouseMove = False
+
+        if not self.selectionActive:
+            return
+        
+        logger.debug("In a recognized occurrence")
+
+        self.triggerFlag = False
+        logger.debug("preSelect triggered")
+
+        if self.isModifierPressed:
+            eventArgs.isSelectable = True
+        #     activeIn.addSelectionFilter("LinearEdges")
+        # else:
+        #     activeIn.selectionFilters = ("PlanarFaces",)
+
+        self.eventArgs = eventArgs
         
         self.activeEntity = eventArgs.selection.entity
 
@@ -183,15 +265,9 @@ class DogboneUi:
             if not eventArgs.selection.entity.assemblyContext:
                 # dealing with a root component body
 
-                if self.isAltKeyPressed:
-                    activeIn.addSelectionFilter("LinearEdges")
-                else:
-                    activeIn.selectionFilters = ("PlanarFaces",)
-
-
-                activeBodyHash = calcId(eventArgs.selection.entity.body)
                 try:
-                    faceObjs = self.selection.selectedOccurrences[activeBodyHash]
+#TODO adding loop selection for mortises
+                    faceObjs = self.selection.selectedOccurrences[self.activeOccurrenceId]
                     for faceObj in faceObjs:
                         if faceObj.isSelected:
                             primaryFace = faceObj
@@ -201,15 +277,17 @@ class DogboneUi:
                                     edges = [loop.edge 
                                              for loops in faceObj.face.loops 
                                                 for loop in loops if not loop.isOuter]
-                                    return eventArgs.selection.entity in edges
-                            break
+                                    eventArgs.isSelectable = eventArgs.selection.entity in edges
+                                    return
+                            eventArgs.isSelectable = True
+                            return
                     else:
                         eventArgs.isSelectable = True
                         return
                 except (KeyError, IndexError) as e:
                     return
 
-                primaryFaceNormal = dbUtils.getFaceNormal(primaryFace.face)
+                primaryFaceNormal = primaryFace.faceNormal
                 if primaryFaceNormal.isParallelTo(
                         dbUtils.getFaceNormal(eventArgs.selection.entity)
                 ):
@@ -223,7 +301,7 @@ class DogboneUi:
             # Start of occurrence face processing
             # ==============================================================================
             activeOccurrence = eventArgs.selection.entity.assemblyContext
-            activeOccurrenceId = calcId(activeOccurrence)
+            # self.activeOccurrenceId = calcOccurrenceId(eventArgs.selection.entity)
             activeComponent = activeOccurrence.component
 
             # we got here because the face is either not in root or is on the existing selected list
@@ -245,12 +323,12 @@ class DogboneUi:
                 eventArgs.isSelectable = True
                 return
 
-            if activeOccurrenceId not in self.selection.selectedOccurrences:  # check if mouse is over a face that is not already selected
+            if self.activeOccurrenceId not in self.selection.selectedOccurrences:  # check if mouse is over a face that is not already selected
                 eventArgs.isSelectable = False
                 return
 
             try:
-                faces = self.selection.selectedOccurrences[activeOccurrenceId]
+                faces = self.selection.selectedOccurrences[self.activeOccurrenceId]
                 for face in faces:
                     if face.isSelected:
                         primaryFace = face
@@ -260,7 +338,7 @@ class DogboneUi:
                         return
             except KeyError:
                 return
-            primaryFaceNormal = dbUtils.getFaceNormal(primaryFace.face)
+            primaryFaceNormal = primaryFace.faceNormal
             if primaryFaceNormal.isParallelTo(
                     dbUtils.getFaceNormal(eventArgs.selection.entity)
             ):
@@ -303,10 +381,12 @@ class DogboneUi:
     def onKeyDown(self, args: adsk.core.KeyboardEventArgs):
         keyCode = args.keyCode
         modifierMask = args.modifierMask
-        if modifierMask & keyCode:
+        altKeyModifier = modifierMask == adsk.core.KeyboardModifiers.AltKeyboardModifier
+        if not keyCode == adsk.core.KeyCodes.AltKeyCode:
             self.isAltKeyPressed = False
             return
-        self.isAltKeyPressed = (keyCode == adsk.core.KeyCodes.AltKeyCode)
+        self.isAltKeyPressed = True
+        logger.debug("Alt key pressed")
         return
 
 
@@ -314,9 +394,11 @@ class DogboneUi:
     def onKeyUp(self, args: adsk.core.KeyboardEventArgs):
         keyCode = args.keyCode
         modifierMask = args.modifierMask
-        if modifierMask & keyCode:
+        altIsPressed = keyCode == adsk.core.KeyCodes.AltKeyCode
+        if not altIsPressed:
             return
         self.isAltKeyPressed = False
+        logger.debug("Alt key released")
 
 
     @eventHandler(handler_cls=adsk.core.InputChangedEventHandler)
@@ -422,13 +504,15 @@ class DogboneUi:
                     input.commandInputs.itemById(FACE_SELECT).hasFocus = True
                     input.commandInputs.itemById(EDGE_SELECT).isVisible = False
                     return
-
+                
                 # Else find the missing face in selection
                 selectionSet = {
                     calcId(cast(adsk.fusion.BRepEdge, s.selection(i).entity))
                     for i in range(s.selectionCount)
+                     if s.selection(i).entity
                 }
-                missingFaces = set(self.selection.selectedFaces.keys()) ^ selectionSet
+                selectedFaces = set(self.selection.selectedFaces) - set(self.selection.getPreviewFaces)
+                missingFaces = set(selectedFaces) ^ selectionSet
                 input.commandInputs.itemById(EDGE_SELECT).isVisible = True
                 input.commandInputs.itemById(EDGE_SELECT).hasFocus = True
 
@@ -442,7 +526,7 @@ class DogboneUi:
                 return
 
             # ==============================================================================
-            #             Face has been added - assume that the last selection entity is the one added
+            #             Face has been added - find it by set subtraction
             # ==============================================================================
             input.commandInputs.itemById(EDGE_SELECT).isVisible = True
             input.commandInputs.itemById(EDGE_SELECT).hasFocus = True
@@ -452,23 +536,19 @@ class DogboneUi:
                     cast(adsk.fusion.BRepEdge, s.selection(i).entity)
                 ): s.selection(i).entity
                 for i in range(s.selectionCount)
+                if s.selection(i).entity
             }
 
-            addedFaces = set(self.selection.selectedFaces.keys()) ^ set(
-                selectionDict.keys()
-            )  # get difference -> results in
+            selectedFaces = set(self.selection.selectedFaces) - set(self.selection.getPreviewFaces)
+            addedFaces = set(selectedFaces) ^ set(selectionDict)  # get difference -> results in set of added Face IDs
 
             for faceId in addedFaces:
                 changedEntity = selectionDict[
                     faceId
                 ] 
-                activeOccurrenceId = (
-                    calcId(changedEntity.assemblyContext)
-                    if changedEntity.assemblyContext
-                    else calcId(changedEntity.body)
-                )
+                self.addedFaceOccurrenceId = calcOccurrenceId(changedEntity)
 
-                faces = self.selection.selectedOccurrences.get(activeOccurrenceId, [])
+                faces = self.selection.selectedOccurrences.get(self.addedFaceOccurrenceId, [])
 
                 faces += (
                     t := [
@@ -483,11 +563,12 @@ class DogboneUi:
                     ]
                 )
                 self.selection.selectedOccurrences[
-                    activeOccurrenceId
+                    self.addedFaceOccurrenceId
                 ] = faces  # adds a face to a list of faces associated with this occurrence
+                logger.debug(f"{self.addedFaceOccurrenceId} inserted into self.selection.selectedOccurrences")
                 self.selection.selectedFaces.update({faceObj.faceId: faceObj for faceObj in t})
 
-                [self.selection.selectedFaces[face_id].selectAll()for face_id in addedFaces]
+                [self.selection.selectedFaces[face_id].selectAll() for face_id in addedFaces]
 
                 input.commandInputs.itemById(FACE_SELECT).hasFocus = True
             return

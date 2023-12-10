@@ -3,6 +3,7 @@ from typing import cast
 from contextlib import contextmanager
 from .constants import DB_GROUP, DB_NAME
 from .errors import UpdateError
+from .DbClasses import Selection
 
 _app = adsk.core.Application.get()
 _design: adsk.fusion.Design = cast(adsk.fusion.Design, _app.activeProduct)
@@ -19,26 +20,21 @@ def baseFeatureContext(baseFeature: adsk.fusion.BaseFeature):
         parentGroup.isCollapsed =False 
         startPosition = _design.timeline.markerPosition
         bfTLO.rollTo(False)
-        bodiesMissing = False
+        missing = False
         yield
 
     except UpdateError:
-        bodiesMissing = True
+        missing = True
 
     finally:
         _design.timeline.item(startPosition-1).rollTo(False)
         parentGroup.isCollapsed = isCollapsed
-        if bodiesMissing:
+        if missing:
             parentGroup.isCollapsed = True
             parentGroup.deleteMe(deleteGroupAndContents=True)
-        refresh()
-
-def refresh():
-    pass
-
 
 @contextmanager
-def groupContext():
+def groupContext(selection: Selection):
     global _design
     _app = adsk.core.Application.get()
     _design = cast(adsk.fusion.Design, _app.activeProduct)
@@ -55,4 +51,5 @@ def groupContext():
                 endTlMarker
             )
             timelineGroup.name = DB_NAME
-        refresh()
+            selection.tlGroup = timelineGroup
+        pass
