@@ -1,514 +1,97 @@
-2023-12-10 11:21:07,305 ; dogbone.ui ; INFO ; 175; Mouse - active:False ended:False
-2023-12-10 11:21:07,383 ; dogbone.ui ; DEBUG ; 176; current ID: None
-2023-12-10 11:21:07,442 ; dogbone.ui ; INFO ; 175; Mouse - active:False ended:False
-2023-12-10 11:21:07,473 ; dogbone.ui ; DEBUG ; 176; current ID: None
-2023-12-10 11:21:07,511 ; dogbone.ui ; INFO ; 175; Mouse - active:False ended:False
-2023-12-10 11:21:07,554 ; dogbone.ui ; DEBUG ; 176; current ID: None
-2023-12-10 11:21:07,591 ; dogbone.ui ; INFO ; 175; Mouse - active:False ended:False
-2023-12-10 11:21:07,623 ; dogbone.ui ; DEBUG ; 176; current ID: None
-2023-12-10 11:21:07,661 ; dogbone.ui ; INFO ; 175; Mouse - active:False ended:False
-2023-12-10 11:21:07,692 ; dogbone.ui ; DEBUG ; 176; current ID: None
-2023-12-10 11:21:07,730 ; dogbone.ui ; INFO ; 175; Mouse - active:False ended:False
-2023-12-10 11:21:07,754 ; dogbone.ui ; DEBUG ; 176; current ID: None
-2023-12-10 11:21:07,792 ; dogbone.ui ; INFO ; 225; onPreSelect - active:False ended:False
-2023-12-10 11:21:07,823 ; dogbone.ui ; DEBUG ; 226; current ID: None
-2023-12-10 11:21:07,854 ; dogbone.decorators.isSelected ; DEBUG ; 99; is selectable: True
-2023-12-10 11:21:07,891 ; dogbone.ui ; INFO ; 225; onPreSelect - active:False ended:False
-2023-12-10 11:21:07,922 ; dogbone.ui ; DEBUG ; 226; current ID: None
-2023-12-10 11:21:07,953 ; dogbone.decorators.isSelected ; DEBUG ; 99; is selectable: True
-2023-12-10 11:21:07,989 ; dogbone.ui ; INFO ; 185; preSelectStart - active:False ended:False
-2023-12-10 11:21:08,021 ; dogbone.ui ; DEBUG ; 191; current ID: 5633855123433482782
-2023-12-10 11:21:08,047 ; dogbone.ui ; DEBUG ; 197; Trigger TLG supression
-2023-12-10 11:21:08,078 ; dogbone.ui ; INFO ; 175; Mouse - active:True ended:False
-2023-12-10 11:21:08,109 ; dogbone.ui ; DEBUG ; 176; current ID: 5633855123433482782
-2023-12-10 11:21:08,154 ; dogbone.ui ; INFO ; 206; preSelectEnd - active:True ended:False
-2023-12-10 11:21:08,186 ; dogbone.ui ; DEBUG ; 207; current ID: 5633855123433482782
-2023-12-10 11:21:08,217 ; dogbone.ui ; DEBUG ; 210; Trigger TLG restore
-2023-12-10 11:21:08,254 ; dogbone.ui ; INFO ; 175; Mouse - active:False ended:True
-2023-12-10 11:21:08,285 ; dogbone.ui ; DEBUG ; 176; current ID: 5633855123433482782
-2023-12-10 11:21:08,316 ; dogbone.ui ; DEBUG ; 181; End Triggered
-2023-12-10 11:21:08,354 ; dogbone.ui ; INFO ; 175; Mouse - active:False ended:False
-2023-12-10 11:21:08,386 ; dogbone.ui ; DEBUG ; 176; current ID: None
-2023-12-10 11:21:08,430 ; dogbone.ui ; INFO ; 225; onPreSelect - active:False ended:False
-2023-12-10 11:21:08,461 ; dogbone.ui ; DEBUG ; 226; current ID: None
-2023-12-10 11:21:08,492 ; dogbone.decorators.isSelected ; DEBUG ; 99; is selectable: True
-2023-12-10 11:21:08,541 ; dogbone.ui ; INFO ; 225; onPreSelect - active:False ended:False
-2023-12-10 11:21:08,573 ; dogbone.ui ; DEBUG ; 226; current ID: None
-2023-12-10 11:21:08,605 ; dogbone.decorators.isSelected ; DEBUG ; 99; is selectable: True
-2023-12-10 11:21:08,643 ; dogbone.ui ; INFO ; 185; preSelectStart - active:False ended:False
-2023-12-10 11:21:08,669 ; dogbone.ui ; DEBUG ; 191; current ID: 5633855123433482782
-2023-12-10 11:21:08,701 ; dogbone.ui ; DEBUG ; 197; Trigger TLG supression
-2023-12-10 11:21:08,737 ; dogbone.ui ; INFO ; 175; Mouse - active:True ended:False
-2023-12-10 11:21:08,768 ; dogbone.ui ; DEBUG ; 176; current ID: 5633855123433482782
-2023-12-10 11:21:08,806 ; dogbone.ui ; INFO ; 225; onPreSelect - active:True ended:False
-2023-12-10 11:21:08,837 ; dogbone.ui ; DEBUG ; 226; current ID: 5633855123433482782
-2023-12-10 11:21:08,868 ; dogbone.ui ; DEBUG ; 237; In a recognized occurrence
-2023-12-10 11:21:08,894 ; dogbone.ui ; DEBUG ; 240; preSelect triggered
-2023-12-10 11:21:08,925 ; dogbone.decorators.isSelected ; DEBUG ; 99; is selectable: True
-2023-12-10 11:21:08,963 ; dogbone.ui ; INFO ; 225; onPreSelect - active:True ended:False
-2023-12-10 11:21:08,988 ; dogbone.ui ; DEBUG ; 226; current ID: 5633855123433482782
-2023-12-10 11:21:09,019 ; dogbone.ui ; DEBUG ; 237; In a recognized occurrence
-2023-12-10 11:21:09,044 ; dogbone.ui ; DEBUG ; 240; preSelect triggered
-2023-12-10 11:21:09,076 ; dogbone.decorators.isSelected ; DEBUG ; 99; is selectable: True
-2023-12-10 11:21:09,113 ; dogbone.ui ; INFO ; 175; Mouse - active:True ended:False
-2023-12-10 11:21:09,145 ; dogbone.ui ; DEBUG ; 176; current ID: 5633855123433482782
-2023-12-10 11:21:12,139 ; dogbone.ui ; INFO ; 225; onPreSelect - active:True ended:False
-2023-12-10 11:21:12,169 ; dogbone.ui ; DEBUG ; 226; current ID: 5633855123433482782
-2023-12-10 11:21:12,201 ; dogbone.ui ; DEBUG ; 237; In a recognized occurrence
-2023-12-10 11:21:12,227 ; dogbone.ui ; DEBUG ; 240; preSelect triggered
-2023-12-10 11:21:12,259 ; dogbone.decorators.isSelected ; DEBUG ; 99; is selectable: True
-2023-12-10 11:21:12,297 ; dogbone.ui ; INFO ; 225; onPreSelect - active:True ended:False
-2023-12-10 11:21:12,329 ; dogbone.ui ; DEBUG ; 226; current ID: 5633855123433482782
-2023-12-10 11:21:12,361 ; dogbone.ui ; DEBUG ; 237; In a recognized occurrence
-2023-12-10 11:21:12,392 ; dogbone.ui ; DEBUG ; 240; preSelect triggered
-2023-12-10 11:21:12,423 ; dogbone.decorators.isSelected ; DEBUG ; 99; is selectable: True
-2023-12-10 11:21:12,454 ; dogbone.ui ; INFO ; 175; Mouse - active:True ended:False
-2023-12-10 11:21:12,485 ; dogbone.ui ; DEBUG ; 176; current ID: 5633855123433482782
-2023-12-10 11:21:12,518 ; dogbone.ui ; INFO ; 206; preSelectEnd - active:True ended:False
-2023-12-10 11:21:12,548 ; dogbone.ui ; DEBUG ; 207; current ID: 5633855123433482782
-2023-12-10 11:21:12,592 ; dogbone.ui ; DEBUG ; 210; Trigger TLG restore
-2023-12-10 11:21:12,629 ; dogbone.ui ; INFO ; 175; Mouse - active:False ended:True
-2023-12-10 11:21:12,660 ; dogbone.ui ; DEBUG ; 176; current ID: 5633855123433482782
-2023-12-10 11:21:12,685 ; dogbone.ui ; DEBUG ; 181; End Triggered
-2023-12-10 11:21:13,850 ; dogbone.ui ; INFO ; 175; Mouse - active:False ended:False
-2023-12-10 11:21:13,874 ; dogbone.ui ; DEBUG ; 176; current ID: None
-2023-12-10 11:21:13,913 ; dogbone.ui ; INFO ; 175; Mouse - active:False ended:False
-2023-12-10 11:21:13,943 ; dogbone.ui ; DEBUG ; 176; current ID: None
-2023-12-10 11:21:13,981 ; dogbone.ui ; INFO ; 175; Mouse - active:False ended:False
-2023-12-10 11:21:14,006 ; dogbone.ui ; DEBUG ; 176; current ID: None
-2023-12-10 11:21:14,044 ; dogbone.ui ; INFO ; 175; Mouse - active:False ended:False
-2023-12-10 11:21:14,088 ; dogbone.ui ; DEBUG ; 176; current ID: None
-2023-12-10 11:21:14,128 ; dogbone.ui ; INFO ; 175; Mouse - active:False ended:False
-2023-12-10 11:21:14,159 ; dogbone.ui ; DEBUG ; 176; current ID: None
-2023-12-10 11:21:14,197 ; dogbone.ui ; INFO ; 175; Mouse - active:False ended:False
-2023-12-10 11:21:14,222 ; dogbone.ui ; DEBUG ; 176; current ID: None
-2023-12-10 11:21:14,254 ; dogbone.ui ; INFO ; 175; Mouse - active:False ended:False
-2023-12-10 11:21:14,285 ; dogbone.ui ; DEBUG ; 176; current ID: None
-2023-12-10 11:21:14,316 ; dogbone.ui ; INFO ; 175; Mouse - active:False ended:False
-2023-12-10 11:21:14,347 ; dogbone.ui ; DEBUG ; 176; current ID: None
-2023-12-10 11:21:14,385 ; dogbone.ui ; INFO ; 175; Mouse - active:False ended:False
-2023-12-10 11:21:14,416 ; dogbone.ui ; DEBUG ; 176; current ID: None
-2023-12-10 11:21:14,454 ; dogbone.ui ; INFO ; 175; Mouse - active:False ended:False
-2023-12-10 11:21:14,479 ; dogbone.ui ; DEBUG ; 176; current ID: None
-2023-12-10 11:21:14,517 ; dogbone.ui ; INFO ; 175; Mouse - active:False ended:False
-2023-12-10 11:21:14,548 ; dogbone.ui ; DEBUG ; 176; current ID: None
-2023-12-10 11:21:14,580 ; dogbone.ui ; INFO ; 175; Mouse - active:False ended:False
-2023-12-10 11:21:14,611 ; dogbone.ui ; DEBUG ; 176; current ID: None
-2023-12-10 11:21:14,649 ; dogbone.ui ; INFO ; 175; Mouse - active:False ended:False
-2023-12-10 11:21:14,674 ; dogbone.ui ; DEBUG ; 176; current ID: None
-2023-12-10 11:21:14,711 ; dogbone.ui ; INFO ; 175; Mouse - active:False ended:False
-2023-12-10 11:21:14,742 ; dogbone.ui ; DEBUG ; 176; current ID: None
-2023-12-10 11:21:14,780 ; dogbone.ui ; INFO ; 175; Mouse - active:False ended:False
-2023-12-10 11:21:14,811 ; dogbone.ui ; DEBUG ; 176; current ID: None
-2023-12-10 11:21:14,849 ; dogbone.ui ; INFO ; 175; Mouse - active:False ended:False
-2023-12-10 11:21:14,880 ; dogbone.ui ; DEBUG ; 176; current ID: None
-2023-12-10 11:21:14,924 ; dogbone.ui ; INFO ; 175; Mouse - active:False ended:False
-2023-12-10 11:21:14,949 ; dogbone.ui ; DEBUG ; 176; current ID: None
-2023-12-10 11:21:14,987 ; dogbone.ui ; INFO ; 175; Mouse - active:False ended:False
-2023-12-10 11:21:15,018 ; dogbone.ui ; DEBUG ; 176; current ID: None
-2023-12-10 11:21:15,056 ; dogbone.ui ; INFO ; 175; Mouse - active:False ended:False
-2023-12-10 11:21:15,081 ; dogbone.ui ; DEBUG ; 176; current ID: None
-2023-12-10 11:21:15,120 ; dogbone.ui ; INFO ; 175; Mouse - active:False ended:False
-2023-12-10 11:21:15,151 ; dogbone.ui ; DEBUG ; 176; current ID: None
-2023-12-10 11:21:15,189 ; dogbone.ui ; INFO ; 175; Mouse - active:False ended:False
-2023-12-10 11:21:15,221 ; dogbone.ui ; DEBUG ; 176; current ID: None
-2023-12-10 11:21:15,259 ; dogbone.ui ; INFO ; 225; onPreSelect - active:False ended:False
-2023-12-10 11:21:15,291 ; dogbone.ui ; DEBUG ; 226; current ID: None
-2023-12-10 11:21:15,316 ; dogbone.decorators.isSelected ; DEBUG ; 99; is selectable: True
-2023-12-10 11:21:15,353 ; dogbone.ui ; INFO ; 225; onPreSelect - active:False ended:False
-2023-12-10 11:21:15,385 ; dogbone.ui ; DEBUG ; 226; current ID: None
-2023-12-10 11:21:15,416 ; dogbone.decorators.isSelected ; DEBUG ; 99; is selectable: True
-2023-12-10 11:21:15,452 ; dogbone.ui ; INFO ; 185; preSelectStart - active:False ended:False
-2023-12-10 11:21:15,483 ; dogbone.ui ; DEBUG ; 191; current ID: 5633855123433482782
-2023-12-10 11:21:15,521 ; dogbone.ui ; DEBUG ; 197; Trigger TLG supression
-2023-12-10 11:21:15,559 ; dogbone.ui ; INFO ; 175; Mouse - active:True ended:False
-2023-12-10 11:21:15,590 ; dogbone.ui ; DEBUG ; 176; current ID: 5633855123433482782
-2023-12-10 11:21:15,633 ; dogbone.ui ; INFO ; 225; onPreSelect - active:True ended:False
-2023-12-10 11:21:15,664 ; dogbone.ui ; DEBUG ; 226; current ID: 5633855123433482782
-2023-12-10 11:21:15,689 ; dogbone.ui ; DEBUG ; 237; In a recognized occurrence
-2023-12-10 11:21:15,720 ; dogbone.ui ; DEBUG ; 240; preSelect triggered
-2023-12-10 11:21:15,752 ; dogbone.decorators.isSelected ; DEBUG ; 99; is selectable: True
-2023-12-10 11:21:15,789 ; dogbone.ui ; INFO ; 225; onPreSelect - active:True ended:False
-2023-12-10 11:21:15,819 ; dogbone.ui ; DEBUG ; 226; current ID: 5633855123433482782
-2023-12-10 11:21:15,851 ; dogbone.ui ; DEBUG ; 237; In a recognized occurrence
-2023-12-10 11:21:15,882 ; dogbone.ui ; DEBUG ; 240; preSelect triggered
-2023-12-10 11:21:15,913 ; dogbone.decorators.isSelected ; DEBUG ; 99; is selectable: True
-2023-12-10 11:21:15,951 ; dogbone.ui ; INFO ; 175; Mouse - active:True ended:False
-2023-12-10 11:21:15,983 ; dogbone.ui ; DEBUG ; 176; current ID: 5633855123433482782
-2023-12-10 11:21:16,248 ; dogbone.ui ; INFO ; 225; onPreSelect - active:True ended:False
-2023-12-10 11:21:16,286 ; dogbone.ui ; DEBUG ; 226; current ID: 5633855123433482782
-2023-12-10 11:21:16,318 ; dogbone.ui ; DEBUG ; 237; In a recognized occurrence
-2023-12-10 11:21:16,348 ; dogbone.ui ; DEBUG ; 240; preSelect triggered
-2023-12-10 11:21:16,379 ; dogbone.decorators.isSelected ; DEBUG ; 99; is selectable: True
-2023-12-10 11:21:16,417 ; dogbone.ui ; INFO ; 225; onPreSelect - active:True ended:False
-2023-12-10 11:21:16,448 ; dogbone.ui ; DEBUG ; 226; current ID: 5633855123433482782
-2023-12-10 11:21:16,479 ; dogbone.ui ; DEBUG ; 237; In a recognized occurrence
-2023-12-10 11:21:16,510 ; dogbone.ui ; DEBUG ; 240; preSelect triggered
-2023-12-10 11:21:16,542 ; dogbone.decorators.isSelected ; DEBUG ; 99; is selectable: True
-2023-12-10 11:21:16,579 ; dogbone.ui ; INFO ; 175; Mouse - active:True ended:False
-2023-12-10 11:21:16,604 ; dogbone.ui ; DEBUG ; 176; current ID: 5633855123433482782
-2023-12-10 11:21:16,642 ; dogbone.ui ; INFO ; 225; onPreSelect - active:True ended:False
-2023-12-10 11:21:16,674 ; dogbone.ui ; DEBUG ; 226; current ID: 5633855123433482782
-2023-12-10 11:21:16,705 ; dogbone.ui ; DEBUG ; 237; In a recognized occurrence
-2023-12-10 11:21:16,731 ; dogbone.ui ; DEBUG ; 240; preSelect triggered
-2023-12-10 11:21:16,763 ; dogbone.decorators.isSelected ; DEBUG ; 99; is selectable: True
-2023-12-10 11:21:16,801 ; dogbone.ui ; INFO ; 225; onPreSelect - active:True ended:False
-2023-12-10 11:21:16,832 ; dogbone.ui ; DEBUG ; 226; current ID: 5633855123433482782
-2023-12-10 11:21:16,863 ; dogbone.ui ; DEBUG ; 237; In a recognized occurrence
-2023-12-10 11:21:16,894 ; dogbone.ui ; DEBUG ; 240; preSelect triggered
-2023-12-10 11:21:16,920 ; dogbone.decorators.isSelected ; DEBUG ; 99; is selectable: True
-2023-12-10 11:21:16,957 ; dogbone.ui ; INFO ; 175; Mouse - active:True ended:False
-2023-12-10 11:21:16,982 ; dogbone.ui ; DEBUG ; 176; current ID: 5633855123433482782
-2023-12-10 11:21:17,020 ; dogbone.ui ; INFO ; 225; onPreSelect - active:True ended:False
-2023-12-10 11:21:17,046 ; dogbone.ui ; DEBUG ; 226; current ID: 5633855123433482782
-2023-12-10 11:21:17,077 ; dogbone.ui ; DEBUG ; 237; In a recognized occurrence
-2023-12-10 11:21:17,109 ; dogbone.ui ; DEBUG ; 240; preSelect triggered
-2023-12-10 11:21:17,141 ; dogbone.decorators.isSelected ; DEBUG ; 99; is selectable: True
-2023-12-10 11:21:17,179 ; dogbone.ui ; INFO ; 225; onPreSelect - active:True ended:False
-2023-12-10 11:21:17,210 ; dogbone.ui ; DEBUG ; 226; current ID: 5633855123433482782
-2023-12-10 11:21:17,242 ; dogbone.ui ; DEBUG ; 237; In a recognized occurrence
-2023-12-10 11:21:17,274 ; dogbone.ui ; DEBUG ; 240; preSelect triggered
-2023-12-10 11:21:17,299 ; dogbone.decorators.isSelected ; DEBUG ; 99; is selectable: True
-2023-12-10 11:21:17,337 ; dogbone.ui ; INFO ; 175; Mouse - active:True ended:False
-2023-12-10 11:21:17,368 ; dogbone.ui ; DEBUG ; 176; current ID: 5633855123433482782
-2023-12-10 11:21:17,406 ; dogbone.ui ; INFO ; 225; onPreSelect - active:True ended:False
-2023-12-10 11:21:17,438 ; dogbone.ui ; DEBUG ; 226; current ID: 5633855123433482782
-2023-12-10 11:21:17,463 ; dogbone.ui ; DEBUG ; 237; In a recognized occurrence
-2023-12-10 11:21:17,494 ; dogbone.ui ; DEBUG ; 240; preSelect triggered
-2023-12-10 11:21:17,525 ; dogbone.decorators.isSelected ; DEBUG ; 99; is selectable: True
-2023-12-10 11:21:17,565 ; dogbone.ui ; INFO ; 225; onPreSelect - active:True ended:False
-2023-12-10 11:21:17,608 ; dogbone.ui ; DEBUG ; 226; current ID: 5633855123433482782
-2023-12-10 11:21:17,639 ; dogbone.ui ; DEBUG ; 237; In a recognized occurrence
-2023-12-10 11:21:17,670 ; dogbone.ui ; DEBUG ; 240; preSelect triggered
-2023-12-10 11:21:17,701 ; dogbone.decorators.isSelected ; DEBUG ; 99; is selectable: True
-2023-12-10 11:21:17,739 ; dogbone.ui ; INFO ; 175; Mouse - active:True ended:False
-2023-12-10 11:21:17,770 ; dogbone.ui ; DEBUG ; 176; current ID: 5633855123433482782
-2023-12-10 11:21:17,809 ; dogbone.ui ; INFO ; 225; onPreSelect - active:True ended:False
-2023-12-10 11:21:17,841 ; dogbone.ui ; DEBUG ; 226; current ID: 5633855123433482782
-2023-12-10 11:21:17,872 ; dogbone.ui ; DEBUG ; 237; In a recognized occurrence
-2023-12-10 11:21:17,897 ; dogbone.ui ; DEBUG ; 240; preSelect triggered
-2023-12-10 11:21:17,929 ; dogbone.decorators.isSelected ; DEBUG ; 99; is selectable: True
-2023-12-10 11:21:17,967 ; dogbone.ui ; INFO ; 225; onPreSelect - active:True ended:False
-2023-12-10 11:21:17,993 ; dogbone.ui ; DEBUG ; 226; current ID: 5633855123433482782
-2023-12-10 11:21:18,025 ; dogbone.ui ; DEBUG ; 237; In a recognized occurrence
-2023-12-10 11:21:18,050 ; dogbone.ui ; DEBUG ; 240; preSelect triggered
-2023-12-10 11:21:18,082 ; dogbone.decorators.isSelected ; DEBUG ; 99; is selectable: True
-2023-12-10 11:21:18,120 ; dogbone.ui ; INFO ; 225; onPreSelect - active:True ended:False
-2023-12-10 11:21:18,152 ; dogbone.ui ; DEBUG ; 226; current ID: 5633855123433482782
-2023-12-10 11:21:18,183 ; dogbone.ui ; DEBUG ; 237; In a recognized occurrence
-2023-12-10 11:21:18,215 ; dogbone.ui ; DEBUG ; 240; preSelect triggered
-2023-12-10 11:21:18,247 ; dogbone.decorators.isSelected ; DEBUG ; 99; is selectable: True
-2023-12-10 11:21:18,285 ; dogbone.ui ; INFO ; 225; onPreSelect - active:True ended:False
-2023-12-10 11:21:18,311 ; dogbone.ui ; DEBUG ; 226; current ID: 5633855123433482782
-2023-12-10 11:21:18,343 ; dogbone.ui ; DEBUG ; 237; In a recognized occurrence
-2023-12-10 11:21:18,375 ; dogbone.ui ; DEBUG ; 240; preSelect triggered
-2023-12-10 11:21:18,407 ; dogbone.decorators.isSelected ; DEBUG ; 99; is selectable: True
-2023-12-10 11:21:18,444 ; dogbone.ui ; INFO ; 175; Mouse - active:True ended:False
-2023-12-10 11:21:18,476 ; dogbone.ui ; DEBUG ; 176; current ID: 5633855123433482782
-2023-12-10 11:21:18,515 ; dogbone.ui ; INFO ; 225; onPreSelect - active:True ended:False
-2023-12-10 11:21:18,547 ; dogbone.ui ; DEBUG ; 226; current ID: 5633855123433482782
-2023-12-10 11:21:18,573 ; dogbone.ui ; DEBUG ; 237; In a recognized occurrence
-2023-12-10 11:21:18,605 ; dogbone.ui ; DEBUG ; 240; preSelect triggered
-2023-12-10 11:21:18,631 ; dogbone.decorators.isSelected ; DEBUG ; 99; is selectable: True
-2023-12-10 11:21:18,669 ; dogbone.ui ; INFO ; 225; onPreSelect - active:True ended:False
-2023-12-10 11:21:18,701 ; dogbone.ui ; DEBUG ; 226; current ID: 5633855123433482782
-2023-12-10 11:21:18,726 ; dogbone.ui ; DEBUG ; 237; In a recognized occurrence
-2023-12-10 11:21:18,758 ; dogbone.ui ; DEBUG ; 240; preSelect triggered
-2023-12-10 11:21:18,789 ; dogbone.decorators.isSelected ; DEBUG ; 99; is selectable: True
-2023-12-10 11:21:18,827 ; dogbone.ui ; INFO ; 206; preSelectEnd - active:True ended:False
-2023-12-10 11:21:18,853 ; dogbone.ui ; DEBUG ; 207; current ID: 5633855123433482782
-2023-12-10 11:21:18,884 ; dogbone.ui ; DEBUG ; 210; Trigger TLG restore
-2023-12-10 11:21:18,915 ; dogbone.ui ; INFO ; 185; preSelectStart - active:False ended:True
-2023-12-10 11:21:18,947 ; dogbone.ui ; DEBUG ; 191; current ID: 5633855123433482782
-2023-12-10 11:21:18,986 ; dogbone.ui ; INFO ; 175; Mouse - active:True ended:True
-2023-12-10 11:21:19,012 ; dogbone.ui ; DEBUG ; 176; current ID: 5633855123433482782
-2023-12-10 11:21:19,044 ; dogbone.ui ; DEBUG ; 181; End Triggered
-2023-12-10 11:21:19,088 ; dogbone.ui ; INFO ; 225; onPreSelect - active:False ended:False
-2023-12-10 11:21:19,114 ; dogbone.ui ; DEBUG ; 226; current ID: None
-2023-12-10 11:21:19,146 ; dogbone.decorators.isSelected ; DEBUG ; 99; is selectable: True
-2023-12-10 11:21:19,183 ; dogbone.ui ; INFO ; 225; onPreSelect - active:False ended:False
-2023-12-10 11:21:19,215 ; dogbone.ui ; DEBUG ; 226; current ID: None
-2023-12-10 11:21:19,247 ; dogbone.decorators.isSelected ; DEBUG ; 99; is selectable: True
-2023-12-10 11:21:19,285 ; dogbone.ui ; INFO ; 175; Mouse - active:False ended:False
-2023-12-10 11:21:19,316 ; dogbone.ui ; DEBUG ; 176; current ID: None
-2023-12-10 11:21:19,355 ; dogbone.ui ; INFO ; 225; onPreSelect - active:False ended:False
-2023-12-10 11:21:19,381 ; dogbone.ui ; DEBUG ; 226; current ID: None
-2023-12-10 11:21:19,412 ; dogbone.decorators.isSelected ; DEBUG ; 99; is selectable: True
-2023-12-10 11:21:19,450 ; dogbone.ui ; INFO ; 225; onPreSelect - active:False ended:False
-2023-12-10 11:21:19,482 ; dogbone.ui ; DEBUG ; 226; current ID: None
-2023-12-10 11:21:19,514 ; dogbone.decorators.isSelected ; DEBUG ; 99; is selectable: True
-2023-12-10 11:21:19,545 ; dogbone.ui ; INFO ; 175; Mouse - active:False ended:False
-2023-12-10 11:21:19,577 ; dogbone.ui ; DEBUG ; 176; current ID: None
-2023-12-10 11:21:20,120 ; dogbone.ui ; INFO ; 225; onPreSelect - active:False ended:False
-2023-12-10 11:21:20,150 ; dogbone.ui ; DEBUG ; 226; current ID: None
-2023-12-10 11:21:20,182 ; dogbone.decorators.isSelected ; DEBUG ; 99; is selectable: True
-2023-12-10 11:21:20,220 ; dogbone.ui ; INFO ; 225; onPreSelect - active:False ended:False
-2023-12-10 11:21:20,246 ; dogbone.ui ; DEBUG ; 226; current ID: None
-2023-12-10 11:21:20,271 ; dogbone.decorators.isSelected ; DEBUG ; 99; is selectable: True
-2023-12-10 11:21:20,307 ; dogbone.ui ; INFO ; 175; Mouse - active:False ended:False
-2023-12-10 11:21:20,339 ; dogbone.ui ; DEBUG ; 176; current ID: None
-2023-12-10 11:21:20,379 ; dogbone.ui ; INFO ; 225; onPreSelect - active:False ended:False
-2023-12-10 11:21:20,409 ; dogbone.ui ; DEBUG ; 226; current ID: None
-2023-12-10 11:21:20,441 ; dogbone.decorators.isSelected ; DEBUG ; 99; is selectable: True
-2023-12-10 11:21:20,479 ; dogbone.ui ; INFO ; 225; onPreSelect - active:False ended:False
-2023-12-10 11:21:20,511 ; dogbone.ui ; DEBUG ; 226; current ID: None
-2023-12-10 11:21:20,537 ; dogbone.decorators.isSelected ; DEBUG ; 99; is selectable: True
-2023-12-10 11:21:20,581 ; dogbone.ui ; INFO ; 175; Mouse - active:False ended:False
-2023-12-10 11:21:20,613 ; dogbone.ui ; DEBUG ; 176; current ID: None
-2023-12-10 11:21:20,653 ; dogbone.ui ; INFO ; 225; onPreSelect - active:False ended:False
-2023-12-10 11:21:20,684 ; dogbone.ui ; DEBUG ; 226; current ID: None
-2023-12-10 11:21:20,716 ; dogbone.decorators.isSelected ; DEBUG ; 99; is selectable: True
-2023-12-10 11:21:20,754 ; dogbone.ui ; INFO ; 225; onPreSelect - active:False ended:False
-2023-12-10 11:21:20,786 ; dogbone.ui ; DEBUG ; 226; current ID: None
-2023-12-10 11:21:20,812 ; dogbone.decorators.isSelected ; DEBUG ; 99; is selectable: True
-2023-12-10 11:21:20,850 ; dogbone.ui ; INFO ; 175; Mouse - active:False ended:False
-2023-12-10 11:21:20,876 ; dogbone.ui ; DEBUG ; 176; current ID: None
-2023-12-10 11:21:20,915 ; dogbone.ui ; INFO ; 225; onPreSelect - active:False ended:False
-2023-12-10 11:21:20,947 ; dogbone.ui ; DEBUG ; 226; current ID: None
-2023-12-10 11:21:20,973 ; dogbone.decorators.isSelected ; DEBUG ; 99; is selectable: True
-2023-12-10 11:21:21,012 ; dogbone.ui ; INFO ; 225; onPreSelect - active:False ended:False
-2023-12-10 11:21:21,043 ; dogbone.ui ; DEBUG ; 226; current ID: None
-2023-12-10 11:21:21,075 ; dogbone.decorators.isSelected ; DEBUG ; 99; is selectable: True
-2023-12-10 11:21:21,125 ; dogbone.ui ; INFO ; 175; Mouse - active:False ended:False
-2023-12-10 11:21:21,157 ; dogbone.ui ; DEBUG ; 176; current ID: None
-2023-12-10 11:21:21,198 ; dogbone.ui ; INFO ; 225; onPreSelect - active:False ended:False
-2023-12-10 11:21:21,224 ; dogbone.ui ; DEBUG ; 226; current ID: None
-2023-12-10 11:21:21,256 ; dogbone.decorators.isSelected ; DEBUG ; 99; is selectable: True
-2023-12-10 11:21:21,294 ; dogbone.ui ; INFO ; 225; onPreSelect - active:False ended:False
-2023-12-10 11:21:21,326 ; dogbone.ui ; DEBUG ; 226; current ID: None
-2023-12-10 11:21:21,358 ; dogbone.decorators.isSelected ; DEBUG ; 99; is selectable: True
-2023-12-10 11:21:21,396 ; dogbone.ui ; INFO ; 175; Mouse - active:False ended:False
-2023-12-10 11:21:21,425 ; dogbone.ui ; DEBUG ; 176; current ID: None
-2023-12-10 11:21:21,459 ; dogbone.ui ; INFO ; 225; onPreSelect - active:False ended:False
-2023-12-10 11:21:21,491 ; dogbone.ui ; DEBUG ; 226; current ID: None
-2023-12-10 11:21:21,523 ; dogbone.decorators.isSelected ; DEBUG ; 99; is selectable: True
-2023-12-10 11:21:21,561 ; dogbone.ui ; INFO ; 225; onPreSelect - active:False ended:False
-2023-12-10 11:21:21,593 ; dogbone.ui ; DEBUG ; 226; current ID: None
-2023-12-10 11:21:21,619 ; dogbone.decorators.isSelected ; DEBUG ; 99; is selectable: True
-2023-12-10 11:21:21,651 ; dogbone.ui ; INFO ; 175; Mouse - active:False ended:False
-2023-12-10 11:21:21,683 ; dogbone.ui ; DEBUG ; 176; current ID: None
-2023-12-10 11:21:21,724 ; dogbone.ui ; INFO ; 225; onPreSelect - active:False ended:False
-2023-12-10 11:21:21,750 ; dogbone.ui ; DEBUG ; 226; current ID: None
-2023-12-10 11:21:21,775 ; dogbone.decorators.isSelected ; DEBUG ; 99; is selectable: True
-2023-12-10 11:21:21,813 ; dogbone.ui ; INFO ; 225; onPreSelect - active:False ended:False
-2023-12-10 11:21:21,845 ; dogbone.ui ; DEBUG ; 226; current ID: None
-2023-12-10 11:21:21,877 ; dogbone.decorators.isSelected ; DEBUG ; 99; is selectable: True
-2023-12-10 11:21:21,915 ; dogbone.ui ; INFO ; 175; Mouse - active:False ended:False
-2023-12-10 11:21:21,947 ; dogbone.ui ; DEBUG ; 176; current ID: None
-2023-12-10 11:21:21,988 ; dogbone.ui ; INFO ; 225; onPreSelect - active:False ended:False
-2023-12-10 11:21:22,020 ; dogbone.ui ; DEBUG ; 226; current ID: None
-2023-12-10 11:21:22,052 ; dogbone.decorators.isSelected ; DEBUG ; 99; is selectable: True
-2023-12-10 11:21:22,090 ; dogbone.ui ; INFO ; 225; onPreSelect - active:False ended:False
-2023-12-10 11:21:22,122 ; dogbone.ui ; DEBUG ; 226; current ID: None
-2023-12-10 11:21:22,153 ; dogbone.decorators.isSelected ; DEBUG ; 99; is selectable: True
-2023-12-10 11:21:22,185 ; dogbone.ui ; INFO ; 175; Mouse - active:False ended:False
-2023-12-10 11:21:22,211 ; dogbone.ui ; DEBUG ; 176; current ID: None
-2023-12-10 11:21:22,267 ; dogbone.ui ; INFO ; 225; onPreSelect - active:False ended:False
-2023-12-10 11:21:22,293 ; dogbone.ui ; DEBUG ; 226; current ID: None
-2023-12-10 11:21:22,319 ; dogbone.decorators.isSelected ; DEBUG ; 99; is selectable: True
-2023-12-10 11:21:22,357 ; dogbone.ui ; INFO ; 225; onPreSelect - active:False ended:False
-2023-12-10 11:21:22,389 ; dogbone.ui ; DEBUG ; 226; current ID: None
-2023-12-10 11:21:22,421 ; dogbone.decorators.isSelected ; DEBUG ; 99; is selectable: True
-2023-12-10 11:21:22,459 ; dogbone.ui ; INFO ; 175; Mouse - active:False ended:False
-2023-12-10 11:21:22,491 ; dogbone.ui ; DEBUG ; 176; current ID: None
-2023-12-10 11:21:22,524 ; dogbone.ui ; INFO ; 225; onPreSelect - active:False ended:False
-2023-12-10 11:21:22,556 ; dogbone.ui ; DEBUG ; 226; current ID: None
-2023-12-10 11:21:22,588 ; dogbone.decorators.isSelected ; DEBUG ; 99; is selectable: True
-2023-12-10 11:21:22,626 ; dogbone.ui ; INFO ; 225; onPreSelect - active:False ended:False
-2023-12-10 11:21:22,656 ; dogbone.ui ; DEBUG ; 226; current ID: None
-2023-12-10 11:21:22,688 ; dogbone.decorators.isSelected ; DEBUG ; 99; is selectable: True
-2023-12-10 11:21:22,726 ; dogbone.ui ; INFO ; 175; Mouse - active:False ended:False
-2023-12-10 11:21:22,758 ; dogbone.ui ; DEBUG ; 176; current ID: None
-2023-12-10 11:21:22,798 ; dogbone.ui ; INFO ; 225; onPreSelect - active:False ended:False
-2023-12-10 11:21:22,824 ; dogbone.ui ; DEBUG ; 226; current ID: None
-2023-12-10 11:21:22,856 ; dogbone.decorators.isSelected ; DEBUG ; 99; is selectable: True
-2023-12-10 11:21:22,894 ; dogbone.ui ; INFO ; 225; onPreSelect - active:False ended:False
-2023-12-10 11:21:22,925 ; dogbone.ui ; DEBUG ; 226; current ID: None
-2023-12-10 11:21:22,957 ; dogbone.decorators.isSelected ; DEBUG ; 99; is selectable: True
-2023-12-10 11:21:22,995 ; dogbone.ui ; INFO ; 225; onPreSelect - active:False ended:False
-2023-12-10 11:21:23,027 ; dogbone.ui ; DEBUG ; 226; current ID: None
-2023-12-10 11:21:23,065 ; dogbone.decorators.isSelected ; DEBUG ; 99; is selectable: True
-2023-12-10 11:21:23,103 ; dogbone.ui ; INFO ; 206; preSelectEnd - active:False ended:False
-2023-12-10 11:21:23,129 ; dogbone.ui ; DEBUG ; 207; current ID: None
-2023-12-10 11:21:23,160 ; dogbone.ui ; DEBUG ; 210; Trigger TLG restore
-2023-12-10 11:21:23,204 ; dogbone.ui ; INFO ; 185; preSelectStart - active:False ended:True
-2023-12-10 11:21:23,236 ; dogbone.ui ; DEBUG ; 191; current ID: -670301767652089470
-2023-12-10 11:21:23,267 ; dogbone.ui ; DEBUG ; 197; Trigger TLG supression
-2023-12-10 11:21:23,299 ; dogbone.ui ; INFO ; 175; Mouse - active:True ended:False
-2023-12-10 11:21:23,331 ; dogbone.ui ; DEBUG ; 176; current ID: -670301767652089470
-2023-12-10 11:21:23,376 ; dogbone.ui ; INFO ; 225; onPreSelect - active:True ended:False
-2023-12-10 11:21:23,401 ; dogbone.ui ; DEBUG ; 226; current ID: -670301767652089470
-2023-12-10 11:21:23,433 ; dogbone.ui ; DEBUG ; 237; In a recognized occurrence
-2023-12-10 11:21:23,465 ; dogbone.ui ; DEBUG ; 240; preSelect triggered
-2023-12-10 11:21:23,497 ; dogbone.decorators.isSelected ; DEBUG ; 99; is selectable: True
-2023-12-10 11:21:23,535 ; dogbone.ui ; INFO ; 225; onPreSelect - active:True ended:False
-2023-12-10 11:21:23,567 ; dogbone.ui ; DEBUG ; 226; current ID: -670301767652089470
-2023-12-10 11:21:23,593 ; dogbone.ui ; DEBUG ; 237; In a recognized occurrence
-2023-12-10 11:21:23,625 ; dogbone.ui ; DEBUG ; 240; preSelect triggered
-2023-12-10 11:21:23,656 ; dogbone.decorators.isSelected ; DEBUG ; 99; is selectable: True
-2023-12-10 11:21:23,688 ; dogbone.ui ; INFO ; 225; onPreSelect - active:True ended:False
-2023-12-10 11:21:23,720 ; dogbone.ui ; DEBUG ; 226; current ID: -670301767652089470
-2023-12-10 11:21:23,752 ; dogbone.ui ; DEBUG ; 237; In a recognized occurrence
-2023-12-10 11:21:23,777 ; dogbone.ui ; DEBUG ; 240; preSelect triggered
-2023-12-10 11:21:23,808 ; dogbone.decorators.isSelected ; DEBUG ; 99; is selectable: True
-2023-12-10 11:21:23,846 ; dogbone.ui ; INFO ; 175; Mouse - active:True ended:False
-2023-12-10 11:21:23,872 ; dogbone.ui ; DEBUG ; 176; current ID: -670301767652089470
-2023-12-10 11:21:23,912 ; dogbone.ui ; INFO ; 225; onPreSelect - active:True ended:False
-2023-12-10 11:21:23,938 ; dogbone.ui ; DEBUG ; 226; current ID: -670301767652089470
-2023-12-10 11:21:23,970 ; dogbone.ui ; DEBUG ; 237; In a recognized occurrence
-2023-12-10 11:21:24,002 ; dogbone.ui ; DEBUG ; 240; preSelect triggered
-2023-12-10 11:21:24,033 ; dogbone.decorators.isSelected ; DEBUG ; 99; is selectable: True
-2023-12-10 11:21:24,071 ; dogbone.ui ; INFO ; 225; onPreSelect - active:True ended:False
-2023-12-10 11:21:24,103 ; dogbone.ui ; DEBUG ; 226; current ID: -670301767652089470
-2023-12-10 11:21:24,135 ; dogbone.ui ; DEBUG ; 237; In a recognized occurrence
-2023-12-10 11:21:24,167 ; dogbone.ui ; DEBUG ; 240; preSelect triggered
-2023-12-10 11:21:24,199 ; dogbone.decorators.isSelected ; DEBUG ; 99; is selectable: True
-2023-12-10 11:21:24,237 ; dogbone.ui ; INFO ; 225; onPreSelect - active:True ended:False
-2023-12-10 11:21:24,269 ; dogbone.ui ; DEBUG ; 226; current ID: -670301767652089470
-2023-12-10 11:21:24,301 ; dogbone.ui ; DEBUG ; 237; In a recognized occurrence
-2023-12-10 11:21:24,332 ; dogbone.ui ; DEBUG ; 240; preSelect triggered
-2023-12-10 11:21:24,358 ; dogbone.decorators.isSelected ; DEBUG ; 99; is selectable: True
-2023-12-10 11:21:24,388 ; dogbone.ui ; INFO ; 175; Mouse - active:True ended:False
-2023-12-10 11:21:24,420 ; dogbone.ui ; DEBUG ; 176; current ID: -670301767652089470
-2023-12-10 11:21:24,454 ; dogbone.ui ; INFO ; 225; onPreSelect - active:True ended:False
-2023-12-10 11:21:24,486 ; dogbone.ui ; DEBUG ; 226; current ID: -670301767652089470
-2023-12-10 11:21:24,518 ; dogbone.ui ; DEBUG ; 237; In a recognized occurrence
-2023-12-10 11:21:24,550 ; dogbone.ui ; DEBUG ; 240; preSelect triggered
-2023-12-10 11:21:24,575 ; dogbone.decorators.isSelected ; DEBUG ; 99; is selectable: True
-2023-12-10 11:21:24,613 ; dogbone.ui ; INFO ; 225; onPreSelect - active:True ended:False
-2023-12-10 11:21:24,645 ; dogbone.ui ; DEBUG ; 226; current ID: -670301767652089470
-2023-12-10 11:21:24,677 ; dogbone.ui ; DEBUG ; 237; In a recognized occurrence
-2023-12-10 11:21:24,709 ; dogbone.ui ; DEBUG ; 240; preSelect triggered
-2023-12-10 11:21:24,741 ; dogbone.decorators.isSelected ; DEBUG ; 99; is selectable: True
-2023-12-10 11:21:24,778 ; dogbone.ui ; INFO ; 225; onPreSelect - active:True ended:False
-2023-12-10 11:21:24,810 ; dogbone.ui ; DEBUG ; 226; current ID: -670301767652089470
-2023-12-10 11:21:24,842 ; dogbone.ui ; DEBUG ; 237; In a recognized occurrence
-2023-12-10 11:21:24,874 ; dogbone.ui ; DEBUG ; 240; preSelect triggered
-2023-12-10 11:21:24,899 ; dogbone.decorators.isSelected ; DEBUG ; 99; is selectable: True
-2023-12-10 11:21:24,943 ; dogbone.ui ; INFO ; 175; Mouse - active:True ended:False
-2023-12-10 11:21:24,969 ; dogbone.ui ; DEBUG ; 176; current ID: -670301767652089470
-2023-12-10 11:21:25,011 ; dogbone.ui ; INFO ; 225; onPreSelect - active:True ended:False
-2023-12-10 11:21:25,043 ; dogbone.ui ; DEBUG ; 226; current ID: -670301767652089470
-2023-12-10 11:21:25,068 ; dogbone.ui ; DEBUG ; 237; In a recognized occurrence
-2023-12-10 11:21:25,100 ; dogbone.ui ; DEBUG ; 240; preSelect triggered
-2023-12-10 11:21:25,132 ; dogbone.decorators.isSelected ; DEBUG ; 99; is selectable: True
-2023-12-10 11:21:25,162 ; dogbone.ui ; INFO ; 225; onPreSelect - active:True ended:False
-2023-12-10 11:21:25,194 ; dogbone.ui ; DEBUG ; 226; current ID: -670301767652089470
-2023-12-10 11:21:25,224 ; dogbone.ui ; DEBUG ; 237; In a recognized occurrence
-2023-12-10 11:21:25,250 ; dogbone.ui ; DEBUG ; 240; preSelect triggered
-2023-12-10 11:21:25,281 ; dogbone.decorators.isSelected ; DEBUG ; 99; is selectable: True
-2023-12-10 11:21:25,319 ; dogbone.ui ; INFO ; 225; onPreSelect - active:True ended:False
-2023-12-10 11:21:25,345 ; dogbone.ui ; DEBUG ; 226; current ID: -670301767652089470
-2023-12-10 11:21:25,370 ; dogbone.ui ; DEBUG ; 237; In a recognized occurrence
-2023-12-10 11:21:25,402 ; dogbone.ui ; DEBUG ; 240; preSelect triggered
-2023-12-10 11:21:25,427 ; dogbone.decorators.isSelected ; DEBUG ; 99; is selectable: True
-2023-12-10 11:21:25,459 ; dogbone.ui ; INFO ; 175; Mouse - active:True ended:False
-2023-12-10 11:21:25,491 ; dogbone.ui ; DEBUG ; 176; current ID: -670301767652089470
-2023-12-10 11:21:27,232 ; dogbone.ui ; INFO ; 225; onPreSelect - active:True ended:False
-2023-12-10 11:21:27,256 ; dogbone.ui ; DEBUG ; 226; current ID: -670301767652089470
-2023-12-10 11:21:27,288 ; dogbone.ui ; DEBUG ; 237; In a recognized occurrence
-2023-12-10 11:21:27,314 ; dogbone.ui ; DEBUG ; 240; preSelect triggered
-2023-12-10 11:21:27,358 ; dogbone.decorators.isSelected ; DEBUG ; 99; is selectable: True
-2023-12-10 11:21:27,389 ; dogbone.ui ; INFO ; 225; onPreSelect - active:True ended:False
-2023-12-10 11:21:27,421 ; dogbone.ui ; DEBUG ; 226; current ID: -670301767652089470
-2023-12-10 11:21:27,453 ; dogbone.ui ; DEBUG ; 237; In a recognized occurrence
-2023-12-10 11:21:27,485 ; dogbone.ui ; DEBUG ; 240; preSelect triggered
-2023-12-10 11:21:27,517 ; dogbone.decorators.isSelected ; DEBUG ; 99; is selectable: True
-2023-12-10 11:21:27,561 ; dogbone.ui ; INFO ; 225; onPreSelect - active:True ended:False
-2023-12-10 11:21:27,593 ; dogbone.ui ; DEBUG ; 226; current ID: -670301767652089470
-2023-12-10 11:21:27,625 ; dogbone.ui ; DEBUG ; 237; In a recognized occurrence
-2023-12-10 11:21:27,651 ; dogbone.ui ; DEBUG ; 240; preSelect triggered
-2023-12-10 11:21:27,683 ; dogbone.decorators.isSelected ; DEBUG ; 99; is selectable: True
-2023-12-10 11:21:27,721 ; dogbone.ui ; INFO ; 175; Mouse - active:True ended:False
-2023-12-10 11:21:27,747 ; dogbone.ui ; DEBUG ; 176; current ID: -670301767652089470
-2023-12-10 11:21:27,786 ; dogbone.ui ; INFO ; 225; onPreSelect - active:True ended:False
-2023-12-10 11:21:27,818 ; dogbone.ui ; DEBUG ; 226; current ID: -670301767652089470
-2023-12-10 11:21:27,850 ; dogbone.ui ; DEBUG ; 237; In a recognized occurrence
-2023-12-10 11:21:27,882 ; dogbone.ui ; DEBUG ; 240; preSelect triggered
-2023-12-10 11:21:27,908 ; dogbone.decorators.isSelected ; DEBUG ; 99; is selectable: True
-2023-12-10 11:21:27,946 ; dogbone.ui ; INFO ; 225; onPreSelect - active:True ended:False
-2023-12-10 11:21:27,972 ; dogbone.ui ; DEBUG ; 226; current ID: -670301767652089470
-2023-12-10 11:21:28,004 ; dogbone.ui ; DEBUG ; 237; In a recognized occurrence
-2023-12-10 11:21:28,036 ; dogbone.ui ; DEBUG ; 240; preSelect triggered
-2023-12-10 11:21:28,068 ; dogbone.decorators.isSelected ; DEBUG ; 99; is selectable: True
-2023-12-10 11:21:28,106 ; dogbone.ui ; INFO ; 225; onPreSelect - active:True ended:False
-2023-12-10 11:21:28,137 ; dogbone.ui ; DEBUG ; 226; current ID: -670301767652089470
-2023-12-10 11:21:28,167 ; dogbone.ui ; DEBUG ; 237; In a recognized occurrence
-2023-12-10 11:21:28,199 ; dogbone.ui ; DEBUG ; 240; preSelect triggered
-2023-12-10 11:21:28,231 ; dogbone.decorators.isSelected ; DEBUG ; 99; is selectable: True
-2023-12-10 11:21:28,263 ; dogbone.ui ; INFO ; 175; Mouse - active:True ended:False
-2023-12-10 11:21:28,295 ; dogbone.ui ; DEBUG ; 176; current ID: -670301767652089470
-2023-12-10 11:21:28,335 ; dogbone.ui ; INFO ; 225; onPreSelect - active:True ended:False
-2023-12-10 11:21:28,367 ; dogbone.ui ; DEBUG ; 226; current ID: -670301767652089470
-2023-12-10 11:21:28,399 ; dogbone.ui ; DEBUG ; 237; In a recognized occurrence
-2023-12-10 11:21:28,425 ; dogbone.ui ; DEBUG ; 240; preSelect triggered
-2023-12-10 11:21:28,451 ; dogbone.decorators.isSelected ; DEBUG ; 99; is selectable: True
-2023-12-10 11:21:28,489 ; dogbone.ui ; INFO ; 225; onPreSelect - active:True ended:False
-2023-12-10 11:21:28,514 ; dogbone.ui ; DEBUG ; 226; current ID: -670301767652089470
-2023-12-10 11:21:28,546 ; dogbone.ui ; DEBUG ; 237; In a recognized occurrence
-2023-12-10 11:21:28,572 ; dogbone.ui ; DEBUG ; 240; preSelect triggered
-2023-12-10 11:21:28,604 ; dogbone.decorators.isSelected ; DEBUG ; 99; is selectable: True
-2023-12-10 11:21:28,636 ; dogbone.ui ; INFO ; 206; preSelectEnd - active:True ended:False
-2023-12-10 11:21:28,668 ; dogbone.ui ; DEBUG ; 207; current ID: -670301767652089470
-2023-12-10 11:21:28,700 ; dogbone.ui ; DEBUG ; 210; Trigger TLG restore
-2023-12-10 11:21:28,731 ; dogbone.ui ; INFO ; 185; preSelectStart - active:False ended:True
-2023-12-10 11:21:28,763 ; dogbone.ui ; DEBUG ; 191; current ID: -670301767652089470
-2023-12-10 11:21:28,796 ; dogbone.ui ; INFO ; 175; Mouse - active:True ended:True
-2023-12-10 11:21:28,828 ; dogbone.ui ; DEBUG ; 176; current ID: -670301767652089470
-2023-12-10 11:21:28,860 ; dogbone.ui ; DEBUG ; 181; End Triggered
-2023-12-10 11:21:28,904 ; dogbone.ui ; INFO ; 225; onPreSelect - active:False ended:False
-2023-12-10 11:21:28,930 ; dogbone.ui ; DEBUG ; 226; current ID: None
-2023-12-10 11:21:28,962 ; dogbone.decorators.isSelected ; DEBUG ; 99; is selectable: True
-2023-12-10 11:21:29,000 ; dogbone.ui ; INFO ; 225; onPreSelect - active:False ended:False
-2023-12-10 11:21:29,026 ; dogbone.ui ; DEBUG ; 226; current ID: None
-2023-12-10 11:21:29,058 ; dogbone.decorators.isSelected ; DEBUG ; 99; is selectable: True
-2023-12-10 11:21:29,090 ; dogbone.ui ; INFO ; 175; Mouse - active:False ended:False
-2023-12-10 11:21:29,116 ; dogbone.ui ; DEBUG ; 176; current ID: None
-2023-12-10 11:21:29,685 ; dogbone.ui ; INFO ; 225; onPreSelect - active:False ended:False
-2023-12-10 11:21:29,715 ; dogbone.ui ; DEBUG ; 226; current ID: None
-2023-12-10 11:21:29,747 ; dogbone.decorators.isSelected ; DEBUG ; 99; is selectable: True
-2023-12-10 11:21:29,785 ; dogbone.ui ; INFO ; 225; onPreSelect - active:False ended:False
-2023-12-10 11:21:29,817 ; dogbone.ui ; DEBUG ; 226; current ID: None
-2023-12-10 11:21:29,843 ; dogbone.decorators.isSelected ; DEBUG ; 99; is selectable: True
-2023-12-10 11:21:29,881 ; dogbone.ui ; INFO ; 175; Mouse - active:False ended:False
-2023-12-10 11:21:29,913 ; dogbone.ui ; DEBUG ; 176; current ID: None
-2023-12-10 11:21:29,955 ; dogbone.ui ; INFO ; 206; preSelectEnd - active:False ended:False
-2023-12-10 11:21:29,987 ; dogbone.ui ; DEBUG ; 207; current ID: None
-2023-12-10 11:21:30,019 ; dogbone.ui ; DEBUG ; 210; Trigger TLG restore
-2023-12-10 11:21:30,057 ; dogbone.ui ; INFO ; 175; Mouse - active:False ended:True
-2023-12-10 11:21:30,089 ; dogbone.ui ; DEBUG ; 176; current ID: None
-2023-12-10 11:21:30,121 ; dogbone.ui ; DEBUG ; 181; End Triggered
-2023-12-10 11:21:30,177 ; dogbone.ui ; INFO ; 175; Mouse - active:False ended:False
-2023-12-10 11:21:30,209 ; dogbone.ui ; DEBUG ; 176; current ID: None
-2023-12-10 11:21:30,248 ; dogbone.ui ; INFO ; 175; Mouse - active:False ended:False
-2023-12-10 11:21:30,274 ; dogbone.ui ; DEBUG ; 176; current ID: None
-2023-12-10 11:21:30,319 ; dogbone.ui ; INFO ; 175; Mouse - active:False ended:False
-2023-12-10 11:21:30,351 ; dogbone.ui ; DEBUG ; 176; current ID: None
-2023-12-10 11:21:31,622 ; dogbone.ui ; INFO ; 175; Mouse - active:False ended:False
-2023-12-10 11:21:31,652 ; dogbone.ui ; DEBUG ; 176; current ID: None
-2023-12-10 11:21:32,641 ; dogbone.ui ; INFO ; 175; Mouse - active:False ended:False
-2023-12-10 11:21:32,671 ; dogbone.ui ; DEBUG ; 176; current ID: None
-2023-12-10 11:21:32,705 ; dogbone.ui ; INFO ; 175; Mouse - active:False ended:False
-2023-12-10 11:21:32,749 ; dogbone.ui ; DEBUG ; 176; current ID: None
-2023-12-10 11:21:32,788 ; dogbone.ui ; INFO ; 175; Mouse - active:False ended:False
-2023-12-10 11:21:32,819 ; dogbone.ui ; DEBUG ; 176; current ID: None
-2023-12-10 11:21:32,864 ; dogbone.ui ; INFO ; 175; Mouse - active:False ended:False
-2023-12-10 11:21:32,896 ; dogbone.ui ; DEBUG ; 176; current ID: None
-2023-12-10 11:21:32,934 ; dogbone.ui ; INFO ; 175; Mouse - active:False ended:False
-2023-12-10 11:21:32,966 ; dogbone.ui ; DEBUG ; 176; current ID: None
-2023-12-10 11:21:33,004 ; dogbone.ui ; INFO ; 175; Mouse - active:False ended:False
-2023-12-10 11:21:33,036 ; dogbone.ui ; DEBUG ; 176; current ID: None
-2023-12-10 11:21:33,488 ; dogbone.ui ; INFO ; 175; Mouse - active:False ended:False
-2023-12-10 11:21:33,518 ; dogbone.ui ; DEBUG ; 176; current ID: None
-2023-12-10 11:21:33,558 ; dogbone.ui ; INFO ; 175; Mouse - active:False ended:False
-2023-12-10 11:21:33,590 ; dogbone.ui ; DEBUG ; 176; current ID: None
-2023-12-10 11:21:33,629 ; dogbone.ui ; INFO ; 175; Mouse - active:False ended:False
-2023-12-10 11:21:33,667 ; dogbone.ui ; DEBUG ; 176; current ID: None
-2023-12-10 11:21:33,706 ; dogbone.ui ; INFO ; 175; Mouse - active:False ended:False
-2023-12-10 11:21:33,737 ; dogbone.ui ; DEBUG ; 176; current ID: None
-2023-12-10 11:21:34,068 ; dogbone.ui ; INFO ; 175; Mouse - active:False ended:False
-2023-12-10 11:21:34,097 ; dogbone.ui ; DEBUG ; 176; current ID: None
-2023-12-10 11:21:34,149 ; dogbone.ui ; INFO ; 175; Mouse - active:False ended:False
-2023-12-10 11:21:34,181 ; dogbone.ui ; DEBUG ; 176; current ID: None
-2023-12-10 11:21:34,226 ; dogbone.ui ; INFO ; 175; Mouse - active:False ended:False
-2023-12-10 11:21:34,256 ; dogbone.ui ; DEBUG ; 176; current ID: None
+2023-12-11 14:35:06,562 ; dogbone.ui ; INFO ; 186; Mouse - state:idle
+2023-12-11 14:35:06,599 ; dogbone.ui ; INFO ; 186; Mouse - state:idle
+2023-12-11 14:35:06,637 ; dogbone.ui ; INFO ; 186; Mouse - state:idle
+2023-12-11 14:35:06,669 ; dogbone.ui ; INFO ; 186; Mouse - state:idle
+2023-12-11 14:35:06,707 ; dogbone.ui ; INFO ; 186; Mouse - state:idle
+2023-12-11 14:35:06,745 ; dogbone.ui ; INFO ; 186; Mouse - state:idle
+2023-12-11 14:35:06,784 ; dogbone.ui ; INFO ; 186; Mouse - state:idle
+2023-12-11 14:35:06,822 ; dogbone.ui ; INFO ; 186; Mouse - state:idle
+2023-12-11 14:35:06,860 ; dogbone.ui ; INFO ; 186; Mouse - state:idle
+2023-12-11 14:35:06,930 ; dogbone.ui ; INFO ; 186; Mouse - state:idle
+2023-12-11 14:35:06,968 ; dogbone.ui ; INFO ; 186; Mouse - state:idle
+2023-12-11 14:35:07,007 ; dogbone.ui ; INFO ; 186; Mouse - state:idle
+2023-12-11 14:35:07,047 ; dogbone.ui ; INFO ; 186; Mouse - state:idle
+2023-12-11 14:35:07,085 ; dogbone.ui ; INFO ; 186; Mouse - state:idle
+2023-12-11 14:35:07,123 ; dogbone.ui ; INFO ; 186; Mouse - state:idle
+2023-12-11 14:35:07,155 ; dogbone.ui ; INFO ; 186; Mouse - state:idle
+2023-12-11 14:35:07,188 ; dogbone.ui ; INFO ; 186; Mouse - state:idle
+2023-12-11 14:35:07,226 ; dogbone.ui ; INFO ; 186; Mouse - state:idle
+2023-12-11 14:35:07,424 ; dogbone.ui ; INFO ; 186; Mouse - state:idle
+2023-12-11 14:35:07,463 ; dogbone.ui ; INFO ; 186; Mouse - state:idle
+2023-12-11 14:35:07,495 ; dogbone.ui ; INFO ; 186; Mouse - state:idle
+2023-12-11 14:35:07,533 ; dogbone.ui ; INFO ; 186; Mouse - state:idle
+2023-12-11 14:35:07,571 ; dogbone.ui ; INFO ; 186; Mouse - state:idle
+2023-12-11 14:35:07,610 ; dogbone.ui ; INFO ; 186; Mouse - state:idle
+2023-12-11 14:35:07,648 ; dogbone.ui ; INFO ; 186; Mouse - state:idle
+2023-12-11 14:35:07,679 ; dogbone.ui ; INFO ; 186; Mouse - state:idle
+2023-12-11 14:35:07,711 ; dogbone.ui ; INFO ; 186; Mouse - state:idle
+2023-12-11 14:35:07,749 ; dogbone.ui ; INFO ; 186; Mouse - state:idle
+2023-12-11 14:35:07,781 ; dogbone.ui ; INFO ; 186; Mouse - state:idle
+2023-12-11 14:35:07,826 ; dogbone.ui ; INFO ; 186; Mouse - state:idle
+2023-12-11 14:35:07,864 ; dogbone.ui ; INFO ; 186; Mouse - state:idle
+2023-12-11 14:35:07,896 ; dogbone.ui ; INFO ; 186; Mouse - state:idle
+2023-12-11 14:35:07,934 ; dogbone.ui ; INFO ; 186; Mouse - state:idle
+2023-12-11 14:35:07,972 ; dogbone.ui ; INFO ; 186; Mouse - state:idle
+2023-12-11 14:35:08,017 ; dogbone.ui ; INFO ; 186; Mouse - state:idle
+2023-12-11 14:35:08,054 ; dogbone.ui ; INFO ; 186; Mouse - state:idle
+2023-12-11 14:35:08,092 ; dogbone.ui ; INFO ; 186; Mouse - state:idle
+2023-12-11 14:35:08,131 ; dogbone.ui ; INFO ; 186; Mouse - state:idle
+2023-12-11 14:35:08,170 ; dogbone.ui ; INFO ; 186; Mouse - state:idle
+2023-12-11 14:35:08,207 ; dogbone.ui ; INFO ; 186; Mouse - state:idle
+2023-12-11 14:35:08,246 ; dogbone.ui ; INFO ; 186; Mouse - state:idle
+2023-12-11 14:35:08,285 ; dogbone.ui ; INFO ; 186; Mouse - state:idle
+2023-12-11 14:35:08,323 ; dogbone.ui ; INFO ; 231; onPreSelect - state:idle
+2023-12-11 14:35:08,355 ; dogbone.ui ; DEBUG ; 232; current ID: None
+2023-12-11 14:35:08,387 ; dogbone.decorators.isSelected ; DEBUG ; 99; is selectable: True
+2023-12-11 14:35:08,436 ; dogbone.ui ; INFO ; 231; onPreSelect - state:idle
+2023-12-11 14:35:08,467 ; dogbone.ui ; DEBUG ; 232; current ID: None
+2023-12-11 14:35:08,498 ; dogbone.decorators.isSelected ; DEBUG ; 99; is selectable: True
+2023-12-11 14:35:08,536 ; dogbone.ui ; INFO ; 191; preSelectStart - state:selectable
+2023-12-12 15:46:27,009 ; dogbone.ui ; DEBUG ; 196; current ID: 5633855123433482782
+2023-12-12 15:46:27,062 ; dogbone.ui ; DEBUG ; 202; Trigger TLG supression
+2023-12-12 15:46:27,119 ; dogbone.decorators ; ERROR ; 146; onMouseMove_handler error termination
+Traceback (most recent call last):
+  File "C:\Users/Dad/AppData/Roaming/Autodesk/Autodesk Fusion 360/API/AddIns/Dogbone/Dogbone\decorators.py", line 140, in notify
+    notify_method(
+  File "C:\Users/Dad/AppData/Roaming/Autodesk/Autodesk Fusion 360/API/AddIns/Dogbone/Dogbone\DogboneUi.py", line 185, in onMouseMove
+    self.mouseMove()
+  File "C:\Users\Dad\AppData\Roaming\Autodesk\Autodesk Fusion 360\API\AddIns\Dogbone\Dogbone\py_packages\transitions\core.py", line 402, in trigger
+    return self.machine._process(func)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Dad\AppData\Roaming\Autodesk\Autodesk Fusion 360\API\AddIns\Dogbone\Dogbone\py_packages\transitions\core.py", line 1211, in _process
+    return trigger()
+           ^^^^^^^^^
+  File "C:\Users\Dad\AppData\Roaming\Autodesk\Autodesk Fusion 360\API\AddIns\Dogbone\Dogbone\py_packages\transitions\core.py", line 415, in _trigger
+    if self._is_valid_source(event_data.state):
+       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Dad\AppData\Roaming\Autodesk\Autodesk Fusion 360\API\AddIns\Dogbone\Dogbone\py_packages\transitions\core.py", line 452, in _is_valid_source
+    raise MachineError(msg)
+transitions.core.MachineError: "Can't trigger event mouseMove from state selectable!"
+2023-12-12 15:46:27,727 ; dogbone.ui ; DEBUG ; 211; current ID: 5633855123433482782
+2023-12-12 15:46:27,769 ; dogbone.decorators ; ERROR ; 146; preSelectEnd_handler error termination
+Traceback (most recent call last):
+  File "C:\Users/Dad/AppData/Roaming/Autodesk/Autodesk Fusion 360/API/AddIns/Dogbone/Dogbone\decorators.py", line 140, in notify
+    notify_method(
+  File "C:\Users/Dad/AppData/Roaming/Autodesk/Autodesk Fusion 360/API/AddIns/Dogbone/Dogbone\DogboneUi.py", line 212, in preSelectEnd
+    self.selectEnd()
+  File "C:\Users\Dad\AppData\Roaming\Autodesk\Autodesk Fusion 360\API\AddIns\Dogbone\Dogbone\py_packages\transitions\core.py", line 402, in trigger
+    return self.machine._process(func)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Dad\AppData\Roaming\Autodesk\Autodesk Fusion 360\API\AddIns\Dogbone\Dogbone\py_packages\transitions\core.py", line 1211, in _process
+    return trigger()
+           ^^^^^^^^^
+  File "C:\Users\Dad\AppData\Roaming\Autodesk\Autodesk Fusion 360\API\AddIns\Dogbone\Dogbone\py_packages\transitions\core.py", line 416, in _trigger
+    self._process(event_data)
+  File "C:\Users\Dad\AppData\Roaming\Autodesk\Autodesk Fusion 360\API\AddIns\Dogbone\Dogbone\py_packages\transitions\core.py", line 439, in _process
+    if trans.execute(event_data):
+       ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Dad\AppData\Roaming\Autodesk\Autodesk Fusion 360\API\AddIns\Dogbone\Dogbone\py_packages\transitions\core.py", line 277, in execute
+    self._change_state(event_data)
+  File "C:\Users\Dad\AppData\Roaming\Autodesk\Autodesk Fusion 360\API\AddIns\Dogbone\Dogbone\py_packages\transitions\core.py", line 285, in _change_state
+    event_data.machine.set_state(self.dest, event_data.model)
+  File "C:\Users\Dad\AppData\Roaming\Autodesk\Autodesk Fusion 360\API\AddIns\Dogbone\Dogbone\py_packages\transitions\core.py", line 782, in set_state
+    state = self.get_state(state)
+            ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Dad\AppData\Roaming\Autodesk\Autodesk Fusion 360\API\AddIns\Dogbone\Dogbone\py_packages\transitions\core.py", line 748, in get_state
+    raise ValueError("State '%s' is not a registered state." % state)
+ValueError: State 'readyToEndSelectable' is not a registered state.

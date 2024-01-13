@@ -12,6 +12,7 @@ from .decorators import eventHandler, parseDecorator, isSelectedDebug
 from .createDogbone import createStaticDogbones
 from .log import LEVELS, logger
 from .util import calcId, calcOccurrenceId, setSupressionState
+from transitions import Machine, State
 
 ACUTE_ANGLE = "acuteAngle"
 ANGLE_DETECTION_GROUP = "angleDetectionGroup"
@@ -60,9 +61,6 @@ class DogboneUi:
         self.executeHandler = executeHandler
         self.isAltKeyPressed = False
         self.isModifierPressed = False
-        self.mouseMove = False
-        self.selectionActive = False
-        self.selectionEnded = False
         self.activeOccurrenceId = None
         self.eventArgs = None
         self.exclude = None
@@ -82,6 +80,21 @@ class DogboneUi:
         self.preSelectStart(event=command.preSelectStart)
         self.preSelectEnd(event=command.preSelectEnd)
         self.onMouseMove(event=command.mouseMove)
+        self.states = ['idle', 'selectable', 'previewOverride', 'preview', 'readyToEndSelectable','readyToEndPreviewOverride','readyToEndPreview']
+        self.transitions = [{'trigger': 'selectStart', 'source':'idle', 'dest':'selectable'},
+                            {'trigger': 'selectStart', 'source':'selectable', 'dest':'selectable'},
+                            {'trigger': 'selectEnd', 'source':'selectable', 'dest':'readyToEndSelectable'},
+                            {'trigger': 'mouseMove', 'source':['idle', 'readyToEndSelectable','readyToEndPreviewOverride','readyToEndPreview'], 'dest':'idle'},
+                            {'trigger': 'mouseMove', 'source':['selectable', 'previewOverride', 'preview'], 'dest':'='},
+                            {'trigger': 'selectStart', 'source':'readyToEndSelectable', 'dest':'selectable'},
+                            {'trigger': 'selectStart', 'source':'readyToEndPreviewOverride', 'dest':'previewOverride'},
+                            {'trigger': 'selectStart', 'source':'readyToEndPreview', 'dest':'preview'},
+                            {'trigger': 'click', 'source': 'selectable', 'dest': 'previewOverride'},
+                            {'trigger': 'click', 'source': 'previewOverride', 'dest': 'selectable'},
+                            {'trigger': 'keyDown', 'source': 'previewOverride', 'dest': 'preview'},
+                            {'trigger': 'keyUp', 'source': 'preview', 'dest': 'previewOverride'},
+                            ]
+        self.stateMachine = Machine(model=self, states=self.states, transitions=self.transitions, initial='idle')
         # self.markingMenu(event=_ui.markingMenuDisplaying)
 
     # @eventHandler(handler_cls=adsk.core.MarkingMenuEventHandler)
@@ -171,20 +184,14 @@ class DogboneUi:
     @eventHandler(handler_cls=adsk.core.MouseEventHandler)
     def onMouseMove(self, args: adsk.core.MouseEventArgs):
         self.isModifierPressed = (args.keyboardModifiers) # == adsk.core.KeyboardModifiers.AltKeyboardModifier)
-        self.mouseMove = True
-        logger.info(f"Mouse - active:{self.selectionActive} ended:{self.selectionEnded}")
-        logger.debug(f'current ID: {self.activeOccurrenceId}')
-        if self.selectionEnded:
-            self.selectionEnded = False
-            self.selectionActive = False
-            self.activeOccurrenceId = None
-            logger.debug("End Triggered")
+        self.mouseMove()
+        logger.info(f"Mouse - state:{self.state}")
 
     @eventHandler(handler_cls=adsk.core.SelectionEventHandler)
     def preSelectStart(self, args: adsk.core.SelectionEventArgs):
-        logger.info(f"preSelectStart - active:{self.selectionActive} ended:{self.selectionEnded}")
+        self.selectStart()
+        logger.info(f"preSelectStart - state:{self.state}")
         
-        self.mouseMove = False
         if not args.selection.entity:
             return
         currentId = calcOccurrenceId(args.selection.entity)
@@ -203,8 +210,9 @@ class DogboneUi:
 
     @eventHandler(handler_cls=adsk.core.SelectionEventHandler)
     def preSelectEnd(self, args: adsk.core.SelectionEventArgs):
-        logger.info(f"preSelectEnd - active:{self.selectionActive} ended:{self.selectionEnded}")
         logger.debug(f'current ID: {self.activeOccurrenceId}')
+        self.selectEnd()
+        logger.info(f"preSelectEnd - state:{self.state}")
         self.selectionActive = False
         self.selectionEnded = True
         logger.debug("Trigger TLG restore")
@@ -222,16 +230,15 @@ class DogboneUi:
         ==============================================================================
         """
 
-        logger.info(f"onPreSelect - active:{self.selectionActive} ended:{self.selectionEnded}")
+        logger.info(f"onPreSelect - state:{self.state}")
         logger.debug(f'current ID: {self.activeOccurrenceId}')
         eventArgs: adsk.core.SelectionEventArgs = args
         # Check which selection input the event is firing for.
         activeIn = eventArgs.firingEvent.activeInput
         if activeIn.id != FACE_SELECT and activeIn.id != EDGE_SELECT:
             return  # jump out if not dealing with either of the two selection boxes
-        self.mouseMove = False
 
-        if not self.selectionActive:
+        if self.state == 'idle':
             return
         
         logger.debug("In a recognized occurrence")
@@ -239,8 +246,8 @@ class DogboneUi:
         self.triggerFlag = False
         logger.debug("preSelect triggered")
 
-        if self.isModifierPressed:
-            eventArgs.isSelectable = True
+        # if self.isModifierPressed:
+        #     eventArgs.isSelectable = True
         #     activeIn.addSelectionFilter("LinearEdges")
         # else:
         #     activeIn.selectionFilters = ("PlanarFaces",)
@@ -385,7 +392,7 @@ class DogboneUi:
         if not keyCode == adsk.core.KeyCodes.AltKeyCode:
             self.isAltKeyPressed = False
             return
-        self.isAltKeyPressed = True
+        self.keyPressed()
         logger.debug("Alt key pressed")
         return
 
