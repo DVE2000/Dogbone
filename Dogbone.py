@@ -46,7 +46,7 @@ from .createDogbone import createStaticDogbones, updateDogBones
 
 # Globals
 _app = adsk.core.Application.get()
-_design: adsk.fusion.Design = cast(adsk.fusion.Design, _app.activeProduct)
+_design: adsk.fusion.Design = _app.activeProduct
 _ui = _app.userInterface
 _rootComp = _design.rootComponent
 
