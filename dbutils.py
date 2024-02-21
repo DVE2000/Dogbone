@@ -6,6 +6,106 @@ import adsk.fusion
 
 logger = logging.getLogger("dogbone.dbutils")
 
+def isFaceSelectable(self: DogboneUi):
+        # ==============================================================================
+    # processing activities when faces are being selected
+    #        selection filter is limited to planar faces
+    #        makes sure only valid occurrences and components are selectable
+    # ==============================================================================
+    activeIn: adsk.core.SelectionCommandInput
+
+    if not len(
+            self.selection.selectedOccurrences
+    ):  # get out if the face selection list is empty
+        return True
+
+    if not eventArgs.selection.entity.assemblyContext:
+        # dealing with a root component body
+
+        try:
+#TODO adding loop selection for mortises
+            faceObjs = self.selection.selectedOccurrences[self.activeOccurrenceId]
+            for faceObj in faceObjs:
+                if faceObj.isSelected:
+                    primaryFace = faceObj
+                    if self.isAltKeyPressed:
+                        if eventArgs.selection.entity.classType() != adsk.fusion.BRepEdge.objectType:
+                            #find candidate edges
+                            edges = [loop.edge 
+                                        for loops in faceObj.face.loops 
+                                        for loop in loops if not loop.isOuter]
+                            return eventArgs.selection.entity in edges
+
+                    return True
+
+            else:
+                return True
+
+        except (KeyError, IndexError) as e:
+            return
+
+        primaryFaceNormal = primaryFace.faceNormal
+        if primaryFaceNormal.isParallelTo(
+                dbUtils.getFaceNormal(eventArgs.selection.entity)
+        ):
+            return True
+
+        return False
+
+    # End of root component face processing
+
+    # ==============================================================================
+    # Start of occurrence face processing
+    # ==============================================================================
+    activeOccurrence = eventArgs.selection.entity.assemblyContext
+    # self.activeOccurrenceId = calcOccurrenceId(eventArgs.selection.entity)
+    activeComponent = activeOccurrence.component
+
+    # we got here because the face is either not in root or is on the existing selected list
+    # at this point only need to check for duplicate component selection - Only one component allowed, to save on conflict checking
+    try:
+        #selectedOccurrences -> dict( key hash(occurrence.entityToken) value:[DbFace,...])
+        selectedComponentList = [
+            faceObject.component
+                for listOfObjects in self.selection.selectedOccurrences.values() 
+                    for faceObject in listOfObjects
+            if faceObject.face.assemblyContext
+        ]
+
+    except KeyError:
+        return True
+
+
+    if activeComponent not in selectedComponentList:
+        return True
+
+
+    if self.activeOccurrenceId not in self.selection.selectedOccurrences:  # check if mouse is over a face that is not already selected
+        return False
+
+
+    try:
+        faces = self.selection.selectedOccurrences[self.activeOccurrenceId]
+        for face in faces:
+            if face.isSelected:
+                primaryFace = face
+                break
+            else:
+                return True
+
+    except KeyError:
+
+    primaryFaceNormal = primaryFace.faceNormal
+    if primaryFaceNormal.isParallelTo(
+            getFaceNormal(eventArgs.selection.entity)
+    ):
+        return True
+
+    return False
+
+    # end selecting faces
+
+
 
 def getAngleBetweenFaces(edge: adsk.fusion.BRepEdge) -> float:
     """
