@@ -7,6 +7,7 @@ import adsk.fusion
 
 _app = adsk.core.Application.get()
 _design: adsk.fusion.Design = cast(adsk.fusion.Design, _app.activeProduct)
+_ui = _app.userInterface
 
 DB_TOOL_DIA = "dbToolDia"
 DB_OFFSET = "dbOffset"
@@ -15,7 +16,22 @@ DB_HOLE_OFFSET = "dbHoleOffset"
 DB_RADIUS = "dbRadius"
 COMMENT = "Do NOT change formula"
 
-userParams: adsk.fusion.UserParameters = _design.userParameters
+
+try:
+    userParams: adsk.fusion.UserParameters = _design.userParameters
+except  RuntimeError:
+    if _design.designType != adsk.fusion.DesignTypes.ParametricDesignType:
+        returnValue = _ui.messageBox(
+            "DogBone only works in Parametric Mode \n Do you want to change modes?",
+            "Change to Parametric mode",
+            adsk.core.MessageBoxButtonTypes.YesNoButtonType,
+            adsk.core.MessageBoxIconTypes.WarningIconType,
+        )
+        if returnValue != adsk.core.DialogResults.DialogYes:
+            raise RuntimeError("DogBone only works in Parametric Mode")
+        _design.designType = adsk.fusion.DesignTypes.ParametricDesignType
+
+
 default_length_units = _design.unitsManager.defaultLengthUnits
 
 
