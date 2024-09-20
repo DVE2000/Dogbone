@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 
 from dataclasses import dataclass
-from typing import cast
 
 from dataclasses_json import dataclass_json
 
@@ -9,7 +8,7 @@ import adsk.core
 import adsk.fusion
 
 _app = adsk.core.Application.get()
-_design: adsk.fusion.Design = cast(adsk.fusion.Design, _app.activeProduct)
+_design: adsk.fusion.Design = _app.activeProduct
 
 
 @dataclass_json

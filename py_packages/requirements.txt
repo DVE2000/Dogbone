@@ -1,0 +1,17 @@
+# py -m pip install -r "%Appdata%\Roaming\Autodesk\Autodesk Fusion 360\API\AddIns\Dogbone\Dogbone\py_packages\requirements.txt" -U --target "%Appdata%\AppData\Roaming\Autodesk\Autodesk Fusion 360\API\AddIns\Dogbone\Dogbone\py_packages"
+# PyHamcrest
+# astroid
+# dataclasses
+dataclasses_json
+# marshmallow
+# packaging
+# mypy_extensions
+# six
+# typing_extensions
+# typing_inspect
+# Pylint
+# pynput
+# tomli
+# typed_ast
+# wrapt
+# pandas

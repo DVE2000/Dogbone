@@ -14,8 +14,8 @@
 			"windows":	{
 				"filePath":	"${file}"
 			},
-			"port":	9023,
+			"port":	9000,
 			"host":	"localhost",
-			"logToFile": true
+			"logToFile":	true
 		}]
 }

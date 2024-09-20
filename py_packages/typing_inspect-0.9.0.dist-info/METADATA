@@ -1,6 +1,6 @@
 Metadata-Version: 2.1
 Name: typing-inspect
-Version: 0.8.0
+Version: 0.9.0
 Summary: Runtime inspection utilities for typing module.
 Home-page: https://github.com/ilevkivskyi/typing_inspect
 Author: Ivan Levkivskyi
@@ -15,13 +15,13 @@ Classifier: Operating System :: OS Independent
 Classifier: Programming Language :: Python :: 2
 Classifier: Programming Language :: Python :: 2.7
 Classifier: Programming Language :: Python :: 3
-Classifier: Programming Language :: Python :: 3.3
-Classifier: Programming Language :: Python :: 3.4
 Classifier: Programming Language :: Python :: 3.5
 Classifier: Programming Language :: Python :: 3.6
 Classifier: Programming Language :: Python :: 3.7
 Classifier: Programming Language :: Python :: 3.8
 Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
 Classifier: Topic :: Software Development
 License-File: LICENSE
 Requires-Dist: mypy-extensions (>=0.3.0)

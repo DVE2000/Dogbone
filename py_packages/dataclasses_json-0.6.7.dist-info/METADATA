@@ -1,28 +1,29 @@
 Metadata-Version: 2.1
 Name: dataclasses-json
-Version: 0.5.7
-Summary: Easily serialize dataclasses to and from JSON
+Version: 0.6.7
+Summary: Easily serialize dataclasses to and from JSON.
 Home-page: https://github.com/lidatong/dataclasses-json
-Author: lidatong
-Author-email: charles.dt.li@gmail.com
 License: MIT
-Keywords: dataclasses json
-Platform: UNKNOWN
-Requires-Python: >=3.6
+Author: Charles Li
+Author-email: charles.dt.li@gmail.com
+Maintainer: Charles Li
+Maintainer-email: charles.dt.li@gmail.com
+Requires-Python: >=3.7,<4.0
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.7
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Requires-Dist: marshmallow (>=3.18.0,<4.0.0)
+Requires-Dist: typing-inspect (>=0.4.0,<1)
+Project-URL: Repository, https://github.com/lidatong/dataclasses-json
+Project-URL: changelog, https://github.com/lidatong/dataclasses-json/releases
+Project-URL: documentation, https://lidatong.github.io/dataclasses-json/
+Project-URL: issues, https://github.com/lidatong/dataclasses-json/issues
 Description-Content-Type: text/markdown
-Requires-Dist: marshmallow (<4.0.0,>=3.3.0)
-Requires-Dist: marshmallow-enum (<2.0.0,>=1.5.1)
-Requires-Dist: typing-inspect (>=0.4.0)
-Requires-Dist: dataclasses ; python_version == "3.6"
-Provides-Extra: dev
-Requires-Dist: pytest (>=6.2.3) ; extra == 'dev'
-Requires-Dist: ipython ; extra == 'dev'
-Requires-Dist: mypy (>=0.710) ; extra == 'dev'
-Requires-Dist: hypothesis ; extra == 'dev'
-Requires-Dist: portray ; extra == 'dev'
-Requires-Dist: flake8 ; extra == 'dev'
-Requires-Dist: simplejson ; extra == 'dev'
-Requires-Dist: types-dataclasses ; (python_version == "3.6") and extra == 'dev'
 
 # Dataclasses JSON
 
@@ -278,7 +279,7 @@ from dataclasses_json import LetterCase, config, dataclass_json
 class Person:
     given_name: str
     family_name: str
-
+    
 Person('Alice', 'Liddell').to_json()  # '{"givenName": "Alice"}'
 Person.from_json('{"givenName": "Alice", "familyName": "Liddell"}')  # Person('Alice', 'Liddell')
 
@@ -288,7 +289,7 @@ Person.from_json('{"givenName": "Alice", "familyName": "Liddell"}')  # Person('A
 class Person:
     given_name: str = field(metadata=config(letter_case=LetterCase.CAMEL))
     family_name: str
-
+    
 Person('Alice', 'Liddell').to_json()  # '{"givenName": "Alice"}'
 # notice how the `family_name` field is still snake_case, because it wasn't configured above
 Person.from_json('{"givenName": "Alice", "family_name": "Liddell"}')  # Person('Alice', 'Liddell')
@@ -370,7 +371,7 @@ dump_dict = {"endpoint": "some_api_endpoint", "data": {"foo": 1, "bar": "2"}, "u
 
 1. You can enforce to always raise an error by setting the `undefined` keyword to `Undefined.RAISE`
  (`'RAISE'` as a case-insensitive string works as well). Of course it works normally if you don't pass any undefined parameters.
-
+    
 ```python
 from dataclasses_json import Undefined
 
@@ -385,7 +386,7 @@ dump = ExactAPIDump.from_dict(dump_dict)  # raises UndefinedParameterError
 
 2. You can simply ignore any undefined parameters by setting the `undefined` keyword to `Undefined.EXCLUDE`
  (`'EXCLUDE'` as a case-insensitive string works as well). Note that you will not be able to retrieve them using `to_dict`:
-
+    
 ```python
 from dataclasses_json import Undefined
 
@@ -404,7 +405,7 @@ keyword to `Undefined.INCLUDE` (`'INCLUDE'` as a case-insensitive string works a
 of type `CatchAll` where all unknown values will end up.
  This simply represents a dictionary that can hold anything. 
  If there are no undefined parameters, this will be an empty dictionary.
-
+    
 ```python
 from dataclasses_json import Undefined, CatchAll
 
@@ -459,6 +460,35 @@ from __future__ import annotations
 ```
 as it will cause problems with the way dataclasses_json accesses the type annotations.
 
+### Use numpy or pandas types?
+Data types specific to libraries commonly used in data analysis and machine learning like [numpy](https://github.com/numpy/numpy) and [pandas](https://github.com/pandas-dev/pandas) are not supported by default, but you can easily enable them by using custom decoders and encoders. Below are two examples for `numpy` and `pandas` types.
+
+```python
+from dataclasses import field, dataclass
+from dataclasses_json import config, dataclass_json
+import numpy as np
+import pandas as pd
+
+@dataclass_json
+@dataclass
+class DataWithNumpy:
+    my_int: np.int64 = field(metadata=config(decoder=np.int64))
+    my_float: np.float64 = field(metadata=config(decoder=np.float64))
+    my_array: np.ndarray = field(metadata=config(decoder=np.asarray))
+DataWithNumpy.from_json("{\"my_int\": 42, \"my_float\": 13.37, \"my_array\": [1,2,3]}")
+
+@dataclass_json
+@dataclass
+class DataWithPandas:
+    my_df: pd.DataFrame = field(metadata=config(decoder=pd.DataFrame.from_records, encoder=lambda x: x.to_dict(orient="records")))
+data = DataWithPandas.from_dict({"my_df": [{"col1": 1, "col2": 2}, {"col1": 3, "col2": 4}]})
+# my_df results in:
+# col1  col2
+# 1    2    
+# 3    4
+data.to_dict()
+# {"my_df": [{"col1": 1, "col2": 2}, {"col1": 3, "col2": 4}]}
+```
 
 ## Marshmallow interop
 
@@ -548,15 +578,15 @@ from dataclasses_json import dataclass_json, config
 from datetime import date
 from marshmallow import fields
 
+dataclasses_json.cfg.global_config.encoders[date] = date.isoformat
+dataclasses_json.cfg.global_config.decoders[date] = date.fromisoformat
+
 @dataclass_json
 @dataclass
 class DataClassWithIsoDatetime:
-    created_at: date = field(
-        metadata=config(
-            encoder= date.isoformat,
-            decoder= date.fromisoformat,
-            mm_field= fields.DateTime(format='iso')
-        ))
+    created_at: date
+    modified_at: date
+    accessed_at: date
 ```
 
 As you can see, you can **override** or **extend** the default codecs by providing a "hook" via a 
@@ -658,6 +688,16 @@ The current convention is:
 
 Once this library is 1.0.0, it will follow standard SEMVER conventions.
 
+### Python compatibility 
+
+Any version that is not listed in the table below we do not test against, though you might still be able to install the library. For future Python versions, please open an issue and/or a pull request, adding them to the CI suite.
+
+
+| Python version range | Compatible dataclasses-json version |
+|----------------------|:-----------------------------------:|
+| 3.7.x - 3.12.x       |            0.5.x - 0.6.x            |
+| >= 3.13.x            |         No official support (yet)   |
+
 
 ## Roadmap
 
@@ -681,4 +721,11 @@ at existing issues / PRs to see what you're proposing has  already been covered
 before / exists.
 - I like to follow the commit conventions documented [here](https://www.conventionalcommits.org/en/v1.0.0/#summary)
 
+### Setting up your environment
+
+This project uses [Poetry](https://python-poetry.org/) for dependency and venv management. It is quite simple to get ready for your first commit:
+- [Install](https://python-poetry.org/docs/#installation) latest stable Poetry
+- Navigate to where you cloned `dataclasses-json`
+- Run `poetry install`
+- Create a branch and start writing code!
 

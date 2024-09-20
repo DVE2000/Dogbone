@@ -9,6 +9,8 @@ Example usage::
 
 import sys
 import types
+import typing
+import typing_extensions
 
 from mypy_extensions import _TypedDictMeta as _TypedDictMeta_Mypy
 
@@ -26,7 +28,6 @@ elif sys.version_info[:3] >= (3, 9, 2):
 else:
     # typing_extensions.TypedDict is a re-export from typing.
     from typing import TypedDict
-
     _TypedDictMeta_TE = type(TypedDict)
 
 NEW_TYPING = sys.version_info[:3] >= (3, 7, 0)  # PEP 560
@@ -41,36 +42,20 @@ LEGACY_TYPING = False
 
 if NEW_TYPING:
     from typing import (
-        Generic,
-        Callable,
-        Union,
-        TypeVar,
-        ClassVar,
-        Tuple,
-        _GenericAlias,
-        ForwardRef,
-        NewType,
+        Generic, Callable, Union, TypeVar, ClassVar, Tuple, _GenericAlias,
+        ForwardRef, NewType,
     )
     from typing_extensions import Final, Literal
-
     if sys.version_info[:3] >= (3, 9, 0):
         from typing import _SpecialGenericAlias
-
         typingGenericAlias = (_GenericAlias, _SpecialGenericAlias, types.GenericAlias)
     else:
         typingGenericAlias = (_GenericAlias,)
 else:
     from typing import (
-        Callable,
-        CallableMeta,
-        Union,
-        Tuple,
-        TupleMeta,
-        TypeVar,
-        GenericMeta,
+        Callable, CallableMeta, Union, Tuple, TupleMeta, TypeVar, GenericMeta,
         _ForwardRef,
     )
-
     try:
         from typing import _Union, _ClassVar
     except ImportError:
@@ -107,7 +92,7 @@ else:
 def _gorg(cls):
     """This function exists for compatibility with old typing versions."""
     assert isinstance(cls, GenericMeta)
-    if hasattr(cls, "_gorg"):
+    if hasattr(cls, '_gorg'):
         return cls._gorg
     while cls.__origin__ is not None:
         cls = cls.__origin__
@@ -133,13 +118,11 @@ def is_generic_type(tp):
         is_generic_type(Sequence[Union[str, bytes]]) == True
     """
     if NEW_TYPING:
-        return (
-            isinstance(tp, type)
-            and issubclass(tp, Generic)
-            or isinstance(tp, typingGenericAlias)
-            and tp.__origin__ not in (Union, tuple, ClassVar, collections.abc.Callable)
-        )
-    return isinstance(tp, GenericMeta) and not isinstance(tp, (CallableMeta, TupleMeta))
+        return (isinstance(tp, type) and issubclass(tp, Generic) or
+                isinstance(tp, typingGenericAlias) and
+                tp.__origin__ not in (Union, tuple, ClassVar, collections.abc.Callable))
+    return (isinstance(tp, GenericMeta) and not
+            isinstance(tp, (CallableMeta, TupleMeta)))
 
 
 def is_callable_type(tp):
@@ -162,14 +145,10 @@ def is_callable_type(tp):
         get_origin(tp) is collections.abc.Callable  # Callable prior to Python 3.7
     """
     if NEW_TYPING:
-        return (
-            tp is Callable
-            or isinstance(tp, typingGenericAlias)
-            and tp.__origin__ is collections.abc.Callable
-            or isinstance(tp, type)
-            and issubclass(tp, Generic)
-            and issubclass(tp, collections.abc.Callable)
-        )
+        return (tp is Callable or isinstance(tp, typingGenericAlias) and
+                tp.__origin__ is collections.abc.Callable or
+                isinstance(tp, type) and issubclass(tp, Generic) and
+                issubclass(tp, collections.abc.Callable))
     return type(tp) is CallableMeta
 
 
@@ -192,14 +171,10 @@ def is_tuple_type(tp):
         get_origin(tp) is tuple  # Tuple prior to Python 3.7
     """
     if NEW_TYPING:
-        return (
-            tp is Tuple
-            or isinstance(tp, typingGenericAlias)
-            and tp.__origin__ is tuple
-            or isinstance(tp, type)
-            and issubclass(tp, Generic)
-            and issubclass(tp, tuple)
-        )
+        return (tp is Tuple or isinstance(tp, typingGenericAlias) and
+                tp.__origin__ is tuple or
+                isinstance(tp, type) and issubclass(tp, Generic) and
+                issubclass(tp, tuple))
     return type(tp) is TupleMeta
 
 
@@ -227,14 +202,13 @@ def is_optional_type(tp):
 def is_final_type(tp):
     """Test if the type is a final type. Examples::
 
-    is_final_type(int) == False
-    is_final_type(Final) == True
-    is_final_type(Final[int]) == True
+        is_final_type(int) == False
+        is_final_type(Final) == True
+        is_final_type(Final[int]) == True
     """
     if NEW_TYPING:
-        return (
-            tp is Final or isinstance(tp, typingGenericAlias) and tp.__origin__ is Final
-        )
+        return (tp is Final or
+                isinstance(tp, typingGenericAlias) and tp.__origin__ is Final)
     return WITH_FINAL and type(tp) is _Final
 
 
@@ -247,38 +221,38 @@ except AttributeError:
 def is_union_type(tp):
     """Test if the type is a union type. Examples::
 
-    is_union_type(int) == False
-    is_union_type(Union) == True
-    is_union_type(Union[int, int]) == False
-    is_union_type(Union[T, int]) == True
-    is_union_type(int | int) == False
-    is_union_type(T | int) == True
+        is_union_type(int) == False
+        is_union_type(Union) == True
+        is_union_type(Union[int, int]) == False
+        is_union_type(Union[T, int]) == True
+        is_union_type(int | int) == False
+        is_union_type(T | int) == True
     """
     if NEW_TYPING:
-        return (
-            tp is Union
-            or (isinstance(tp, typingGenericAlias) and tp.__origin__ is Union)
-            or (MaybeUnionType and isinstance(tp, MaybeUnionType))
-        )
+        return (tp is Union or
+                (isinstance(tp, typingGenericAlias) and tp.__origin__ is Union) or
+                (MaybeUnionType and isinstance(tp, MaybeUnionType)))
     return type(tp) is _Union
+
+
+LITERALS = {Literal}
+if hasattr(typing, "Literal"):
+    LITERALS.add(typing.Literal)
 
 
 def is_literal_type(tp):
     if NEW_TYPING:
-        return (
-            tp is Literal
-            or isinstance(tp, typingGenericAlias)
-            and tp.__origin__ is Literal
-        )
+        return (tp in LITERALS or
+                isinstance(tp, typingGenericAlias) and tp.__origin__ in LITERALS)
     return WITH_LITERAL and type(tp) is type(Literal)
 
 
 def is_typevar(tp):
     """Test if the type represents a type variable. Examples::
 
-    is_typevar(int) == False
-    is_typevar(T) == True
-    is_typevar(Union[T, int]) == False
+        is_typevar(int) == False
+        is_typevar(T) == True
+        is_typevar(Union[T, int]) == False
     """
 
     return type(tp) is TypeVar
@@ -287,17 +261,14 @@ def is_typevar(tp):
 def is_classvar(tp):
     """Test if the type represents a class variable. Examples::
 
-    is_classvar(int) == False
-    is_classvar(ClassVar) == True
-    is_classvar(ClassVar[int]) == True
-    is_classvar(ClassVar[List[T]]) == True
+        is_classvar(int) == False
+        is_classvar(ClassVar) == True
+        is_classvar(ClassVar[int]) == True
+        is_classvar(ClassVar[List[T]]) == True
     """
     if NEW_TYPING:
-        return (
-            tp is ClassVar
-            or isinstance(tp, typingGenericAlias)
-            and tp.__origin__ is ClassVar
-        )
+        return (tp is ClassVar or
+                isinstance(tp, typingGenericAlias) and tp.__origin__ is ClassVar)
     elif WITH_CLASSVAR:
         return type(tp) is _ClassVar
     else:
@@ -307,36 +278,42 @@ def is_classvar(tp):
 def is_new_type(tp):
     """Tests if the type represents a distinct type. Examples::
 
-    is_new_type(int) == False
-    is_new_type(NewType) == True
-    is_new_type(NewType('Age', int)) == True
-    is_new_type(NewType('Scores', List[Dict[str, float]])) == True
+        is_new_type(int) == False
+        is_new_type(NewType) == True
+        is_new_type(NewType('Age', int)) == True
+        is_new_type(NewType('Scores', List[Dict[str, float]])) == True
     """
     if not WITH_NEWTYPE:
         return False
-    elif sys.version_info[:3] >= (3, 10, 0) and sys.version_info.releaselevel != "beta":
-        return tp is NewType or isinstance(tp, NewType)
+    elif sys.version_info[:3] >= (3, 10, 0) and sys.version_info.releaselevel != 'beta':
+        return (tp in (NewType, typing_extensions.NewType) or
+                isinstance(tp, (NewType, typing_extensions.NewType)))
     elif sys.version_info[:3] >= (3, 0, 0):
-        return tp is NewType or (
-            getattr(tp, "__supertype__", None) is not None
-            and getattr(tp, "__qualname__", "") == "NewType.<locals>.new_type"
-            and tp.__module__ in ("typing", "typing_extensions")
-        )
+        try:
+            res = isinstance(tp, typing_extensions.NewType)
+        except TypeError:
+            pass
+        else:
+            if res:
+                return res
+        return (tp in (NewType, typing_extensions.NewType) or
+                (getattr(tp, '__supertype__', None) is not None and
+                 getattr(tp, '__qualname__', '') == 'NewType.<locals>.new_type' and
+                 tp.__module__ in ('typing', 'typing_extensions')))
     else:  # python 2
         # __qualname__ is not available in python 2, so we simplify the test here
-        return tp is NewType or (
-            getattr(tp, "__supertype__", None) is not None
-            and tp.__module__ in ("typing", "typing_extensions")
-        )
+        return (tp is NewType or
+                (getattr(tp, '__supertype__', None) is not None and
+                 tp.__module__ in ('typing', 'typing_extensions')))
 
 
 def is_forward_ref(tp):
     """Tests if the type is a :class:`typing.ForwardRef`. Examples::
 
-    u = Union["Milk", Way]
-    args = get_args(u)
-    is_forward_ref(args[0]) == True
-    is_forward_ref(args[1]) == False
+        u = Union["Milk", Way]
+        args = get_args(u)
+        is_forward_ref(args[0]) == True
+        is_forward_ref(args[1]) == False
     """
     if not NEW_TYPING:
         return isinstance(tp, _ForwardRef)
@@ -356,11 +333,10 @@ def get_last_origin(tp):
         get_last_origin(List) == List
     """
     if NEW_TYPING:
-        raise ValueError(
-            "This function is only supported in Python 3.6," " use get_origin instead"
-        )
+        raise ValueError('This function is only supported in Python 3.6,'
+                         ' use get_origin instead')
     sentinel = object()
-    origin = getattr(tp, "__origin__", sentinel)
+    origin = getattr(tp, '__origin__', sentinel)
     if origin is sentinel:
         return None
     if origin is None:
@@ -392,6 +368,8 @@ def get_origin(tp):
     if is_tuple_type(tp):
         return Tuple
     if is_literal_type(tp):
+        if NEW_TYPING:
+            return tp.__origin__ or tp
         return Literal
 
     return None
@@ -416,12 +394,12 @@ def get_parameters(tp):
         # python <= 3.5.2
         if is_union_type(tp):
             params = []
-            for arg in tp.__union_params__ if tp.__union_params__ is not None else ():
+            for arg in (tp.__union_params__ if tp.__union_params__ is not None else ()):
                 params += get_parameters(arg)
             return tuple(params)
         elif is_tuple_type(tp):
             params = []
-            for arg in tp.__tuple_params__ if tp.__tuple_params__ is not None else ():
+            for arg in (tp.__tuple_params__ if tp.__tuple_params__ is not None else ()):
                 params += get_parameters(arg)
             return tuple(params)
         elif is_generic_type(tp):
@@ -430,13 +408,12 @@ def get_parameters(tp):
             if base_params is None:
                 return ()
             for bp_ in base_params:
-                for bp in get_args(bp_) if is_tuple_type(bp_) else (bp_,):
+                for bp in (get_args(bp_) if is_tuple_type(bp_) else (bp_,)):
                     if _has_type_var(bp) and not isinstance(bp, TypeVar):
                         raise TypeError(
                             "Cannot inherit from a generic class "
                             "parameterized with "
-                            "non-type-variable %s" % bp
-                        )
+                            "non-type-variable %s" % bp)
                     if params is None:
                         params = []
                     if bp not in params:
@@ -449,19 +426,18 @@ def get_parameters(tp):
             return ()
     elif NEW_TYPING:
         if (
-            isinstance(tp, typingGenericAlias)
-            or isinstance(tp, type)
-            and issubclass(tp, Generic)
-            and tp is not Generic
-        ):
+                (
+                    isinstance(tp, typingGenericAlias) and
+                    hasattr(tp, '__parameters__')
+                ) or
+                isinstance(tp, type) and issubclass(tp, Generic) and
+                tp is not Generic):
             return tp.__parameters__
         else:
             return ()
     elif (
-        is_generic_type(tp)
-        or is_union_type(tp)
-        or is_callable_type(tp)
-        or is_tuple_type(tp)
+        is_generic_type(tp) or is_union_type(tp) or
+        is_callable_type(tp) or is_tuple_type(tp)
     ):
         return tp.__parameters__ if tp.__parameters__ is not None else ()
     else:
@@ -470,20 +446,19 @@ def get_parameters(tp):
 
 def get_last_args(tp):
     """Get last arguments of (multiply) subscripted type.
-    Parameters for Callable are flattened. Examples::
+       Parameters for Callable are flattened. Examples::
 
-     get_last_args(int) == ()
-     get_last_args(Union) == ()
-     get_last_args(ClassVar[int]) == (int,)
-     get_last_args(Union[T, int]) == (T, int)
-     get_last_args(Iterable[Tuple[T, S]][int, T]) == (int, T)
-     get_last_args(Callable[[T], int]) == (T, int)
-     get_last_args(Callable[[], int]) == (int,)
+        get_last_args(int) == ()
+        get_last_args(Union) == ()
+        get_last_args(ClassVar[int]) == (int,)
+        get_last_args(Union[T, int]) == (T, int)
+        get_last_args(Iterable[Tuple[T, S]][int, T]) == (int, T)
+        get_last_args(Callable[[T], int]) == (T, int)
+        get_last_args(Callable[[], int]) == (int,)
     """
     if NEW_TYPING:
-        raise ValueError(
-            "This function is only supported in Python 3.6," " use get_args instead"
-        )
+        raise ValueError('This function is only supported in Python 3.6,'
+                         ' use get_args instead')
     elif is_classvar(tp):
         return (tp.__type__,) if tp.__type__ is not None else ()
     elif is_generic_type(tp):
@@ -553,9 +528,9 @@ def get_args(tp, evaluate=None):
     """
     if NEW_TYPING:
         if evaluate is not None and not evaluate:
-            raise ValueError("evaluate can only be True in Python >= 3.7")
+            raise ValueError('evaluate can only be True in Python >= 3.7')
         # Note special aliases on Python 3.9 don't have __args__.
-        if isinstance(tp, typingGenericAlias) and hasattr(tp, "__args__"):
+        if isinstance(tp, typingGenericAlias) and hasattr(tp, '__args__'):
             res = tp.__args__
             if get_origin(tp) is collections.abc.Callable and res[0] is not Ellipsis:
                 res = (list(res[:-1]), res[-1])
@@ -568,10 +543,8 @@ def get_args(tp, evaluate=None):
     if is_literal_type(tp):
         return tp.__values__ or ()
     if (
-        is_generic_type(tp)
-        or is_union_type(tp)
-        or is_callable_type(tp)
-        or is_tuple_type(tp)
+        is_generic_type(tp) or is_union_type(tp) or
+        is_callable_type(tp) or is_tuple_type(tp)
     ):
         try:
             tree = tp._subs_tree()
@@ -612,7 +585,7 @@ def get_bound(tp):
     """
 
     if is_typevar(tp):
-        return getattr(tp, "__bound__", None)
+        return getattr(tp, '__bound__', None)
     else:
         raise TypeError("type is not a `TypeVar`: " + str(tp))
 
@@ -628,7 +601,7 @@ def get_constraints(tp):
     """
 
     if is_typevar(tp):
-        return getattr(tp, "__constraints__", ())
+        return getattr(tp, '__constraints__', ())
     else:
         raise TypeError("type is not a `TypeVar`: " + str(tp))
 
@@ -645,7 +618,7 @@ def get_generic_type(obj):
         get_generic_type(1) == int
     """
 
-    gen_type = getattr(obj, "__orig_class__", None)
+    gen_type = getattr(obj, '__orig_class__', None)
     return gen_type if gen_type is not None else type(obj)
 
 
@@ -661,7 +634,7 @@ def get_generic_bases(tp):
     if LEGACY_TYPING:
         return tuple(t for t in tp.__bases__ if isinstance(t, GenericMeta))
     else:
-        return getattr(tp, "__orig_bases__", ())
+        return getattr(tp, '__orig_bases__', ())
 
 
 def typed_dict_keys(td):
@@ -698,7 +671,6 @@ def get_forward_arg(fr):
 
 
 # A few functions backported and adapted for the LEGACY_TYPING context, and used above
-
 
 def _replace_arg(arg, tvars, args):
     """backport of _replace_arg"""
@@ -750,21 +722,17 @@ def _remove_dups_flatten(parameters):
     for t1 in params:
         if not isinstance(t1, type):
             continue
-        if any(
-            isinstance(t2, type) and issubclass(t1, t2)
-            for t2 in all_params - {t1}
-            if (
-                not (isinstance(t2, GenericMeta) and get_origin(t2) is not None)
-                and not isinstance(t2, TypeVar)
-            )
-        ):
+        if any(isinstance(t2, type) and issubclass(t1, t2)
+               for t2 in all_params - {t1}
+               if (not (isinstance(t2, GenericMeta) and
+                        get_origin(t2) is not None) and
+                   not isinstance(t2, TypeVar))):
             all_params.remove(t1)
     return tuple(t for t in params if t in all_params)
 
 
 def _subs_tree(cls, tvars=None, args=None):
-    """backport of typing._subs_tree, adapted for legacy versions"""
-
+    """backport of typing._subs_tree, adapted for legacy versions """
     def _get_origin(cls):
         try:
             return cls.__origin__
@@ -809,7 +777,7 @@ def _subs_tree(cls, tvars=None, args=None):
 
 
 def _union_subs_tree(tp, tvars=None, args=None):
-    """backport of Union._subs_tree"""
+    """ backport of Union._subs_tree """
     if tp is Union:
         return Union  # Nothing to substitute
     tree_args = _subs_tree(tp, tvars, args)
@@ -821,7 +789,7 @@ def _union_subs_tree(tp, tvars=None, args=None):
 
 
 def _generic_subs_tree(tp, tvars=None, args=None):
-    """backport of GenericMeta._subs_tree"""
+    """ backport of GenericMeta._subs_tree """
     if tp.__origin__ is None:
         return tp
     tree_args = _subs_tree(tp, tvars, args)
@@ -829,7 +797,7 @@ def _generic_subs_tree(tp, tvars=None, args=None):
 
 
 def _tuple_subs_tree(tp, tvars=None, args=None):
-    """ad-hoc function (inspired by union) for legacy typing"""
+    """ ad-hoc function (inspired by union) for legacy typing """
     if tp is Tuple:
         return Tuple  # Nothing to substitute
     tree_args = _subs_tree(tp, tvars, args)

@@ -75,9 +75,9 @@ def findExtent(face: adsk.fusion.BRepFace, edge: adsk.fusion.BRepEdge):
 def correctedEdgeVector(
     edge: adsk.fusion.BRepEdge, refPoint: adsk.core.Point3D
 ) -> adsk.core.Vector3D:
-    if edge.startPoint.isEqualTo(refPoint):
-        return edge.startPoint.vectorTo(edge.endPoint)
-    return edge.endPoint.vectorTo(edge.startPoint)
+    if edge.startVertex.geometry.isEqualTo(refPoint):
+        return edge.startVertex.geometry.vectorTo(edge.endVertex.geometry)
+    return edge.endVertex.geometry.vectorTo(edge.startVertex.geometry)
 
 
 def correctedSketchEdgeVector(edge, refPoint):
@@ -96,6 +96,9 @@ def isEdgeAssociatedWithFace(face: adsk.fusion.BRepFace, edge: adsk.fusion.BRepE
 
 
 def getCornerEdgesAtFace(face: adsk.fusion.BRepFace, edge: adsk.fusion.BRepEdge):
+    """
+    Gets 
+    """
     # not sure which end is which - so test edge ends for inclusion in face
     startVertex = (
         edge.startVertex if edge.startVertex in face.vertices else edge.endVertex
@@ -103,7 +106,7 @@ def getCornerEdgesAtFace(face: adsk.fusion.BRepFace, edge: adsk.fusion.BRepEdge)
     # edge has 2 adjacent faces - therefore the face that isn't from the 3 faces of startVertex, has to be the top face edges
 
     vertexEdges = {hash(edge.entityToken): edge for edge in startVertex.edges}
-    faceEdges = {hash(edge.entityToken): edge for edge in face.edges}
+    faceEdges = {hash(edge.entityToken): edge for edge in face.face.edges}
     commonEdges = set(vertexEdges.keys()) & set(faceEdges.keys())  # intersect both sets
     if len(commonEdges) != 2:
         raise NameError("returnVal len != 2")

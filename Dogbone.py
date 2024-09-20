@@ -9,20 +9,18 @@
 # the performance of this approach is day and night compared to the original version.
 
 # Select the face you want the dogbones to drop from. Specify a tool diameter and a radial offset.
-# The add-in will then create a dogbone with diamater equal to the tool diameter plus
+# The add-in will then create a dogbone with diameter equal to the tool diameter plus
 # twice the offset (as the offset is applied to the radius) at each selected edge.
 import logging
 import os
 import sys
-import json
 
 _appPath = os.path.dirname(os.path.abspath(__file__))
 _subpath = os.path.join(f"{_appPath}", "py_packages")
+
 if _subpath not in sys.path:
     sys.path.insert(0, _subpath)
-    sys.path.insert(0, "")
     
-from .DbClasses import DbFace
 from .DbData import DbParams
 
 from .log import logger
@@ -30,7 +28,7 @@ from .DbClasses import Selection
 
 import time
 import traceback
-from typing import cast
+# from typing import cast
 
 import adsk.core
 import adsk.fusion

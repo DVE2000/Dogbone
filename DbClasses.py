@@ -263,6 +263,10 @@ class DbFace:
     @property
     def body(self):
         return self._body
+    
+    @property
+    def vertices(self):
+        return [vertex for vertex in self.face.vertices]
 
     def deleteEdges(self):
         [
@@ -461,6 +465,9 @@ class DbEdge:
 
     @property
     def cornerEdges(self):
+        """
+        returns the two face edges associated with dogbone edge that is orthogonal to the face edges 
+        """
         return dbUtils.getCornerEdgesAtFace(face=self._parentFace, edge=self.edge)
 
     @property
@@ -533,8 +540,8 @@ class DbEdge:
 
         if params.dbType == "Mortise Dogbone":
             (edge0, edge1) = self.cornerEdges
-            direction0 = dbUtils.correctedEdgeVector(edge0, startPoint)
-            direction1 = dbUtils.correctedEdgeVector(edge1, startPoint)
+            direction0 = dbUtils.correctedEdgeVector(edge0.nativeObject, startPoint)
+            direction1 = dbUtils.correctedEdgeVector(edge1.nativeObject, startPoint)
             if params.longSide:
                 if edge0.length > edge1.length:
                     dirVect = direction0
