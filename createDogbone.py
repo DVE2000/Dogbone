@@ -6,6 +6,9 @@ from typing import cast
 
 import adsk.core
 import adsk.fusion
+
+from . import globalvars as g
+
 from . import dbutils as dbUtils
 from .DbData import DbParams
 from .DbClasses import Selection, DbFace
@@ -16,8 +19,8 @@ from .log import logger
 from .util import makeNative, reValidateFace
 from .constants import DB_GROUP, DB_NAME
 
-_app = adsk.core.Application.get()
-_design: adsk.fusion.Design = cast(adsk.fusion.Design, _app.activeProduct)#this should be dynamically set according to the Product/Design context!  
+# _app = adsk.core.Application.get()
+# _design: adsk.fusion.Design = cast(adsk.fusion.Design, _app.activeProduct)#this should be dynamically set according to the Product/Design context!  
                                                                         #For the moment it works, but should be fixed in the futur
 
 def debugFace(face):
@@ -104,7 +107,7 @@ def updateDogBones():
     Recalculates and updates existing dogbones
     
     """
-    baseFeaturesAttrs: adsk.core.Attributes = _design.findAttributes(DB_GROUP, "re:basefeature:.*")
+    baseFeaturesAttrs: adsk.core.Attributes = g._design.findAttributes(DB_GROUP, "re:basefeature:.*")
 
     for bfAttr in baseFeaturesAttrs:
 
@@ -112,7 +115,7 @@ def updateDogBones():
         faces = json.loads(bfAttr.value)
         faceList = '|'.join(map(str, faces))
         regex = "re:face:("+faceList+")"
-        faceAttrs = _design.findAttributes(DB_GROUP, regex)
+        faceAttrs = g._design.findAttributes(DB_GROUP, regex)
 
         tempBrepMgr = adsk.fusion.TemporaryBRepManager.get()
         toolBodies = None

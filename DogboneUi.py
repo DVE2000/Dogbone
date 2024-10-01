@@ -3,6 +3,9 @@ from typing import cast
 
 import adsk.core
 import adsk.fusion
+
+from . import globalvars as g
+
 from . import dbutils as dbUtils
 from .DbClasses import DbFace
 from .DbClasses import Selection
@@ -40,10 +43,11 @@ STATIC = "Static"
 TOOL_DIAMETER = "toolDia"
 TOOL_DIAMETER_OFFSET = "toolDiaOffset"
 
+
 _appPath = os.path.dirname(os.path.abspath(__file__))
-_app = adsk.core.Application.get()
-_design: adsk.fusion.Design = cast(adsk.fusion.Design, _app.activeProduct)
-_ui = _app.userInterface
+# g._app = adsk.core.Application.get()
+# g._design: adsk.fusion.Design = cast(adsk.fusion.Design, g._app.activeProduct)
+# _ui = g._app.userInterface
 
 
 # noinspection SqlDialectInspection,SqlNoDataSourceInspection,PyMethodMayBeStatic
@@ -72,9 +76,9 @@ class DogboneUi:
     #     pass
 
     def create_ui(self):
-        global _app, _design 
-        _app = adsk.core.Application.get()
-        _design = cast(adsk.fusion.Design, _app.activeProduct)
+        # global g._app, g._design 
+        g._app = adsk.core.Application.get()
+        g._design = cast(adsk.fusion.Design, g._app.activeProduct)
         self.face_select()
         self.edge_select()
         self.tool_diameter()
@@ -650,7 +654,7 @@ class DogboneUi:
         ui = self.inputs.addValueInput(
             TOOL_DIAMETER_OFFSET,
             "Tool diameter offset",
-            _design.unitsManager.defaultLengthUnits,
+            g._design.unitsManager.defaultLengthUnits,
             adsk.core.ValueInput.createByString(self.param.toolDiaOffsetStr),
         )
         ui.tooltip = "Increases the tool diameter"
@@ -665,7 +669,7 @@ class DogboneUi:
         ui = self.inputs.addValueInput(
             TOOL_DIAMETER,
             "Tool Dia               ",
-            _design.unitsManager.defaultLengthUnits,
+            g._design.unitsManager.defaultLengthUnits,
             adsk.core.ValueInput.createByString(self.param.toolDiaStr),
         )
         ui.tooltip = "Size of the tool with which you'll cut the dogbone."

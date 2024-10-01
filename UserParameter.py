@@ -5,9 +5,11 @@ from adsk.core import ValueInput
 from .DbData import DbParams
 import adsk.fusion
 
-_app = adsk.core.Application.get()
-_design: adsk.fusion.Design = cast(adsk.fusion.Design, _app.activeProduct)
-_ui = _app.userInterface
+from . import globalvars as g
+
+# _app = adsk.core.Application.get()
+# g._design: adsk.fusion.Design = cast(adsk.fusion.Design, _app.activeProduct)
+# g._ui = _app.userInterface
 
 DB_TOOL_DIA = "dbToolDia"
 DB_OFFSET = "dbOffset"
@@ -18,10 +20,10 @@ COMMENT = "Do NOT change formula"
 
 
 try:
-    userParams: adsk.fusion.UserParameters = _design.userParameters
+    userParams: adsk.fusion.UserParameters = g._design.userParameters
 except  RuntimeError:
-    if _design.designType != adsk.fusion.DesignTypes.ParametricDesignType:
-        returnValue = _ui.messageBox(
+    if g._design.designType != adsk.fusion.DesignTypes.ParametricDesignType:
+        returnValue = g._ui.messageBox(
             "DogBone only works in Parametric Mode \n Do you want to change modes?",
             "Change to Parametric mode",
             adsk.core.MessageBoxButtonTypes.YesNoButtonType,
@@ -29,10 +31,10 @@ except  RuntimeError:
         )
         if returnValue != adsk.core.DialogResults.DialogYes:
             raise RuntimeError("DogBone only works in Parametric Mode")
-        _design.designType = adsk.fusion.DesignTypes.ParametricDesignType
+        g._design.designType = adsk.fusion.DesignTypes.ParametricDesignType
 
 
-default_length_units = _design.unitsManager.defaultLengthUnits
+default_length_units = g._design.unitsManager.defaultLengthUnits
 
 
 def create_user_parameter(param: DbParams):

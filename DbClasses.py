@@ -6,6 +6,9 @@ from typing import cast, Dict, List
 
 import adsk.core
 import adsk.fusion
+
+from . import globalvars as g
+
 from .DbData import DbParams
 from .errors import FaceInvalidError, EdgeInvalidError
 from .constants import DB_GROUP
@@ -13,10 +16,6 @@ from . import dbutils as dbUtils
 
 logger = logging.getLogger("dogbone.DbClasses")
 
-_app = adsk.core.Application.get()
-_design: adsk.fusion.Design = cast(adsk.fusion.Design, _app.activeProduct)
-_ui = _app.userInterface
-_rootComp = _design.rootComponent
 
 class Selection:
     def __init__(self) -> None:
@@ -47,7 +46,7 @@ class DbFace:
         self._entityToken = face.entityToken
 
         self.face = face = (
-            face if face.isValid else _design.findEntityByToken(self._entityToken)[0]
+            face if face.isValid else g._design.findEntityByToken(self._entityToken)[0]
         )
 
         self._faceId = hash(self._entityToken)
@@ -142,9 +141,6 @@ class DbFace:
                     ):
                     continue #angle between min and max and doing both acute and obtuse
 
-                if (abs(angle - 90) > 0.001) and self._params.parametric:
-                    continue # angle greater than tolerance and doing parametric
-
                 edgeId = hash(edge.entityToken) #this normally created by the DbEdge instantiation, but it's needed earlier (I thmk!)
                 self.selection.selectedEdges[edgeId] = self._associatedEdgesDict[ 
                     edgeId
@@ -216,7 +212,7 @@ class DbFace:
         [
             (
                 selectedEdge.deselect(),
-                _ui.activeSelections.removeByEntity(selectedEdge.edge),
+                g._ui.activeSelections.removeByEntity(selectedEdge.edge),
             )
             for selectedEdge in self._associatedEdgesDict.values()
         ]
@@ -271,7 +267,7 @@ class DbFace:
     def deleteEdges(self):
         [
             (
-                _ui.activeSelections.removeByEntity(edgeObj.edge),
+                g._ui.activeSelections.removeByEntity(edgeObj.edge),
                 self.selection.selectedEdges.pop(edgeId),
             )
             for edgeId, edgeObj in self._associatedEdgesDict.items()
@@ -293,7 +289,7 @@ class DbFace:
         return (
             self.face.assemblyContext.component
             if self.face.assemblyContext
-            else _rootComp
+            else g._rootComp
         )
 
     @property

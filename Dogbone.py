@@ -15,6 +15,11 @@ import logging
 import os
 import sys
 
+import adsk.core
+import adsk.fusion
+
+from . import globalvars as g
+
 _appPath = os.path.dirname(os.path.abspath(__file__))
 _subpath = os.path.join(f"{_appPath}", "py_packages")
 
@@ -30,9 +35,6 @@ import time
 import traceback
 # from typing import cast
 
-import adsk.core
-import adsk.fusion
-
 from . import dbutils as dbUtils
 from .DbData import DbParams
 from .DogboneUi import DogboneUi
@@ -42,18 +44,12 @@ from .constants import DB_NAME, COMMAND_ID, UPD_COMMAND_ID
 from .createDogbone import createStaticDogbones, updateDogBones
 
 
-# Globals
-_app = adsk.core.Application.get()
-_design: adsk.fusion.Design = _app.activeProduct
-_ui = _app.userInterface
-_rootComp = _design.rootComponent
 
 REV_ID = "revId"
 ID = "id"
 DEBUGLEVEL = logging.DEBUG
 
 CONFIG_PATH = os.path.join(_appPath, "defaults.dat")
-
 
 # noinspection PyMethodMayBeStatic
 class DogboneCommand(object):
@@ -100,14 +96,14 @@ class DogboneCommand(object):
     def register_commands(self):
 
         # Create button definition and command event handler
-        button = _ui.commandDefinitions.addButtonDefinition(
+        button = g._ui.commandDefinitions.addButtonDefinition(
             COMMAND_ID,
             DB_NAME,
             "Creates dogbones at all inside corners of a face",
             "resources/ui/create_button"
         )
 
-        upd_button = _ui.commandDefinitions.addButtonDefinition(
+        upd_button = g._ui.commandDefinitions.addButtonDefinition(
             UPD_COMMAND_ID,
             "DogboneUpdate",
             "Updates previously created dogbones",
@@ -116,8 +112,8 @@ class DogboneCommand(object):
 
         self.onCreate(event=button.commandCreated)
         self.onUpdate(event=upd_button.commandCreated)
-        # self.onTerminateCommand(event=_ui.commandTerminated)  -For potential future uses 
-        # self.onWorkspaceActivated(event=_ui.workspaceActivated)
+        # self.onTerminateCommand(event=g._ui.commandTerminated)  -For potential future uses 
+        # self.onWorkspaceActivated(event=g._ui.workspaceActivated)
 
         # Create controls for Manufacturing Workspace
         control = self.get_solid_create_panel().controls.addCommand(
@@ -137,7 +133,7 @@ class DogboneCommand(object):
         upd_control.isPromoted = True
         
         # Create button definition and command event handler
-        createPanel = _ui.allToolbarPanels.itemById("SolidCreatePanel")
+        createPanel = g._ui.allToolbarPanels.itemById("SolidCreatePanel")
         buttonControl = createPanel.controls.addCommand(button, COMMAND_ID)
         upd_buttonControl = createPanel.controls.addCommand(upd_button, UPD_COMMAND_ID)
 
@@ -148,7 +144,7 @@ class DogboneCommand(object):
         upd_buttonControl.isPromoted = True
 
     def get_solid_create_panel(self):
-        env = _ui.workspaces.itemById("MfgWorkingModelEnv")
+        env = g._ui.workspaces.itemById("MfgWorkingModelEnv")
         tab = env.toolbarTabs.itemById("MfgSolidTab")
         return tab.toolbarPanels.itemById("SolidCreatePanel")
 
@@ -158,7 +154,7 @@ class DogboneCommand(object):
         self.remove_command_definition()
 
     def remove_from_all(self):
-        panel = _ui.allToolbarPanels.itemById("SolidCreatePanel")
+        panel = g._ui.allToolbarPanels.itemById("SolidCreatePanel")
         if not panel:
             return
 
@@ -176,10 +172,10 @@ class DogboneCommand(object):
         control and control.deleteMe()
 
     def remove_command_definition(self):
-        if cmdDef := _ui.commandDefinitions.itemById(COMMAND_ID):
+        if cmdDef := g._ui.commandDefinitions.itemById(COMMAND_ID):
             cmdDef.deleteMe()
 
-        if cmdDef := _ui.commandDefinitions.itemById(UPD_COMMAND_ID):
+        if cmdDef := g._ui.commandDefinitions.itemById(UPD_COMMAND_ID):
             cmdDef.deleteMe()
 
     @eventHandler(handler_cls=adsk.core.CommandCreatedEventHandler)
@@ -188,7 +184,7 @@ class DogboneCommand(object):
 
     # @eventHandler(handler_cls=adsk.core.ApplicationCommandEventHandler)
     # def onTerminateCommand(self, args: adsk.core.ApplicationCommandEventArgs):
-    #     if _ui.activeCommand != COMMAND_ID:
+    #     if g._ui.activeCommand != COMMAND_ID:
     #         return
     #     # activeDoc = _app.activeDocument
     #     # tdocs = [d for d in _app.documents if not d.isActive]
@@ -220,10 +216,10 @@ class DogboneCommand(object):
         value: [DbEdge objects, ....]
         """
 
-        global _design
+        # global g._design
 
-        if _design.designType != adsk.fusion.DesignTypes.ParametricDesignType:
-            returnValue = _ui.messageBox(
+        if g._design.designType != adsk.fusion.DesignTypes.ParametricDesignType:
+            returnValue = g._ui.messageBox(
                 "DogBone only works in Parametric Mode \n Do you want to change modes?",
                 "Change to Parametric mode",
                 adsk.core.MessageBoxButtonTypes.YesNoButtonType,
@@ -248,8 +244,8 @@ class DogboneCommand(object):
         createStaticDogbones(params, selection)
 
         #Remove check after F360 fixes their baseFeature/UI refresh issue  
-        if _ui.activeWorkspace.id == "MfgWorkingModelEnv":  
-            _ui.messageBox("If the tool bar becomes blank\nUse Undo then Redo (ctrl-z, ctrl-y)")
+        if g._ui.activeWorkspace.id == "MfgWorkingModelEnv":  
+            g._ui.messageBox("If the tool bar becomes blank\nUse Undo then Redo (ctrl-z, ctrl-y)")
 
         logger.info(
             "all dogbones complete\n-------------------------------------------\n"
@@ -276,12 +272,11 @@ class DogboneCommand(object):
     @property
     def originPlane(self):
         return (
-            _rootComp.xZConstructionPlane if self.yUp else _rootComp.xYConstructionPlane
+            g._rootComp.xZConstructionPlane if self.yUp else g._rootComp.xYConstructionPlane
         )
 
 
 dog = DogboneCommand()
-
 
 def run(context):
     try:
@@ -293,7 +288,7 @@ def run(context):
 
 def stop(context):
     try:
-        _ui.terminateActiveCommand()
+        g._ui.terminateActiveCommand()
         adsk.terminate()
         dog.stop(context)
     except Exception as e:

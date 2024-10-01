@@ -11,13 +11,13 @@ from typing import ClassVar, cast
 import adsk.core
 import adsk.fusion
 
-# from . import common as g
+from . import globalvars as g
 
-# Globals
-_app = adsk.core.Application.get()
-_design: adsk.fusion.Design = cast(adsk.fusion.Design, _app.activeProduct)
-_ui = _app.userInterface
-_rootComp = _design.rootComponent
+# # Globals
+# _app = adsk.core.Application.get()
+# g._design: adsk.fusion.Design = cast(adsk.fusion.Design, _app.activeProduct)
+# _ui = _app.userInterface
+# g._rootComp = g._design.rootComponent
 
 pp = pprint.PrettyPrinter()
 
@@ -175,11 +175,11 @@ def makeTempFaceVisible(method):
     @wraps(method)
     def wrapper(*args, **kwargs):
         # Create a base feature
-        baseFeats = _rootComp.features.baseFeatures
+        baseFeats = g._rootComp.features.baseFeatures
         baseFeat = baseFeats.add()
 
         baseFeat.startEdit()
-        bodies = _rootComp.bRepBodies
+        bodies = g._rootComp.bRepBodies
 
         tempBody = method(*args, **kwargs)
         tempBody.name = f"Debug_{method.__name__}"
@@ -199,7 +199,7 @@ def entityFromToken(method):
         try:
             entityToken = method(*args, **kwargs)
             entity = cacheDict.setdefault(
-                entityToken, _design.findEntityByToken(entityToken)[0]
+                entityToken, g._design.findEntityByToken(entityToken)[0]
             )
             return entity
         except:
