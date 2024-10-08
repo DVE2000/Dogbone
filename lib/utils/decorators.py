@@ -6,18 +6,10 @@ import time
 import traceback
 from dataclasses import dataclass, field
 from functools import wraps
-from typing import ClassVar, cast
+from typing import ClassVar
 
 import adsk.core
 import adsk.fusion
-
-from . import globalvars as g
-
-# # Globals
-# _app = adsk.core.Application.get()
-# g._design: adsk.fusion.Design = cast(adsk.fusion.Design, _app.activeProduct)
-# _ui = _app.userInterface
-# g._rootComp = g._design.rootComponent
 
 pp = pprint.PrettyPrinter()
 
@@ -191,21 +183,21 @@ def makeTempFaceVisible(method):
     return wrapper
 
 
-def entityFromToken(method):
-    cacheDict = {}
+# def entityFromToken(method):
+#     cacheDict = {}
 
-    @wraps(method)
-    def wrapper(*args, **kwargs):
-        try:
-            entityToken = method(*args, **kwargs)
-            entity = cacheDict.setdefault(
-                entityToken, g._design.findEntityByToken(entityToken)[0]
-            )
-            return entity
-        except:
-            return None
+#     @wraps(method)
+#     def wrapper(*args, **kwargs):
+#         try:
+#             entityToken = method(*args, **kwargs)
+#             entity = cacheDict.setdefault(
+#                 entityToken, g._design.findEntityByToken(entityToken)[0]
+#             )
+#             return entity
+#         except:
+#             return None
 
-    return wrapper
+#     return wrapper
 
 
 def tokeniseEntity(method):

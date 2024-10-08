@@ -7,44 +7,29 @@ from typing import cast
 import adsk.core
 import adsk.fusion
 
-from . import globalvars as g
+from ... import globalvars as g
 
-from . import dbutils as dbUtils
-from .DbData import DbParams
-from .DbClasses import Selection, DbFace
-from .DbContext import baseFeatureContext, groupContext
+from ...lib.utils import debugFace, getTopFace 
+from ...lib.classes import DbParams, Selection, groupContext 
 
-from .UserParameter import create_user_parameter, DB_RADIUS
-from .log import logger
-from .util import makeNative, reValidateFace
-from .constants import DB_GROUP, DB_NAME
-
-# _app = adsk.core.Application.get()
-# _design: adsk.fusion.Design = cast(adsk.fusion.Design, _app.activeProduct)#this should be dynamically set according to the Product/Design context!  
-                                                                        #For the moment it works, but should be fixed in the futur
-
-def debugFace(face):
-    if logger.level < logging.DEBUG:
-        return
-    for edge in face.edges:
-        logger.debug(
-            f"edge {edge.tempId}; startVertex: {edge.startVertex.geometry.asArray()}; endVertex: {edge.endVertex.geometry.asArray()}"
-        )
+from ...log import logger
+# from ...lib.utils import makeNative, reValidateFace
+from ...constants import DB_GROUP, DB_NAME
 
 
 def createStaticDogbones(param: DbParams, selection: Selection):
+
     logger.info("Creating static dogbones")
 
     tempBrepMgr = adsk.fusion.TemporaryBRepManager.get()
 
     for occurrenceFaces in selection.selectedOccurrences.values():
-        # startTlMarker = _design.timeline.markerPosition
         with groupContext():
             topFace = None
             toolBodies = None
 
             if param.fromTop:
-                topFace, topFaceRefPoint = dbUtils.getTopFace(occurrenceFaces[0].native)
+                topFace, topFaceRefPoint = getTopFace(occurrenceFaces[0].native)
                 logger.debug(f"topFace ref point: {topFaceRefPoint.asArray()}")
                 logger.info(f"Processing holes from top face - {topFace.tempId}")
                 debugFace(topFace)
@@ -101,44 +86,4 @@ def createStaticDogbones(param: DbParams, selection: Selection):
             combine:adsk.fusion.CombineFeature = component.features.combineFeatures.add(combineFeatureInput)
 
             logger.debug(f"combine: {combine.name}")
-
-def updateDogBones():
-    """
-    Recalculates and updates existing dogbones
-    
-    """
-    baseFeaturesAttrs: adsk.core.Attributes = g._design.findAttributes(DB_GROUP, "re:basefeature:.*")
-
-    for bfAttr in baseFeaturesAttrs:
-
-        baseFeature: adsk.fusion.BaseFeature = bfAttr.parent
-        faces = json.loads(bfAttr.value)
-        faceList = '|'.join(map(str, faces))
-        regex = "re:face:("+faceList+")"
-        faceAttrs = g._design.findAttributes(DB_GROUP, regex)
-
-        tempBrepMgr = adsk.fusion.TemporaryBRepManager.get()
-        toolBodies = None
-        
-        with baseFeatureContext(baseFeature= baseFeature):
-            for faceAtt in faceAttrs:
-                if not faceAtt.parent:
-                    continue
-                selectedFace: DbFace = DbFace(face=faceAtt.parent,
-                            restoreState=True)
-                topFace, _ = dbUtils.getTopFace(selectedFace=selectedFace.face)
-                topFace = topFace.nativeObject if topFace.nativeObject else topFace
-                for edge in selectedFace.selectedEdges:
-                    if not toolBodies:
-                        toolBodies = edge.getToolBody(
-                            topFace=topFace
-                        )
-                    else:
-                        tempBrepMgr.booleanOperation(
-                            toolBodies,
-                            edge.getToolBody(topFace=topFace),
-                            adsk.fusion.BooleanTypes.UnionBooleanType,
-                        )
-                if toolBodies:
-                    [baseFeature.updateBody(body, toolBodies) for body in baseFeature.sourceBodies]
 

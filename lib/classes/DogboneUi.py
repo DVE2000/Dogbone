@@ -4,15 +4,13 @@ from typing import cast
 import adsk.core
 import adsk.fusion
 
-from . import globalvars as g
+# from ... import globalvars as g
 
-from . import dbutils as dbUtils
-from .DbClasses import DbFace
-from .DbClasses import Selection
-from .DbData import DbParams
-from .decorators import eventHandler, parseDecorator
-from .log import LEVELS, logger
-from .util import calcId
+from ...lib.utils import getFaceNormal
+from . import DbParams, Selection, DbFace
+from ...lib.utils.decorators import eventHandler, parseDecorator
+from ...log import LEVELS, logger
+from ..utils.util import calcId
 
 
 ACUTE_ANGLE = "acuteAngle"
@@ -45,17 +43,34 @@ TOOL_DIAMETER_OFFSET = "toolDiaOffset"
 
 
 _appPath = os.path.dirname(os.path.abspath(__file__))
-# g._app = adsk.core.Application.get()
-# g._design: adsk.fusion.Design = cast(adsk.fusion.Design, g._app.activeProduct)
-# _ui = g._app.userInterface
-
+# _app = adsk.core.Application.get()
+# design: adsk.fusion.Design = cast(adsk.fusion.Design, _app.activeProduct)
+# _ui = _app.userInterface
 
 # noinspection SqlDialectInspection,SqlNoDataSourceInspection,PyMethodMayBeStatic
 class DogboneUi:
+    """
+    important persistent variables:
+    selectedOccurrences  - Lookup dictionary
+    key: activeOccurrenceId - hash of entityToken
+    value: list of selectedFaces (DbFace objects)
+        provides a quick lookup relationship between each occurrence and in particular which faces have been selected.
+
+    selectedFaces - Lookup dictionary
+    key: faceId =  - hash of entityToken
+    value: [DbFace objects, ....]
+
+    selectedEdges - reverse lookup
+    key: edgeId - hash of entityToken
+    value: [DbEdge objects, ....]
+    """
 
     def __init__(self, params: DbParams, command: adsk.core.Command, executeHandler) -> None:
         super().__init__()
 
+        app = adsk.core.Application.get()
+        self.design: adsk.fusion.Design = app.activeProduct
+        self.ui = app.userInterface
         self.param = params
         self.command = command
         self.executeHandler = executeHandler
@@ -69,16 +84,8 @@ class DogboneUi:
         self.onValidate(event=command.validateInputs)
         self.onFaceSelect(event=command.selectionEvent)
         self.onExecute(event=command.execute)
-        # self.markingMenu(event=_ui.markingMenuDisplaying)
-
-    # @eventHandler(handler_cls=adsk.core.MarkingMenuEventHandler)
-    # def markingMenu(self, args: adsk.core.MarkingMenuEventArgs):
-    #     pass
 
     def create_ui(self):
-        # global g._app, g._design 
-        g._app = adsk.core.Application.get()
-        g._design = cast(adsk.fusion.Design, g._app.activeProduct)
         self.face_select()
         self.edge_select()
         self.tool_diameter()
@@ -190,9 +197,9 @@ class DogboneUi:
                 except (KeyError, IndexError) as e:
                     return
 
-                primaryFaceNormal = dbUtils.getFaceNormal(primaryFace.face)
+                primaryFaceNormal = getFaceNormal(primaryFace.face)
                 if primaryFaceNormal.isParallelTo(
-                        dbUtils.getFaceNormal(eventArgs.selection.entity)
+                        getFaceNormal(eventArgs.selection.entity)
                 ):
                     eventArgs.isSelectable = True
                     return
@@ -241,9 +248,9 @@ class DogboneUi:
                         return
             except KeyError:
                 return
-            primaryFaceNormal = dbUtils.getFaceNormal(primaryFace.face)
+            primaryFaceNormal = getFaceNormal(primaryFace.face)
             if primaryFaceNormal.isParallelTo(
-                    dbUtils.getFaceNormal(eventArgs.selection.entity)
+                    getFaceNormal(eventArgs.selection.entity)
             ):
                 eventArgs.isSelectable = True
                 return
@@ -354,7 +361,7 @@ class DogboneUi:
             edgeSelectCommand.hasFocus = True
 
             for edgeObj in self.selection.selectedEdges.values():
-                _ui.activeSelections.removeByEntity(edgeObj.edge)
+                ui.activeSelections.removeByEntity(edgeObj.edge)
 
             for faceObj in self.selection.selectedFaces.values():
                 faceObj.reSelectEdges()
@@ -553,7 +560,7 @@ class DogboneUi:
         # modeRowInput.tooltipDescription = (
         #     "Static dogbones do not move with the underlying component geometry. \n"
         #     "\nParametric dogbones will automatically adjust position with parametric changes to underlying geometry. "
-        #     "Geometry changes must be made via the parametric dialog.\nFusion has more issues/bugs with these!"
+        #     "Geometry changes must be made via the parametric dialo\nFusion has more issues/bugs with these!"
         # )
         typeRowInput: adsk.core.ButtonRowCommandInput = (
             modeGroupChildInputs.addButtonRowCommandInput(DOGBONE_TYPE, "Type", False)
@@ -615,7 +622,7 @@ class DogboneUi:
         )
         depthRowInput.tooltipDescription = (
             'When "From Top Face" is selected, all dogbones will be extended to the top most face\n'
-            "\nThis is typically chosen when you don't want to, or can't do, double sided machining."
+            "\nThis is typically chosen when you don't want to, or can't do, double sided machinin"
         )
 
     def settings(self):
@@ -654,7 +661,7 @@ class DogboneUi:
         ui = self.inputs.addValueInput(
             TOOL_DIAMETER_OFFSET,
             "Tool diameter offset",
-            g._design.unitsManager.defaultLengthUnits,
+            self.design.unitsManager.defaultLengthUnits,
             adsk.core.ValueInput.createByString(self.param.toolDiaOffsetStr),
         )
         ui.tooltip = "Increases the tool diameter"
@@ -669,7 +676,7 @@ class DogboneUi:
         ui = self.inputs.addValueInput(
             TOOL_DIAMETER,
             "Tool Dia               ",
-            g._design.unitsManager.defaultLengthUnits,
+            self.design.unitsManager.defaultLengthUnits,
             adsk.core.ValueInput.createByString(self.param.toolDiaStr),
         )
         ui.tooltip = "Size of the tool with which you'll cut the dogbone."

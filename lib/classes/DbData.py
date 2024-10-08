@@ -2,11 +2,11 @@
 import adsk.core
 import adsk.fusion
 
-from . import globalvars as g
+# from . import globalvars as g
 
 from dataclasses import dataclass
 
-from dataclasses_json import dataclass_json
+from ...py_packages.dataclasses_json import dataclass_json
 
 @dataclass_json
 @dataclass
@@ -35,11 +35,16 @@ class DbParams:
     logging: int = 0
     benchmark: bool = False
 
+    
+    @property
+    def design(self):
+        app = adsk.core.Application.get()
+        return  app.activeProduct
 
     @property
     def toolDia(self):
-        return g._design.unitsManager.evaluateExpression(self.toolDiaStr)
+        return self.design.unitsManager.evaluateExpression(self.toolDiaStr)
 
     @property
     def toolDiaOffset(self):
-        return g._design.unitsManager.evaluateExpression(self.toolDiaOffsetStr)
+        return self.design.unitsManager.evaluateExpression(self.toolDiaOffsetStr)

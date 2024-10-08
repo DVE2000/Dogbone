@@ -7,14 +7,14 @@ from typing import cast, Dict, List
 import adsk.core
 import adsk.fusion
 
-from . import globalvars as g
+# from . import globalvars as g
 
 from .DbData import DbParams
-from .errors import FaceInvalidError, EdgeInvalidError
-from .constants import DB_GROUP
-from . import dbutils as dbUtils
-
+from ...errors import FaceInvalidError, EdgeInvalidError
+from ...constants import DB_GROUP
+from ...lib.utils import getFaceNormal, getEdgeVector, getAngleBetweenFaces, messageBox, getCornerEdgesAtFace, getTranslateVectorBetweenFaces, correctedEdgeVector
 logger = logging.getLogger("dogbone.DbClasses")
+
 
 
 class Selection:
@@ -40,17 +40,21 @@ class DbFace:
             commandInputsEdgeSelect = None,
             restoreState = False
     ):
+        app = adsk.core.Application.get()
+        design: adsk.fusion.Design = app.activeProduct
+        self.rootComp = design.rootComponent
+        self.ui = app.userInterface
 
         self._params = params
         self.selection = selection
         self._entityToken = face.entityToken
 
         self.face = face = (
-            face if face.isValid else g._design.findEntityByToken(self._entityToken)[0]
+            face if face.isValid else design.findEntityByToken(self._entityToken)[0]
         )
 
         self._faceId = hash(self._entityToken)
-        self.faceNormal = dbUtils.getFaceNormal(face)
+        self.faceNormal = getFaceNormal(face)
         self._refPoint = (
             face.nativeObject.pointOnFace if face.nativeObject else face.pointOnFace
         )
@@ -99,7 +103,7 @@ class DbFace:
             try:
                 if edge.geometry.curveType != adsk.core.Curve3DTypes.Line3DCurveType:
                     continue # make sure corner edge is only a straight line
-                vector: adsk.core.Vector3D = dbUtils.getEdgeVector(edge, refFace=self.face)
+                vector: adsk.core.Vector3D = getEdgeVector(edge, refFace=self.face)
                 vector.normalize()
                 if not vector.isParallelTo(self.faceNormal):
                     continue  #make sure corner edge is perpendicular to top face
@@ -113,7 +117,7 @@ class DbFace:
                 if face2.geometry.objectType != adsk.core.Plane.classType():
                     continue
 
-                angle = round(dbUtils.getAngleBetweenFaces(edge) * 180 / pi, 3)
+                angle = round(getAngleBetweenFaces(edge) * 180 / pi, 3)
                 if (
                     (abs(angle - 90) > 0.001)
                     and not (self._params.acuteAngle or self._params.obtuseAngle)
@@ -156,7 +160,7 @@ class DbFace:
 
             except Exception as e:
                 logger.exception(e)
-                dbUtils.messageBox("Failed at edge:\n{}".format(traceback.format_exc()))
+                messageBox("Failed at edge:\n{}".format(traceback.format_exc()))
 
     def __hash__(self):
         return self.faceId
@@ -212,7 +216,7 @@ class DbFace:
         [
             (
                 selectedEdge.deselect(),
-                g._ui.activeSelections.removeByEntity(selectedEdge.edge),
+                self.ui.activeSelections.removeByEntity(selectedEdge.edge),
             )
             for selectedEdge in self._associatedEdgesDict.values()
         ]
@@ -267,7 +271,7 @@ class DbFace:
     def deleteEdges(self):
         [
             (
-                g._ui.activeSelections.removeByEntity(edgeObj.edge),
+                self.ui.activeSelections.removeByEntity(edgeObj.edge),
                 self.selection.selectedEdges.pop(edgeId),
             )
             for edgeId, edgeObj in self._associatedEdgesDict.items()
@@ -289,7 +293,7 @@ class DbFace:
         return (
             self.face.assemblyContext.component
             if self.face.assemblyContext
-            else g._rootComp
+            else self.rootComp
         )
 
     @property
@@ -353,7 +357,7 @@ class DbEdge:
         face1normal.normalize()
         self._cornerVector = face1normal
 
-        self._cornerAngle = dbUtils.getAngleBetweenFaces(edge)
+        self._cornerAngle = getAngleBetweenFaces(edge)
         self._customGraphicGroup = None
 
         self._dogboneCentre = (
@@ -464,7 +468,7 @@ class DbEdge:
         """
         returns the two face edges associated with dogbone edge that is orthogonal to the face edges 
         """
-        return dbUtils.getCornerEdgesAtFace(face=self._parentFace, edge=self.edge)
+        return getCornerEdgesAtFace(face=self._parentFace, edge=self.edge)
 
     @property
     def cornerVector(self) -> adsk.core.Vector3D:
@@ -504,7 +508,7 @@ class DbEdge:
         from .DbData import DbParams
 
         box = None
-        topFace = topFace if topFace else dbUtils.getTopFace(self._parentFace.face)
+        topFace = topFace if topFace else getTopFace(self._parentFace.face)
 
         tempBrepMgr = adsk.fusion.TemporaryBRepManager.get()
         startPoint, endPoint = self.nativeEndPoints
@@ -529,15 +533,15 @@ class DbEdge:
         )
 
         if topFace:
-            translateVector = dbUtils.getTranslateVectorBetweenFaces(
+            translateVector = getTranslateVectorBetweenFaces(
                 self._parentFace.native, topFace
             )
             startPoint.translateBy(translateVector)
 
         if params.dbType == "Mortise Dogbone":
             (edge0, edge1) = self.cornerEdges
-            direction0 = dbUtils.correctedEdgeVector(edge0.nativeObject, startPoint)
-            direction1 = dbUtils.correctedEdgeVector(edge1.nativeObject, startPoint)
+            direction0 = correctedEdgeVector(edge0.nativeObject, startPoint)
+            direction1 = correctedEdgeVector(edge1.nativeObject, startPoint)
             if params.longSide:
                 if edge0.length > edge1.length:
                     dirVect = direction0

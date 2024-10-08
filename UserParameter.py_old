@@ -2,7 +2,7 @@ from typing import cast
 
 from adsk.core import ValueInput
 
-from .DbData import DbParams
+from .lib import DbParams
 import adsk.fusion
 
 from . import globalvars as g
