@@ -16,7 +16,7 @@ import os
 import adsk.core
 import adsk.fusion
     
-from ...lib.classes import DbParams, Selection, DbParams, DogboneUi
+from ...lib.classes import DbParams, Selection, DbParams
 
 from ...log import logger
 
@@ -25,9 +25,6 @@ from ...lib.utils import eventHandler, messageBox
 from .main import createStaticDogbones
 from ... import config
 
-app = adsk.core.Application.get()
-design: adsk.fusion.Design = app.activeProduct
-ui = app.userInterface
 
 REV_ID = "revId"
 ID = "id"
@@ -54,6 +51,8 @@ COMMAND_BESIDE_ID = ''
 ICON_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'resources', '')
 
 def start():
+    app = adsk.core.Application.get()
+    ui = app.userInterface
     try:
         cmd_def =  ui.commandDefinitions.addButtonDefinition(
             CMD_ID,
@@ -84,6 +83,8 @@ def start():
 
 def stop():
 
+    app = adsk.core.Application.get()
+    ui = app.userInterface
     # Get the various UI elements for this command
     workspace = ui.workspaces.itemById(WORKSPACE_ID)
     panel = workspace.toolbarPanels.itemById(PANEL_ID)
@@ -98,32 +99,30 @@ def stop():
     if command_definition:
         command_definition.deleteMe()
 
-def write_defaults( param: DbParams):
-    logger.info("config file write")
-    write_file(config.CONFIG_PATH, param.to_json())
-
-def write_file( path: str, data: str):
-    with open(path, "w", encoding="UTF-8") as file:
-        file.write(data)
-
-def read_file( path: str) -> str:
-    with open(path, "r", encoding="UTF-8") as file:
-        return file.read()
-
-def read_defaults() -> DbParams:
-    logger.info("config file read")
-
-    if not os.path.isfile(config.CONFIG_PATH):
-        return DbParams()
-
-    try:
-        json = read_file(config.CONFIG_PATH)
-        return DbParams().from_json(json)
-    except ValueError:
-        return DbParams()
 
 @eventHandler(handler_cls=adsk.core.CommandCreatedEventHandler)
 def onCreate( args: adsk.core.CommandCreatedEventArgs):
+    from ...lib.classes import DogboneUi
+    
+    def read_file( path: str) -> str:
+        with open(path, "r", encoding="UTF-8") as file:
+            return file.read()
+
+    def read_defaults() -> DbParams:
+        logger.info("config file read")
+
+        if not os.path.isfile(config.CONFIG_PATH):
+            return DbParams()
+
+        try:
+            json = read_file(config.CONFIG_PATH)
+            return DbParams().from_json(json)
+        except ValueError:
+            return DbParams()
+    app = adsk.core.Application.get()
+    design: adsk.fusion.Design = app.activeProduct
+    ui = app.userInterface
+
     if design.designType != adsk.fusion.DesignTypes.ParametricDesignType:
         returnValue = ui.messageBox(
             "DogBone only works in Parametric Mode \n Do you want to change modes?",
@@ -139,7 +138,19 @@ def onCreate( args: adsk.core.CommandCreatedEventArgs):
     cmd: adsk.core.Command = args.command
     ui = DogboneUi(params, cmd, createDogbones)
 
+
+
 def createDogbones( params: DbParams, selection: Selection):
+    app = adsk.core.Application.get()
+    ui = app.userInterface
+    def write_defaults( param: DbParams):
+        logger.info("config file write")
+        write_file(config.CONFIG_PATH, param.to_json())
+
+    def write_file( path: str, data: str):
+        with open(path, "w", encoding="UTF-8") as file:
+            file.write(data)
+            
     start = time.time()
 
     write_defaults(params)
