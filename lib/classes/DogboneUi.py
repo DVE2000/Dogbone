@@ -379,7 +379,7 @@ class DogboneUi:
             #            processing changes to face selections
             # ==============================================================================
 
-            if len(self.selection.selectedFaces) > s.selectionCount:
+            if len([x for x in self.selection.selectedFaces.values() if x.isSelected]) > s.selectionCount:
                 # a face has been removed
 
                 # If all faces are removed, just reset registers
