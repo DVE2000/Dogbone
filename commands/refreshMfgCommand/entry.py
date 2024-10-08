@@ -12,21 +12,15 @@
 # The add-in will then create a dogbone with diameter equal to the tool diameter plus
 # twice the offset (as the offset is applied to the radius) at each selected edge.
 import os
-import sys
 
 import adsk.core
 import adsk.fusion
 
-# _appPath = os.path.dirname(os.path.abspath(__file__))
-# _subpath = os.path.join(f"{_appPath}", "py_packages")
-
-# if _subpath not in sys.path:
-#     sys.path.insert(0, _subpath)
-    
 from ...log import logger
 
-# from .main import updateDogBones
 from ... import config
+app = adsk.core.Application.get()
+ui = app.userInterface
 
 REV_ID = "revId"
 ID = "id"
@@ -56,9 +50,6 @@ ICON_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'resource
 
 def start():
     try:
-        # cleanup_commands()
-        app = adsk.core.Application.get()
-        ui = app.userInterface
         cmd_def = ui.commandDefinitions.itemById(CMD_ID)
 
         # ******** Add a button into the UI so the user can run the command. ********
@@ -83,8 +74,6 @@ def start():
 
 def stop():
     # Get the various UI elements for this command
-    app = adsk.core.Application.get()
-    ui = app.userInterface
     workspace = ui.workspaces.itemById(WORKSPACE_ID)
     panel = workspace.toolbarPanels.itemById(PANEL_ID)
     command_control = panel.controls.itemById(CMD_ID)

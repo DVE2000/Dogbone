@@ -1,19 +1,12 @@
-import logging
-import traceback
-import re
 import json
-from typing import cast
 
 import adsk.core
 import adsk.fusion
-
-from ... import globalvars as g
 
 from ...lib.utils import debugFace, getTopFace 
 from ...lib.classes import DbParams, Selection, groupContext 
 
 from ...log import logger
-# from ...lib.utils import makeNative, reValidateFace
 from ...constants import DB_GROUP, DB_NAME
 
 

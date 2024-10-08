@@ -361,7 +361,7 @@ class DogboneUi:
             edgeSelectCommand.hasFocus = True
 
             for edgeObj in self.selection.selectedEdges.values():
-                ui.activeSelections.removeByEntity(edgeObj.edge)
+                self.ui.activeSelections.removeByEntity(edgeObj.edge)
 
             for faceObj in self.selection.selectedFaces.values():
                 faceObj.reSelectEdges()
@@ -467,7 +467,7 @@ class DogboneUi:
         #         Processing changed edge selection
         # ==============================================================================
 
-        if len(self.selection.selectedEdges) > s.selectionCount:
+        if len([x for x in self.selection.selectedEdges.values() if x.isSelected]) > s.selectionCount:
             # ==============================================================================
             #             an edge has been removed
             # ==============================================================================
@@ -508,9 +508,6 @@ class DogboneUi:
             self.inputs.addGroupCommandInput(ANGLE_DETECTION_GROUP, "Detection Mode")
         )
         angleDetectionGroupInputs.isExpanded = self.param.angleDetectionGroup
-        # angleDetectionGroupInputs.isVisible = (
-        #     not self.param.parametric
-        # )  # disables angle selection if in parametric mode
         enableAcuteAngleInput: adsk.core.BoolValueCommandInput = (
             angleDetectionGroupInputs.children.addBoolValueInput(
                 ACUTE_ANGLE, "Acute Angle", True, "", self.param.acuteAngle
@@ -548,20 +545,6 @@ class DogboneUi:
         )
         modeGroup.isExpanded = self.param.expandModeGroup
         modeGroupChildInputs = modeGroup.children
-        # modeRowInput: adsk.core.ButtonRowCommandInput = (
-        #     modeGroupChildInputs.addButtonRowCommandInput(MODE_ROW, "Mode", False)
-        # )
-        # modeRowInput.listItems.add(
-        #     STATIC, not self.param.parametric, "resources/ui/mode/staticMode"
-        # )
-        # modeRowInput.listItems.add(
-        #     PARAMETRIC, self.param.parametric, "resources/ui/mode/parametricMode"
-        # )
-        # modeRowInput.tooltipDescription = (
-        #     "Static dogbones do not move with the underlying component geometry. \n"
-        #     "\nParametric dogbones will automatically adjust position with parametric changes to underlying geometry. "
-        #     "Geometry changes must be made via the parametric dialo\nFusion has more issues/bugs with these!"
-        # )
         typeRowInput: adsk.core.ButtonRowCommandInput = (
             modeGroupChildInputs.addButtonRowCommandInput(DOGBONE_TYPE, "Type", False)
         )

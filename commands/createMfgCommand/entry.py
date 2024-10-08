@@ -11,34 +11,21 @@
 # Select the face you want the dogbones to drop from. Specify a tool diameter and a radial offset.
 # The add-in will then create a dogbone with diameter equal to the tool diameter plus
 # twice the offset (as the offset is applied to the radius) at each selected edge.
-import logging
 import os
-import sys
 
 import adsk.core
 import adsk.fusion
-
-# _appPath = os.path.dirname(os.path.abspath(__file__))
-# _subpath = os.path.join(f"{_appPath}", "py_packages")
-
-# if _subpath not in sys.path:
-#     sys.path.insert(0, _subpath)
     
-from ...lib.classes import DbParams, Selection, DbParams, DogboneUi
-
 from ...log import logger
 
 from ... import config
-
-# REV_ID = "revId"
-# ID = "id"
+app = adsk.core.Application.get()
+ui = app.userInterface
 
 ICON_FOLDER = os.path.join(config.appPath, 'resources', '')
 
 # TODO *** Specify the command identity information. ***
 CMD_ID = f'{config.COMPANY_NAME}_{config.ADDIN_NAME}_cmdDialog'
-# CMD_NAME = 'Dogbones'
-# CMD_Description = 'Creates dogbones at all inside corners of a face'
 
 # Specify that the command will be promoted to the panel.
 IS_PROMOTED = True
@@ -58,9 +45,6 @@ ICON_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'resource
 
 def start():
     try:
-        # cleanup_commands()
-        app = adsk.core.Application.get()
-        ui = app.userInterface
         cmd_def =  ui.commandDefinitions.itemById(CMD_ID)
 
         # ******** Add a button into the UI so the user can run the command. ********
@@ -85,8 +69,6 @@ def start():
 
 def stop():
     # Get the various UI elements for this command
-    app = adsk.core.Application.get()
-    ui = app.userInterface
     workspace = ui.workspaces.itemById(WORKSPACE_ID)
     panel = workspace.toolbarPanels.itemById(PANEL_ID)
     command_control = panel.controls.itemById(CMD_ID)

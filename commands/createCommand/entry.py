@@ -11,31 +11,23 @@
 # Select the face you want the dogbones to drop from. Specify a tool diameter and a radial offset.
 # The add-in will then create a dogbone with diameter equal to the tool diameter plus
 # twice the offset (as the offset is applied to the radius) at each selected edge.
-import logging
 import os
-import sys
 
 import adsk.core
 import adsk.fusion
-
-# from ... import globalvars as g
-
-# _appPath = os.path.dirname(os.path.abspath(__file__))
-# _subpath = os.path.join(f"{_appPath}", "py_packages")
-
-# if _subpath not in sys.path:
-#     sys.path.insert(0, _subpath)
     
 from ...lib.classes import DbParams, Selection, DbParams, DogboneUi
 
 from ...log import logger
 
 import time
-import traceback
 from ...lib.utils import eventHandler, messageBox
-from ...constants import DB_NAME, COMMAND_ID, UPD_COMMAND_ID
 from .main import createStaticDogbones
 from ... import config
+
+app = adsk.core.Application.get()
+design: adsk.fusion.Design = app.activeProduct
+ui = app.userInterface
 
 REV_ID = "revId"
 ID = "id"
@@ -60,14 +52,9 @@ COMMAND_BESIDE_ID = ''
 
 # Resource location for command icons, here we assume a sub folder in this directory named "resources".
 ICON_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'resources', '')
-app = adsk.core.Application.get()
-design: adsk.fusion.Design = app.activeProduct
-
 
 def start():
     try:
-        ui = app.userInterface
-        # cleanup_commands()
         cmd_def =  ui.commandDefinitions.addButtonDefinition(
             CMD_ID,
             CMD_NAME,
@@ -96,9 +83,7 @@ def start():
         raise e
 
 def stop():
-    app = adsk.core.Application.get()
-    # design: adsk.fusion.Design = app.activeProduct
-    ui = app.userInterface
+
     # Get the various UI elements for this command
     workspace = ui.workspaces.itemById(WORKSPACE_ID)
     panel = workspace.toolbarPanels.itemById(PANEL_ID)
@@ -139,10 +124,6 @@ def read_defaults() -> DbParams:
 
 @eventHandler(handler_cls=adsk.core.CommandCreatedEventHandler)
 def onCreate( args: adsk.core.CommandCreatedEventArgs):
-    app = adsk.core.Application.get()
-    ui = app.userInterface
-    design: adsk.fusion.Design = app.activeProduct
-
     if design.designType != adsk.fusion.DesignTypes.ParametricDesignType:
         returnValue = ui.messageBox(
             "DogBone only works in Parametric Mode \n Do you want to change modes?",

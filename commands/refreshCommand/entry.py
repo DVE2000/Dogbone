@@ -15,25 +15,19 @@ import os
 
 import adsk.core
 import adsk.fusion
-
-# _appPath = os.path.dirname(os.path.abspath(__file__))
-# _subpath = os.path.join(f"{_appPath}", "py_packages")
-
-# if _subpath not in sys.path:
-#     sys.path.insert(0, _subpath)
     
 from ...log import logger
 
 from ...lib.utils import eventHandler
 from .main import updateDogBones
 from ... import config
+app = adsk.core.Application.get()
+ui = app.userInterface
 
 REV_ID = "revId"
 ID = "id"
 
 ICON_FOLDER = os.path.join(config.appPath, 'resources', '')
-app = adsk.core.Application.get()
-ui = app.userInterface
 
 # TODO *** Specify the command identity information. ***
 CMD_ID = f'{config.COMPANY_NAME}_{config.ADDIN_NAME}_upd_cmd'
