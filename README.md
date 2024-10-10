@@ -1,5 +1,13 @@
 Dogbone addin for fusion 360
 ===
+## Version 2.3
+* refactored folder and file structure to F360's python Add-in template
+* fixed issue where and error prevented add-in from loading at start-up
+* fixed logging where multiple handlers were being created and preventing log file from being deleted
+* fixed edge selection count in edge selection box
+* corrected face selection count to be consistent with edge counting approach
+* There may still be an issue with OSX devives where the command button appear in the Mfg workspace but not in design
+ 
 ## Version 2.2
 Added update feature - will simplify dogbone updates after changes to bodies and/or components.
 Many thanks to [Tony Findeisen](github.com/it-ony) for his amazing refactoring - he's made the code look sooo much better, and easier for others to navigate.  
