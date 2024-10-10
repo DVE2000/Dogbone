@@ -6,6 +6,14 @@ import adsk.fusion
 
 logger = logging.getLogger("dogbone.dbutils")
 
+def debugFace(face):
+    if logger.level < logging.DEBUG:
+        return
+    for edge in face.edges:
+        logger.debug(
+            f"edge {edge.tempId}; startVertex: {edge.startVertex.geometry.asArray()}; endVertex: {edge.endVertex.geometry.asArray()}"
+        )
+
 
 def getAngleBetweenFaces(edge: adsk.fusion.BRepEdge) -> float:
     """
