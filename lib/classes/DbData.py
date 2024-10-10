@@ -1,8 +1,7 @@
 # -*- coding: utf-8 -*-
+#Dataclass structure that gets attached to each entity - allows mode and style of dogbone to be retrieved and used in refresh
 import adsk.core
 import adsk.fusion
-
-# from . import globalvars as g
 
 from dataclasses import dataclass
 

@@ -1,15 +1,15 @@
+"""Main create dogbone User Interface Dialog """
 import os
 from typing import cast
 
 import adsk.core
 import adsk.fusion
+import logging
 
-# from ... import globalvars as g
-
-from ...lib.utils import getFaceNormal
+from ..utils import getFaceNormal
 from . import DbParams, Selection, DbFace
-from ...lib.utils.decorators import eventHandler, parseDecorator
-from ...log import LEVELS, logger
+from ..utils.decorators import eventHandler, parseDecorator
+from ..common.log import LEVELS, startLogger, stopLogger
 from ..utils.util import calcId
 
 
@@ -43,9 +43,7 @@ TOOL_DIAMETER_OFFSET = "toolDiaOffset"
 
 
 _appPath = os.path.dirname(os.path.abspath(__file__))
-# _app = adsk.core.Application.get()
-# design: adsk.fusion.Design = cast(adsk.fusion.Design, _app.activeProduct)
-# _ui = _app.userInterface
+logger = logging.getLogger('dogbone.ui')
 
 # noinspection SqlDialectInspection,SqlNoDataSourceInspection,PyMethodMayBeStatic
 class DogboneUi:
@@ -79,6 +77,11 @@ class DogboneUi:
 
         self.inputs = command.commandInputs
 
+        if self.param.logging == 0:
+            stopLogger()
+        else:
+            startLogger()
+
         self.create_ui()
         self.onInputChanged(event=command.inputChanged)
         self.onValidate(event=command.validateInputs)
@@ -100,7 +103,7 @@ class DogboneUi:
         ==============================================================================
         """
 
-        logger.debug("Parsing inputs")
+        logger.debug("parsing Inputs")
 
         inputs = {inp.id: inp for inp in cmdInputs}
 
@@ -111,7 +114,6 @@ class DogboneUi:
         self.param.dbType = inputs[DOGBONE_TYPE].selectedItem.name
         self.param.minimalPercent = inputs[MINIMAL_PERCENT].value
         self.param.fromTop = inputs[DEPTH_EXTENT].selectedItem.name == FROM_TOP_FACE
-        # self.param.parametric = inputs[MODE_ROW].selectedItem.name == PARAMETRIC
         self.param.longSide = inputs[MORTISE_TYPE].selectedItem.name == ON_LONG_SIDE
         self.param.angleDetectionGroup = inputs[ANGLE_DETECTION_GROUP].isExpanded
         self.param.acuteAngle = inputs[ACUTE_ANGLE].value
@@ -139,7 +141,6 @@ class DogboneUi:
     def logParams(self):
         logger.debug(f"param.fromTop = {self.param.fromTop}")
         logger.debug(f"param.dbType = {self.param.dbType}")
-        # logger.debug(f"param.parametric = {self.param.parametric}")
         logger.debug(f"param.toolDiaStr = {self.param.toolDiaStr}")
         logger.debug(f"param.toolDia = {self.param.toolDia}")
         logger.debug(
@@ -296,6 +297,12 @@ class DogboneUi:
 
         # TODO: instead of finding the elements again via id, better to take the reference. Then the casting is
         # not necessary anymore and the code becomes way slimmer
+
+        if input.id == LOGGING:
+            if input.commandInputs.itemById(LOGGING).listItems.item(input.commandInputs.itemById(LOGGING).selectedItem.index).name == 'Notset':
+                stopLogger()
+            else:
+                startLogger()
 
         if input.id == DOGBONE_TYPE:
             input.commandInputs.itemById(MINIMAL_PERCENT).isVisible = (

@@ -1,20 +1,12 @@
-import logging
-import traceback
-import re
 import json
-from typing import cast
 
 import adsk.core
 import adsk.fusion
 
-from ... import globalvars as g
+from ...lib.classes import DbFace, baseFeatureContext 
 
-# from ... import dbutils as dbUtils
-from ...lib.classes import DbParams, Selection, DbFace, baseFeatureContext, groupContext 
-
-from ...log import logger
-from ...lib.utils import getTopFace, makeNative, reValidateFace
-from ...constants import DB_GROUP, DB_NAME
+from ...lib.utils import getTopFace
+from ...constants import DB_GROUP
 
 
 def updateDogBones():
@@ -23,8 +15,7 @@ def updateDogBones():
     
     """
     app = adsk.core.Application.get()
-    design: adsk.fusion.Design = app.activeProduct #this should be dynamically set according to the Product/Design context!  
-                                                                        # For the moment it works, but should be fixed in the future
+    design: adsk.fusion.Design = app.activeProduct 
     baseFeaturesAttrs: adsk.core.Attributes = design.findAttributes(DB_GROUP, "re:basefeature:.*")
 
     for bfAttr in baseFeaturesAttrs:

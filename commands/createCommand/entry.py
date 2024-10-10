@@ -1,35 +1,27 @@
 # Author-Peter Ludikar, Gary Singer
 # Description-An Add-In for making dog-bone fillets.
 
-# Peter completely revamped the dogbone add-in by Casey Rogers and Patrick Rainsberry and David Liu
-# Some of the original utilities have remained, but a lot of the other functionality has changed.
-
-# The original add-in was based on creating sketch points and extruding - Peter found using sketches and extrusion to be very heavy
-# on processing resources, so this version has been designed to create dogbones directly by using a hole tool. So far the
-# the performance of this approach is day and night compared to the original version.
-
-# Select the face you want the dogbones to drop from. Specify a tool diameter and a radial offset.
-# The add-in will then create a dogbone with diameter equal to the tool diameter plus
-# twice the offset (as the offset is applied to the radius) at each selected edge.
 import os
+import logging
 
 import adsk.core
 import adsk.fusion
+import logging
     
 from ...lib.classes import DbParams, Selection, DbParams
 
-from ...log import logger
+from ...lib.common.log import startLogger, stopLogger
 
 import time
 from ...lib.utils import eventHandler, messageBox
 from .main import createStaticDogbones
 from ... import config
 
+# logger = logging.getLogger('dogbone')
 
-REV_ID = "revId"
-ID = "id"
+appPath = os.path.dirname(os.path.abspath(__file__))
 
-ICON_FOLDER = os.path.join(config.appPath, 'resources', '')
+ICON_FOLDER = os.path.join(appPath, 'resources', '')
 
 # TODO *** Specify the command identity information. ***
 CMD_ID = f'{config.COMPANY_NAME}_{config.ADDIN_NAME}_cmdDialog'
@@ -49,6 +41,8 @@ COMMAND_BESIDE_ID = ''
 
 # Resource location for command icons, here we assume a sub folder in this directory named "resources".
 ICON_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'resources', '')
+
+logger = logging.getLogger('dogbone.createCommand')
 
 def start():
     app = adsk.core.Application.get()
@@ -99,10 +93,12 @@ def stop():
     if command_definition:
         command_definition.deleteMe()
 
+        stopLogger()
+
 
 @eventHandler(handler_cls=adsk.core.CommandCreatedEventHandler)
 def onCreate( args: adsk.core.CommandCreatedEventArgs):
-    from ...lib.classes import DogboneUi
+    from ...lib.classes import DogboneUi  #need to import main classes and functions here - to prevent InvalidDocument Error on start-up
     
     def read_file( path: str) -> str:
         with open(path, "r", encoding="UTF-8") as file:
@@ -136,11 +132,12 @@ def onCreate( args: adsk.core.CommandCreatedEventArgs):
 
     params = read_defaults()
     cmd: adsk.core.Command = args.command
+    # startLogger()
     ui = DogboneUi(params, cmd, createDogbones)
 
 
-
 def createDogbones( params: DbParams, selection: Selection):
+    logger = logging.getLogger('dogbone.createDogbones')
     app = adsk.core.Application.get()
     ui = app.userInterface
     def write_defaults( param: DbParams):
@@ -150,7 +147,7 @@ def createDogbones( params: DbParams, selection: Selection):
     def write_file( path: str, data: str):
         with open(path, "w", encoding="UTF-8") as file:
             file.write(data)
-            
+
     start = time.time()
 
     write_defaults(params)
@@ -164,20 +161,8 @@ def createDogbones( params: DbParams, selection: Selection):
         "all dogbones complete\n-------------------------------------------\n"
     )
 
-    closeLogger()
-
     if params.benchmark:
         messageBox(
             f"Benchmark: {time.time() - start:.02f} sec processing {len(selection.edges)} edges"
         )
-
-# ==============================================================================
-#  routine to process any changed selections
-#  this is where selection and deselection management takes place
-#  also where eligible edges are determined
-# ==============================================================================
-
-def closeLogger():
-    for handler in logger.handlers:
-        handler.flush()
-        handler.close()
+    # stopLogger()

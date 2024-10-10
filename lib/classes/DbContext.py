@@ -1,3 +1,5 @@
+"""Provides wrapper functions to ensure events such as creating baseFaatures return to pre-state after oening and editing """
+
 import adsk.fusion, adsk.cam, adsk.core
 from contextlib import contextmanager
 from ...constants import DB_NAME

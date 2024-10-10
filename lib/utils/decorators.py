@@ -14,7 +14,6 @@ import adsk.fusion
 pp = pprint.PrettyPrinter()
 
 logger = logging.getLogger("dogbone.decorators")
-logger.setLevel(logging.DEBUG)
 
 
 @dataclass()

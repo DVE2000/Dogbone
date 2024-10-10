@@ -1,3 +1,4 @@
+"""Main dogbone classes - Face Entities, Edge Entities and class for keeping a register of entities that have been selected"""
 import logging
 import traceback
 from math import tan, pi
@@ -7,15 +8,11 @@ from typing import cast, Dict, List
 import adsk.core
 import adsk.fusion
 
-# from . import globalvars as g
-
 from .DbData import DbParams
-from ...errors import FaceInvalidError, EdgeInvalidError
+from ..common.errors import FaceInvalidError, EdgeInvalidError
 from ...constants import DB_GROUP
-from ...lib.utils import getFaceNormal, getEdgeVector, getAngleBetweenFaces, messageBox, getCornerEdgesAtFace, getTranslateVectorBetweenFaces, correctedEdgeVector
-logger = logging.getLogger("dogbone.DbClasses")
-
-
+from ..utils import getFaceNormal, getEdgeVector, getAngleBetweenFaces, messageBox, getCornerEdgesAtFace, getTranslateVectorBetweenFaces, correctedEdgeVector
+# logger = logging.getLogger("dogbone.DbClasses")
 
 class Selection:
     def __init__(self) -> None:
@@ -31,6 +28,7 @@ class Selection:
 
 
 class DbFace:
+    logger = logging.getLogger("dogbone.DbFace")
 
     def __init__(
             self,
@@ -54,6 +52,7 @@ class DbFace:
         )
 
         self._faceId = hash(self._entityToken)
+        DbFace.logger.debug(f'FaceCreated: {self._faceId}')
         self.faceNormal = getFaceNormal(face)
         self._refPoint = (
             face.nativeObject.pointOnFace if face.nativeObject else face.pointOnFace
@@ -61,7 +60,6 @@ class DbFace:
         self._component = face.body.parentComponent
         self.commandInputsEdgeSelect = commandInputsEdgeSelect
         self._selected = True
-        # self._params = params
         self._body = self.face.body.nativeObject if self.face.nativeObject else self.face.body
 
         self._associatedEdgesDict = {}  # Keyed with edge
@@ -159,7 +157,7 @@ class DbFace:
                 continue
 
             except Exception as e:
-                logger.exception(e)
+                DbFace.logger.exception(e)
                 messageBox("Failed at edge:\n{}".format(traceback.format_exc()))
 
     def __hash__(self):
@@ -325,7 +323,10 @@ class DbFace:
 
 
 class DbEdge:
+    logger = logging.getLogger("dogbone.DbEdge")
+
     def __init__(self, edge: adsk.fusion.BRepEdge, parentFace: DbFace):
+
 
         self._refPoint = (
             edge.nativeObject.pointOnEdge if edge.nativeObject else edge.pointOnEdge
@@ -386,7 +387,7 @@ class DbEdge:
         sx,sy,sz = self._nativeEndPoints[0].asArray()
         ex,ey,ez = self._nativeEndPoints[1].asArray()
 
-        logger.debug(f'\nedge: {self.edge.tempId}'
+        DbEdge.logger.debug(f'\nedge: {self.edge.tempId}'
                     f'\n native: {self.edge.nativeObject != None}'
                     f'\n startPoint: ({sx:.2f},{sy:.2f},{sz:.2f}),({ex:.2f},{ey:.2f},{ez:.2f})'
                     f'\n edgeLength: {startPoint.distanceTo(endPoint):.2f}'
@@ -505,7 +506,6 @@ class DbEdge:
     def __getToolBody(cls,
                       self,
                       topFace: adsk.fusion.BRepFace = None):
-        from .DbData import DbParams
 
         box = None
         topFace = topFace if topFace else getTopFace(self._parentFace.face)
@@ -518,7 +518,7 @@ class DbEdge:
         ex,ey,ez = self._nativeEndPoints[1].asArray()
         params = self._params
 
-        logger.debug(f'\nGet Tool Body:++++++++++++++++'
+        DbEdge.logger.debug(f'\nGet Tool Body:++++++++++++++++'
                 f'\n native: {self.edge.nativeObject != None}'
                 f'\n edge: {self.edge.tempId}'
                 f'\n startPoint: ({sx:.2f},{sy:.2f},{sz:.2f}),({ex:.2f},{ey:.2f},{ez:.2f})'
@@ -575,7 +575,7 @@ class DbEdge:
 
         edgeHeight = startPoint.distanceTo(endPoint)
 
-        logger.debug("Adding acute angle clearance box")
+        DbEdge.logger.debug("Adding acute angle clearance box")
         cornerTan = tan(self.cornerAngle / 2)
 
         boxCentrePoint = startPoint.copy()
@@ -638,8 +638,6 @@ class DbEdge:
         coordList = []
         [coordList.extend([n for n in p.asArray()]) for p in self.endPoints]
         coords = adsk.fusion.CustomGraphicsCoordinates.create(coordList)
-
-        # body:adsk.fusion.CustomGraphicsBRepBody = self._parentFace._customGraphicGroup.addBRepBody(self.edge.body)
 
         line: adsk.fusion.CustomGraphicsLine = (
             self._parentFace._customGraphicGroup.addLines(coords, [], False)

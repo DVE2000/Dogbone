@@ -6,10 +6,11 @@ import adsk.fusion
 from ...lib.utils import debugFace, getTopFace 
 from ...lib.classes import DbParams, Selection, groupContext 
 
-from ...log import logger
+from ...lib.common.log import logging
 # from ...lib.utils import makeNative, reValidateFace
 from ...constants import DB_GROUP, DB_NAME
 
+logger = logging.getLogger('dogbone.createCommand.main')
 
 def createStaticDogbones(param: DbParams, selection: Selection):
 

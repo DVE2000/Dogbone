@@ -1,28 +1,23 @@
 # Author-Peter Ludikar, Gary Singer
 # Description-An Add-In for making dog-bone fillets.
 
-# Peter completely revamped the dogbone add-in by Casey Rogers and Patrick Rainsberry and David Liu
-# Some of the original utilities have remained, but a lot of the other functionality has changed.
-
-# The original add-in was based on creating sketch points and extruding - Peter found using sketches and extrusion to be very heavy
-# on processing resources, so this version has been designed to create dogbones directly by using a hole tool. So far the
-# the performance of this approach is day and night compared to the original version.
-
-# Select the face you want the dogbones to drop from. Specify a tool diameter and a radial offset.
-# The add-in will then create a dogbone with diameter equal to the tool diameter plus
-# twice the offset (as the offset is applied to the radius) at each selected edge.
 import os
 
 import adsk.core
 import adsk.fusion
     
-from ...log import logger
+from ...lib.common.log import logging
 
 from ... import config
+
+logger = logging.getLogger('dogbone.createMfgCommand')
+
 app = adsk.core.Application.get()
 ui = app.userInterface
 
-ICON_FOLDER = os.path.join(config.appPath, 'resources', '')
+appPath = os.path.dirname(os.path.abspath(__file__))
+
+ICON_FOLDER = os.path.join(appPath, 'resources', '')
 
 # TODO *** Specify the command identity information. ***
 CMD_ID = f'{config.COMPANY_NAME}_{config.ADDIN_NAME}_cmdDialog'

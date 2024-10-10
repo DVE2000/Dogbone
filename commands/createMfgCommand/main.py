@@ -1,3 +1,4 @@
+"""Main calling function for creating static dogbones"""
 import json
 
 import adsk.core
@@ -6,9 +7,9 @@ import adsk.fusion
 from ...lib.utils import debugFace, getTopFace 
 from ...lib.classes import DbParams, Selection, groupContext 
 
-from ...log import logger
+from ...lib.common.log import logging
 from ...constants import DB_GROUP, DB_NAME
-
+logger = logging.getLogger('dogbone.createMfgCommand.main')
 
 def createStaticDogbones(param: DbParams, selection: Selection):
 
