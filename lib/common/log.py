@@ -1,6 +1,6 @@
 import logging
 import os
-from ...config import appPath
+from ..classes import basePath
 
 LEVELS = {
     "Notset": 0,
@@ -16,7 +16,7 @@ def startLogger():
         "%(asctime)s ; %(name)s ; %(levelname)s ; %(lineno)d; %(message)s"
     )
     logHandler = logging.FileHandler(
-        os.path.join(appPath, "dogbone.log"), mode="w"
+        os.path.join(basePath, "dogbone.log"), mode="w"
     )
     logHandler.setFormatter(formatter)
     logHandler.flush()

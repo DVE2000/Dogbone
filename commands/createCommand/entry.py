@@ -8,7 +8,7 @@ import adsk.core
 import adsk.fusion
 import logging
     
-from ...lib.classes import DbParams, Selection, DbParams
+from ...lib.classes import DbParams, Selection, params
 
 from ...lib.common.log import startLogger, stopLogger
 
@@ -47,6 +47,7 @@ logger = logging.getLogger('dogbone.createCommand')
 def start():
     app = adsk.core.Application.get()
     ui = app.userInterface
+    
     try:
         cmd_def =  ui.commandDefinitions.addButtonDefinition(
             CMD_ID,
@@ -68,7 +69,7 @@ def start():
         control = panel.controls.addCommand(cmd_def, COMMAND_BESIDE_ID, False)
 
         # Specify if the command is promoted to the main toolbar. 
-        control.isPromoted = IS_PROMOTED
+        control.isPromoted = params.isPromotedCreate
 
 
     except Exception as e:
@@ -84,6 +85,8 @@ def stop():
     panel = workspace.toolbarPanels.itemById(PANEL_ID)
     command_control = panel.controls.itemById(CMD_ID)
     command_definition = ui.commandDefinitions.itemById(CMD_ID)
+    params.isPromotedCreate = command_control.isPromoted
+
 
     # Delete the button command control
     if command_control:
@@ -100,21 +103,6 @@ def stop():
 def onCreate( args: adsk.core.CommandCreatedEventArgs):
     from ...lib.classes import DogboneUi  #need to import main classes and functions here - to prevent InvalidDocument Error on start-up
     
-    def read_file( path: str) -> str:
-        with open(path, "r", encoding="UTF-8") as file:
-            return file.read()
-
-    def read_defaults() -> DbParams:
-        logger.info("config file read")
-
-        if not os.path.isfile(config.CONFIG_PATH):
-            return DbParams()
-
-        try:
-            json = read_file(config.CONFIG_PATH)
-            return DbParams().from_json(json)
-        except ValueError:
-            return DbParams()
     app = adsk.core.Application.get()
     design: adsk.fusion.Design = app.activeProduct
     ui = app.userInterface
@@ -130,7 +118,6 @@ def onCreate( args: adsk.core.CommandCreatedEventArgs):
             return
         design.designType = adsk.fusion.DesignTypes.ParametricDesignType
 
-    params = read_defaults()
     cmd: adsk.core.Command = args.command
     # startLogger()
     ui = DogboneUi(params, cmd, createDogbones)
@@ -140,17 +127,11 @@ def createDogbones( params: DbParams, selection: Selection):
     logger = logging.getLogger('dogbone.createDogbones')
     app = adsk.core.Application.get()
     ui = app.userInterface
-    def write_defaults( param: DbParams):
-        logger.info("config file write")
-        write_file(config.CONFIG_PATH, param.to_json())
 
-    def write_file( path: str, data: str):
-        with open(path, "w", encoding="UTF-8") as file:
-            file.write(data)
 
     start = time.time()
 
-    write_defaults(params)
+    # params.write_defaults()
     createStaticDogbones(params, selection)
 
     #Remove check after F360 fixes their baseFeature/UI refresh issue  

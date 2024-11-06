@@ -19,6 +19,3 @@ COMPANY_NAME = 'PJLDB'
 
 # Palettes
 sample_palette_id = f'{COMPANY_NAME}_{ADDIN_NAME}_palette_id'
-appPath = os.path.dirname(os.path.abspath(__file__))
-
-CONFIG_PATH = os.path.join(appPath, "defaults.dat")

@@ -10,6 +10,8 @@ from ...lib.common.log import logging
 
 from ... import config
 
+from ...lib.classes.DbData import DbParams, params
+
 logger = logging.getLogger('dogbone.refreshMfgCommand')
 app = adsk.core.Application.get()
 ui = app.userInterface
@@ -56,8 +58,8 @@ def start():
         control = panel.controls.addCommand(cmd_def, COMMAND_BESIDE_ID, False)
 
         # Specify if the command is promoted to the main toolbar. 
-        control.isPromoted = IS_PROMOTED
-        control.isPromotedByDefault = IS_PROMOTED
+        control.isPromoted = params.isPromotedRefreshMfg
+        control.isPromotedByDefault = params.isPromotedRefreshMfg
 
     except Exception as e:
         logger.exception(e)
@@ -67,8 +69,10 @@ def stop():
     # Get the various UI elements for this command
     workspace = ui.workspaces.itemById(WORKSPACE_ID)
     panel = workspace.toolbarPanels.itemById(PANEL_ID)
-    command_control = panel.controls.itemById(CMD_ID)
+    command_control: adsk.core.CommandControl = panel.controls.itemById(CMD_ID)
     command_definition = ui.commandDefinitions.itemById(CMD_ID)
+    params.isPromotedRefreshMfg = command_control.isPromoted
+    params.write_defaults()
 
     # Delete the button command control
     if command_control:
