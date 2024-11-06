@@ -10,6 +10,8 @@ from ...lib.common.log import logging
 
 from ... import config
 
+from ...lib.classes import params
+
 logger = logging.getLogger('dogbone.createMfgCommand')
 
 app = adsk.core.Application.get()
@@ -55,7 +57,7 @@ def start():
         control = panel.controls.addCommand(cmd_def, COMMAND_BESIDE_ID, False)
 
         # Specify if the command is promoted to the main toolbar. 
-        control.isPromoted = IS_PROMOTED
+        control.isPromoted = params.isPromotedCreateMfg
 
 
     except Exception as e:
@@ -68,6 +70,8 @@ def stop():
     panel = workspace.toolbarPanels.itemById(PANEL_ID)
     command_control = panel.controls.itemById(CMD_ID)
     command_definition = ui.commandDefinitions.itemById(CMD_ID)
+    params.isPromotedCreateMfg = command_control.isPromoted
+
 
     # Delete the button command control
     if command_control:
