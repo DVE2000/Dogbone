@@ -57,12 +57,12 @@ class DbParams:
         logger.info("config file read")
 
         if not os.path.isfile(CONFIG_PATH):
-            return cls
+            return False
 
         try:
             return cls.read_file(CONFIG_PATH)
         except ValueError:
-            return cls
+            return False
 
     def write_defaults(self):
         logger.info("config file write")
@@ -74,7 +74,8 @@ class DbParams:
 
     def __post_init__(self):
         read_str = DbParams.read_defaults()
-        self.__dict__ = json.loads(read_str)
+        if read_str:
+            self.__dict__ = json.loads(read_str)
 
     @property
     def design(self):
