@@ -61,11 +61,11 @@ zip and tar files available (for both Mac and Windows) [here](https://github.com
 ## Description
 Face selected and top face dogbones | 
 -----------------------------|
-![dogbone_overview](./Resources/dogbone_overview.png) | 
+![dogbone_overview](./resources/dogbone_overview.png) | 
 
 Minimal dogbone | Long side mortise dogbone            | Short side mortise dogbone
 ----------------|-------------|------------------------
-![minimal overview](./Resources/minimal%20dogbone%20overview.png) | ![longside mortise](./Resources/mortise%20longside.png) | ![shortside mortise](./Resources/mortise%20shortside.png)
+![minimal overview](./resources/minimal%20dogbone%20overview.png) | ![longside mortise](./resources/mortise%20longside.png) | ![shortside mortise](./resources/mortise%20shortside.png)
 
 This addin includes 3 dogbone styles (normal, minimal and mortise) and allows dogbones to be cut from either the topface or selected face.  Both static and parametric options are available - however due to a number of bugs in F360, parametric will fail on mirrored components and some component copies.  These bugs have been reported (see [here](https://forums.autodesk.com/t5/fusion-360-api-and-scripts/4-bugs-at-least-related-to-occurrences/m-p/8105766#M6240)), but as of writing AD has not addressed them.
 
@@ -103,16 +103,17 @@ See [How to install sample Add-Ins and Scripts](https://rawgit.com/AutodeskFusio
 **Note that you can hover your cursor over any Dogbone dialog item and you will get an explanatory popup in Fusion360.**
 
 1. Select the face(s) you want the dogbones to drop from. The add-in will only allow you to select appropriate and/or parallel faces for the body, once a primary face has been selected. The orientation of the primary face for unique components or bodies may be in any direction.
-   ![FaceSelection](./Resources/face_selection.jpg)
-2. All edges associated with the selected face will be automatically selected. You can select the "Dogbone Edges" selector in the Dogbone popup, and that will allow you to deselect or reselect only internal edges. **Note that only internal edges belonging to a selected face can be selected or deselected.**
-   ![EdgeSelection](./Resources/edge_selection.jpg)
-3. Specify a tool diameter and a radial offset.
-4. Select the Mode - Static Dogbones or Parameterized Dogbones. Parameters are created for the second mode - dogbones will move with edge changes, and you can change diameter or offset from the normal "Change Parameters" dialog.
-5. Choose the type of dogbone - Normal, Minimal or Mortise. See http://fablab.ruc.dk/more-elegant-cnc-dogbones/ for a description of minimal dogbones. Mortise dogbones place the dogbones along the sides, so that they can be hidden by a connecting piece with a cut tenon. Minimal and Mortise dogbones have their own option lines become visible when selected.  Note: In the minimal dogbone dialog, you can make the **Percentage Reduction** negative (eg -20), to inset the dogbone into the workpiece.
-6. Decide if you'd like dogbones to be cut to the top. (Useful if you have steps, but can't do two sided machining.)
+   ![FaceSelection](./resources/face_selection.jpg)
+2. All edges associated with the selected face will be automatically selected. You can select the "Dogbone Edges" selector in the Dogbone popup, and that will allow you to deselect or reselect only internal edges.
+3. **Note that only internal edges belonging to a selected face can be selected or deselected.**
+   ![EdgeSelection](./resources/edge_selection.jpg)
+4. Specify a tool diameter and a radial offset.
+5. Select the Mode - Static Dogbones or Parameterized Dogbones. Parameters are created for the second mode - dogbones will move with edge changes, and you can change diameter or offset from the normal "Change Parameters" dialog.
+6. Choose the type of dogbone - Normal, Minimal or Mortise. See http://fablab.ruc.dk/more-elegant-cnc-dogbones/ for a description of minimal dogbones. Mortise dogbones place the dogbones along the sides, so that they can be hidden by a connecting piece with a cut tenon. Minimal and Mortise dogbones have their own option lines become visible when selected.  Note: In the minimal dogbone dialog, you can make the **Percentage Reduction** negative (eg -20), to inset the dogbone into the workpiece.
+7. Decide if you'd like dogbones to be cut to the top. (Useful if you have steps, but can't do two sided machining.)
    ![TopSelection1](./Resources/top_select1.jpg) ![TopSelection2](./Resources/top_select2.jpg)
-7. You can expand Settings and specify if you'd like to see benchmark time or do any logging. 
-8. Click ok.
+8. You can expand Settings and specify if you'd like to see benchmark time or do any logging. 
+9. Click ok.
 
 The add-in will then create the specified dogbones. If you choose parameterized, the critical dimensions are maintained in the parameters - so you can change the dimensions as and when needed.
 
