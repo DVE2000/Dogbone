@@ -10,6 +10,8 @@ import logging
     
 from ...lib.classes import DbParams, Selection, params
 
+from ...lib.classes import SelectChainUi
+
 from ...lib.common.log import startLogger, stopLogger
 
 import time
@@ -22,10 +24,10 @@ from ... import config
 appPath = os.path.dirname(os.path.abspath(__file__))
 
 
-# TODO *** Specify the command identity information. ***
-CMD_ID = f'{config.COMPANY_NAME}_{config.ADDIN_NAME}_cmdDialog'
-CMD_NAME = 'Dogbones'
-CMD_Description = 'Creates dogbones at all inside corners of a face'
+CMD_ID = f'{config.COMPANY_NAME}_{config.ADDIN_NAME}_cmdChainDialog'
+CMD_CUSTOM_EVENT_ID = f'{config.COMPANY_NAME}_{config.ADDIN_NAME}_cmdChainSelectOpenEvent'
+CMD_NAME = 'ChainSelect'
+CMD_Description = 'Lets you select an open or closed chain from which dogbones are created'
 
 # Specify that the command will be promoted to the panel.
 IS_PROMOTED = True
@@ -34,12 +36,11 @@ IS_PROMOTED = True
 # This is done by specifying the workspace, the tab, and the panel, and the 
 # command it will be inserted beside. Not providing the command to position it
 # will insert it at the end.
-WORKSPACE_ID = 'FusionSolidEnvironment'
-PANEL_ID = 'SolidCreatePanel'
-COMMAND_BESIDE_ID = ''
+# WORKSPACE_ID = 'FusionSolidEnvironment'
+# PANEL_ID = 'SolidCreatePanel'
+# COMMAND_BESIDE_ID = ''
 
 # Resource location for command icons, here we assume a sub folder in this directory named "resources".
-# ICON_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'resources', '')
 ICON_FOLDER = os.path.join(appPath, 'resources', '')
 
 logger = logging.getLogger('dogbone.createCommand')
@@ -49,6 +50,7 @@ def start():
     ui = app.userInterface
     
     try:
+        
         cmd_def =  ui.commandDefinitions.addButtonDefinition(
             CMD_ID,
             CMD_NAME,
@@ -60,16 +62,16 @@ def start():
 
         # ******** Add a button into the UI so the user can run the command. ********
         # Get the target workspace the button will be created in.
-        workspace = ui.workspaces.itemById(WORKSPACE_ID)
+        # workspace = ui.workspaces.itemById(WORKSPACE_ID)
 
         # Get the panel the button will be created in.
-        panel = workspace.toolbarPanels.itemById(PANEL_ID)
+        # panel = workspace.toolbarPanels.itemById(PANEL_ID)
 
         # Create the button command control in the UI after the specified existing command.
-        control = panel.controls.addCommand(cmd_def, COMMAND_BESIDE_ID, False)
+        # control = panel.controls.addCommand(cmd_def, COMMAND_BESIDE_ID, False)
 
         # Specify if the command is promoted to the main toolbar. 
-        control.isPromoted = params.isPromotedCreate
+        # control.isPromoted = params.isPromotedCreate
 
 
     except Exception as e:
@@ -81,15 +83,8 @@ def stop():
     app = adsk.core.Application.get()
     ui = app.userInterface
     # Get the various UI elements for this command
-    workspace = ui.workspaces.itemById(WORKSPACE_ID)
-    panel = workspace.toolbarPanels.itemById(PANEL_ID)
-    command_control = panel.controls.itemById(CMD_ID)
     command_definition = ui.commandDefinitions.itemById(CMD_ID)
-    params.isPromotedCreate = command_control.isPromoted
-
-    # Delete the button command control
-    if command_control:
-        command_control.deleteMe()
+    # params.isPromotedCreate = command_control.isPromoted
 
     # Delete the command definition
     if command_definition:
@@ -119,29 +114,4 @@ def onCreate( args: adsk.core.CommandCreatedEventArgs):
 
     cmd: adsk.core.Command = args.command
     # startLogger()
-    ui = DogboneUi(params, cmd, createDogbones)
-
-def createDogbones( params: DbParams, selection: Selection):
-    logger = logging.getLogger('dogbone.createDogbones')
-    app = adsk.core.Application.get()
-    ui = app.userInterface
-
-
-    start = time.time()
-
-    # params.write_defaults()
-    createStaticDogbones(params, selection)
-
-    #Remove check after F360 fixes their baseFeature/UI refresh issue  
-    if  ui.activeWorkspace.id == "MfgWorkingModelEnv":  
-         ui.messageBox("If the tool bar becomes blank\nUse Undo then Redo (ctrl-z, ctrl-y)")
-
-    logger.info(
-        "all dogbones complete\n-------------------------------------------\n"
-    )
-
-    if params.benchmark:
-        messageBox(
-            f"Benchmark: {time.time() - start:.02f} sec processing {len(selection.edges)} edges"
-        )
-    # stopLogger()
+    ui = SelectChainUi(params, cmd, createStaticDogbones)

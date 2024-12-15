@@ -328,11 +328,8 @@ class DbEdge:
     def __init__(self, edge: adsk.fusion.BRepEdge, parentFace: DbFace):
 
 
-        self._refPoint = (
-            edge.nativeObject.pointOnEdge if edge.nativeObject else edge.pointOnEdge
-        )
 
-        self.edge = edge = (
+        self.edge = (
             edge
             if edge.isValid
             else self.component.findBRepUsingPoint(
@@ -343,12 +340,15 @@ class DbEdge:
             ).item(0)
         )
 
+        self.edge = self.edge.nativeObject if (edge.nativeObject) else self.edge
+
+        self._refPoint = edge.pointOnEdge
         self.entityToken = edge.entityToken
         self._edgeId = hash(self.entityToken)
         self._selected = True
         self._parentFace = parentFace
-        self._native = self.edge.nativeObject if self.edge.nativeObject else self.edge
-        self._component = edge.body.parentComponent
+        # self._native = self.edge.nativeObject if self.edge.nativeObject else self.edge
+        # self._component = parentFace.component
         self._params = self._parentFace._params
 
         face1, face2 = (face for face in self._native.faces)
@@ -426,7 +426,7 @@ class DbEdge:
         
     @property
     def component(self) -> adsk.fusion.Component:
-        return self._component
+        return self._parentFace.component
 
     @property
     def cornerAngle(self):
@@ -469,7 +469,7 @@ class DbEdge:
         """
         returns the two face edges associated with dogbone edge that is orthogonal to the face edges 
         """
-        return getCornerEdgesAtFace(face=self._parentFace, edge=self.edge)
+        return getCornerEdgesAtFace(face=self._parentFace, edge=self._native)
 
     @property
     def cornerVector(self) -> adsk.core.Vector3D:
@@ -540,8 +540,8 @@ class DbEdge:
 
         if params.dbType == "Mortise Dogbone":
             (edge0, edge1) = self.cornerEdges
-            direction0 = correctedEdgeVector(edge0.nativeObject, startPoint)
-            direction1 = correctedEdgeVector(edge1.nativeObject, startPoint)
+            direction0 = correctedEdgeVector(edge0, startPoint)
+            direction1 = correctedEdgeVector(edge1, startPoint)
             if params.longSide:
                 if edge0.length > edge1.length:
                     dirVect = direction0

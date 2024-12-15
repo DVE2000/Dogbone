@@ -37,4 +37,4 @@ def stop(context):
     adsk.terminate()
     commands.stop()
 
-# In memory of Caroline
+# In memory of Caroline 1956-2023

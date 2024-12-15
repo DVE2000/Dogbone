@@ -11,7 +11,6 @@ from . import DbParams, Selection, DbFace
 from ..utils.decorators import eventHandler, parseDecorator
 from ..common.log import LEVELS, startLogger, stopLogger
 from ..utils.util import calcId
-from ... import config
 
 
 ACUTE_ANGLE = "acuteAngle"
@@ -47,7 +46,7 @@ _appPath = os.path.dirname(os.path.abspath(__file__))
 logger = logging.getLogger('dogbone.ui')
 
 # noinspection SqlDialectInspection,SqlNoDataSourceInspection,PyMethodMayBeStatic
-class DogboneUi:
+class SelectChainUi:
     """
     important persistent variables:
     selectedOccurrences  - Lookup dictionary
@@ -86,19 +85,19 @@ class DogboneUi:
         self.create_ui()
         self.onInputChanged(event=command.inputChanged)
         self.onValidate(event=command.validateInputs)
-        self.onPreSelect(event=command.preSelect)
+        self.onFaceSelect(event=command.selectionEvent)
         self.onExecute(event=command.execute)
 
     def create_ui(self):
         # self.chain_select()
-        self.table_command()
+        # self.table_command()
         self.face_select()
-        self.edge_select()
-        self.tool_diameter()
-        self.offset()
-        self.mode()
-        self.detection_mode()
-        self.settings()
+        # self.edge_select()
+        # self.tool_diameter()
+        # self.offset()
+        # self.mode()
+        # self.detection_mode()
+        # self.settings()
 
     def parseInputs(self, cmdInputs):
         """==============================================================================
@@ -162,7 +161,7 @@ class DogboneUi:
         self.executeHandler(self.param, self.selection)
 
     @eventHandler(handler_cls=adsk.core.SelectionEventHandler)
-    def onPreSelect(self, args):
+    def onFaceSelect(self, args):
         """==============================================================================
          Routine gets called with every mouse movement, if a commandInput select is active
         ==============================================================================
@@ -308,8 +307,7 @@ class DogboneUi:
                 startLogger()
 
         if input.id == 'chainSelectBtn':
-            self.chainSelect = input.value
-            return
+            self.create_ui()
 
         if input.id == DOGBONE_TYPE:
             input.commandInputs.itemById(MINIMAL_PERCENT).isVisible = (
@@ -701,7 +699,7 @@ class DogboneUi:
         return faceSelect
 
     def chain_select(self):
-        chainSelect = self.inputs.addBoolValueInput ('chainSelectBtn', 'chain Select', True, "commands/selectChainCommand/resources") # lib/classes/resources/selectChain") 
+        chainSelect = self.inputs.addBoolValueInput ('chainSelectBtn', 'chain Select', False, "lib/classes/resources/selectChain") 
         chainSelect.tooltip = "Chain path"
         return chainSelect
 
@@ -713,9 +711,4 @@ class DogboneUi:
             '1'
         )
         table.tooltip = "choose mode"
-        cs = self.chain_select
-        table.addToolbarCommandInput(cs())
-        cols = table.numberOfColumns
-        rows = table.rowCount
-        fs = self.face_select
-        # table.addCommandInput(fs(), rows, 0)
+        table.addToolbarCommandInput(self.chain_select())
