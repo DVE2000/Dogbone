@@ -46,21 +46,21 @@ class DbFace:
         self._params = params
         self.selection = selection
         self._entityToken = face.entityToken
+        self.isNative = face.nativeObject == None
 
-        self.face = face = (
+        self.face = (
             face if face.isValid else design.findEntityByToken(self._entityToken)[0]
         )
 
         self._faceId = hash(self._entityToken)
         DbFace.logger.debug(f'FaceCreated: {self._faceId}')
-        self.faceNormal = getFaceNormal(face)
-        self._refPoint = (
-            face.nativeObject.pointOnFace if face.nativeObject else face.pointOnFace
-        )
+        self.faceNormal = getFaceNormal(self.face)
+        self._refPoint = face.pointOnFace
         self._component = face.body.parentComponent
+
         self.commandInputsEdgeSelect = commandInputsEdgeSelect
         self._selected = True
-        self._body = self.face.body.nativeObject if self.face.nativeObject else self.face.body
+        self._body = self.face.body
 
         self._associatedEdgesDict = {}  # Keyed with edge
         self.processedEdges = (
@@ -328,6 +328,7 @@ class DbEdge:
     def __init__(self, edge: adsk.fusion.BRepEdge, parentFace: DbFace):
 
 
+        self._refPoint = edge.pointOnEdge
 
         self.edge = (
             edge
@@ -340,18 +341,14 @@ class DbEdge:
             ).item(0)
         )
 
-        self.edge = self.edge.nativeObject if (edge.nativeObject) else self.edge
-
-        self._refPoint = edge.pointOnEdge
         self.entityToken = edge.entityToken
         self._edgeId = hash(self.entityToken)
         self._selected = True
         self._parentFace = parentFace
-        # self._native = self.edge.nativeObject if self.edge.nativeObject else self.edge
-        # self._component = parentFace.component
+
         self._params = self._parentFace._params
 
-        face1, face2 = (face for face in self._native.faces)
+        face1, face2 = (face for face in self.edge.faces)
         _, face1normal = face1.evaluator.getNormalAtPoint(face1.pointOnFace)
         _, face2normal = face2.evaluator.getNormalAtPoint(face2.pointOnFace)
         face1normal.add(face2normal)
@@ -361,16 +358,17 @@ class DbEdge:
         self._cornerAngle = getAngleBetweenFaces(edge)
         self._customGraphicGroup = None
 
+# Everything from now on should be in the nativeObject context
         self._dogboneCentre = (
-            self._native.startVertex.geometry
-            if self._native.startVertex in self._parentFace.native.vertices
-            else self._native.endVertex.geometry
+            self.native.startVertex.geometry
+            if self.native.startVertex in self._parentFace.native.vertices
+            else self.native.endVertex.geometry
         )
 
         self._nativeEndPoints = (
-            (self._native.startVertex.geometry, self._native.endVertex.geometry)
-            if self._native.startVertex in self._parentFace.native.vertices
-            else (self._native.endVertex.geometry, self._native.startVertex.geometry)
+            (self.native.startVertex.geometry, self.native.endVertex.geometry)
+            if self.native.startVertex in self._parentFace.native.vertices
+            else (self.native.endVertex.geometry, self.native.startVertex.geometry)
         )
 
         startPoint, endPoint = self._nativeEndPoints
@@ -441,7 +439,7 @@ class DbEdge:
 
     @property
     def native(self):
-        return self._native
+        return self.edge.nativeObject if self.edge.nativeObject else self.edge 
 
     @property
     def dogboneCentre(self) -> adsk.core.Point3D:
@@ -469,7 +467,7 @@ class DbEdge:
         """
         returns the two face edges associated with dogbone edge that is orthogonal to the face edges 
         """
-        return getCornerEdgesAtFace(face=self._parentFace, edge=self._native)
+        return getCornerEdgesAtFace(face=self._parentFace, edge=self.native)
 
     @property
     def cornerVector(self) -> adsk.core.Vector3D:
