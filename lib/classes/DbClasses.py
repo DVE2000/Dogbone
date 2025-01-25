@@ -46,6 +46,8 @@ class DbFace:
         self._params = params
         self.selection = selection
         self._entityToken = face.entityToken
+        self._native = face.nativeObject if face.nativeObject else face
+        self._body = self._native.body # if self.face.nativeObject else self.face.body
 
         self.face = face = (
             face if face.isValid else design.findEntityByToken(self._entityToken)[0]
@@ -54,13 +56,11 @@ class DbFace:
         self._faceId = hash(self._entityToken)
         DbFace.logger.debug(f'FaceCreated: {self._faceId}')
         self.faceNormal = getFaceNormal(face)
-        self._refPoint = (
-            face.nativeObject.pointOnFace if face.nativeObject else face.pointOnFace
-        )
+        self._refPoint = self._native.pointOnFace
+
         self._component = face.body.parentComponent
         self.commandInputsEdgeSelect = commandInputsEdgeSelect
         self._selected = True
-        self._body = self.face.body.nativeObject if self.face.nativeObject else self.face.body
 
         self._associatedEdgesDict = {}  # Keyed with edge
         self.processedEdges = (
@@ -314,7 +314,7 @@ class DbFace:
 
     @property
     def native(self):
-        return self.face.nativeObject if self.face.nativeObject else self.face
+        return self._native
 
     def revalidate(self) -> adsk.fusion.BRepFace:
         return cast(adsk.fusion.BRepFace, self.component.findBRepUsingPoint(
@@ -347,7 +347,7 @@ class DbEdge:
         self._edgeId = hash(self.entityToken)
         self._selected = True
         self._parentFace = parentFace
-        self._native = self.edge.nativeObject if self.edge.nativeObject else self.edge
+        self._native = edge.nativeObject if edge.nativeObject else edge
         self._component = edge.body.parentComponent
         self._params = self._parentFace._params
 
