@@ -543,8 +543,8 @@ class DbEdge:
 
         if params.dbType == "Mortise Dogbone":
             (edge0, edge1) = self.cornerEdges
-            direction0 = correctedEdgeVector(edge0, startPoint)
-            direction1 = correctedEdgeVector(edge1, startPoint)
+            direction0 = correctedEdgeVector(edge0.nativeObject, startPoint)
+            direction1 = correctedEdgeVector(edge1.nativeObject, startPoint)
             if params.longSide:
                 if edge0.length > edge1.length:
                     dirVect = direction0
