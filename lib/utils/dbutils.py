@@ -114,11 +114,13 @@ def getCornerEdgesAtFace(face: adsk.fusion.BRepFace, edge: adsk.fusion.BRepEdge)
     # edge has 2 adjacent faces - therefore the face that isn't from the 3 faces of startVertex, has to be the top face edges
 
     vertexEdges = {hash(edge.entityToken): edge for edge in startVertex.edges}
-    faceEdges = {hash(edge.entityToken): edge for edge in face.face.edges}
+    faceEdges = {hash(edge.entityToken): edge for edge in face.native.edges}
     commonEdges = set(vertexEdges.keys()) & set(faceEdges.keys())  # intersect both sets
     if len(commonEdges) != 2:
         raise NameError("returnVal len != 2")
     return (faceEdges[token] for token in commonEdges)
+
+    
 
 
 def getVertexAtFace(face: adsk.fusion.BRepFace, edge: adsk.fusion.BRepEdge):
