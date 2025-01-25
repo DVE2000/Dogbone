@@ -308,6 +308,8 @@ class DogboneUi:
                 startLogger()
 
         if input.id == 'chainSelectBtn':
+            cmd = self.ui.commandDefinitions.itemById(f'{config.COMPANY_NAME}_{config.ADDIN_NAME}_cmdChainDialog')
+            cmd.execute()
             self.chainSelect = input.value
             return
 

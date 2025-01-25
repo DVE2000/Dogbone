@@ -10,7 +10,7 @@ import logging
     
 from ...lib.classes import DbParams, Selection, params
 
-from ...lib.classes import SelectChainUi
+# from ...lib.classes import SelectChainUi
 
 from ...lib.common.log import startLogger, stopLogger
 
@@ -114,4 +114,4 @@ def onCreate( args: adsk.core.CommandCreatedEventArgs):
 
     cmd: adsk.core.Command = args.command
     # startLogger()
-    ui = SelectChainUi(params, cmd, createStaticDogbones)
+    # ui = SelectChainUi(params, cmd, createStaticDogbones)

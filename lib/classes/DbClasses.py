@@ -439,6 +439,7 @@ class DbEdge:
 
     @property
     def native(self):
+        "returns the edge in the nativeObject context (occurrence returns nativeOject, non-occurrence edge returns edge )"
         return self.edge.nativeObject if self.edge.nativeObject else self.edge 
 
     @property
@@ -504,6 +505,7 @@ class DbEdge:
     def __getToolBody(cls,
                       self,
                       topFace: adsk.fusion.BRepFace = None):
+        """Creates dogbone tool bodies in the nativeObject space"""
 
         box = None
         topFace = topFace if topFace else getTopFace(self._parentFace.face)

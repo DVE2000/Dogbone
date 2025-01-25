@@ -7,6 +7,7 @@ from .createCommand import entry as createCommand
 from .refreshCommand import entry as refreshCommand
 from .createMfgCommand import entry as createhMfgCommand
 from .refreshMfgCommand import entry as refreshMfgCommand
+from .selectChainCommand import entry as selectChainCommand
 
 # TODO add your imported modules to this list.
 # Fusion will automatically call the start() and stop() functions.
@@ -14,7 +15,8 @@ commands = [
     createCommand,
     refreshCommand,
     createhMfgCommand,
-    refreshMfgCommand
+    refreshMfgCommand,
+    selectChainCommand
 ]
 
 # Assumes you defined a "start" function in each of your modules.
