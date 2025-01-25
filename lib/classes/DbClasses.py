@@ -328,9 +328,6 @@ class DbEdge:
     def __init__(self, edge: adsk.fusion.BRepEdge, parentFace: DbFace):
 
 
-        self._refPoint = (
-            edge.nativeObject.pointOnEdge if edge.nativeObject else edge.pointOnEdge
-        )
 
         self.edge = edge = (
             edge
@@ -349,6 +346,8 @@ class DbEdge:
         self._parentFace = parentFace
         self._native = edge.nativeObject if edge.nativeObject else edge
         self._component = edge.body.parentComponent
+        self._refPoint = edge.native.pointOnEdge
+        
         self._params = self._parentFace._params
 
         face1, face2 = (face for face in self._native.faces)
