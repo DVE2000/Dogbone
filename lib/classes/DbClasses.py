@@ -346,7 +346,7 @@ class DbEdge:
         self._parentFace = parentFace
         self._native = edge.nativeObject if edge.nativeObject else edge
         self._component = edge.body.parentComponent
-        self._refPoint = edge.native.pointOnEdge
+        self._refPoint = self.native.pointOnEdge
         
         self._params = self._parentFace._params
 
@@ -387,7 +387,7 @@ class DbEdge:
         ex,ey,ez = self._nativeEndPoints[1].asArray()
 
         DbEdge.logger.debug(f'\nedge: {self.edge.tempId}'
-                    f'\n native: {self.edge.nativeObject != None}'
+                    f'\n native: {self.native.nativeObject != None}'
                     f'\n startPoint: ({sx:.2f},{sy:.2f},{sz:.2f}),({ex:.2f},{ey:.2f},{ez:.2f})'
                     f'\n edgeLength: {startPoint.distanceTo(endPoint):.2f}'
                     f'\n parentFace: {self._parentFace.face.tempId}')
@@ -468,7 +468,7 @@ class DbEdge:
         """
         returns the two face edges associated with dogbone edge that is orthogonal to the face edges 
         """
-        return getCornerEdgesAtFace(face=self._parentFace, edge=self.edge)
+        return getCornerEdgesAtFace(face=self._parentFace, edge=self.native)
 
     @property
     def cornerVector(self) -> adsk.core.Vector3D:
@@ -486,6 +486,10 @@ class DbEdge:
         """
         return self._nativeEdgeVector
     
+    @property
+    def native(self):
+        return self._native
+
     def faceObj(self):
         return self._parentFace
 
