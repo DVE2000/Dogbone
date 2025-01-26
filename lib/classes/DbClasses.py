@@ -51,24 +51,6 @@ class DbFace:
         self._params = params
         self.selection = selection
         self._entityToken = face.entityToken
-<<<<<<< HEAD
-
-        self.face = face = (
-            face if face.isValid else design.findEntityByToken(self._entityToken)[0]
-        )
-
-        self._faceId = hash(self._entityToken)
-        DbFace.logger.debug(f'FaceCreated: {self._faceId}')
-        self.faceNormal = getFaceNormal(face)
-        self._refPoint = (
-            face.nativeObject.pointOnFace if face.nativeObject else face.pointOnFace
-        )
-        self._component = face.body.parentComponent
-        self.commandInputsEdgeSelect = commandInputsEdgeSelect
-        self._selected = True
-        self._body = self.face.body.nativeObject if self.face.nativeObject else self.face.body
-
-=======
         self.isNative = face.nativeObject == None
 
         self._faceId = hash(self._entityToken)
@@ -79,7 +61,6 @@ class DbFace:
         self.commandInputsEdgeSelect = commandInputsEdgeSelect
         self._selected = True
         self._body = self.face.body
->>>>>>> f549e4493b22eddd26257a0b8df31feba1d91148
         self._associatedEdgesDict = {}  # Keyed with edge
         self.processedEdges = (
             []
@@ -346,13 +327,7 @@ class DbEdge:
     def __init__(self, edge: adsk.fusion.BRepEdge, parentFace: DbFace):
 
 
-<<<<<<< HEAD
-        self._refPoint = (
-            edge.nativeObject.pointOnEdge if edge.nativeObject else edge.pointOnEdge
-        )
-=======
         self._refPoint = edge.pointOnEdge
->>>>>>> f549e4493b22eddd26257a0b8df31feba1d91148
 
         self.edge = (
             edge
@@ -493,7 +468,7 @@ class DbEdge:
         """
         returns the two face edges associated with dogbone edge that is orthogonal to the face edges 
         """
-        return getCornerEdgesAtFace(face=self._parentFace, edge=self.edge)
+        return getCornerEdgesAtFace(face=self._parentFace, edge=self.native)
 
     @property
     def cornerVector(self) -> adsk.core.Vector3D:
@@ -566,8 +541,8 @@ class DbEdge:
 
         if params.dbType == "Mortise Dogbone":
             (edge0, edge1) = self.cornerEdges
-            direction0 = correctedEdgeVector(edge0.nativeObject, startPoint)
-            direction1 = correctedEdgeVector(edge1.nativeObject, startPoint)
+            direction0 = correctedEdgeVector(edge0, startPoint)
+            direction1 = correctedEdgeVector(edge1, startPoint)
             if params.longSide:
                 if edge0.length > edge1.length:
                     dirVect = direction0
