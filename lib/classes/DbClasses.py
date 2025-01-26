@@ -42,16 +42,16 @@ class DbFace:
         design: adsk.fusion.Design = app.activeProduct
         self.rootComp = design.rootComponent
         self.ui = app.userInterface
+        self.face = (
+            face if face.isValid else design.findEntityByToken(self._entityToken)[0]
+        )
+
+        self._native = face.nativeObject if face.nativeObject else self.face
 
         self._params = params
         self.selection = selection
         self._entityToken = face.entityToken
-        self._native = face.nativeObject if self.face.nativeObject else self.face
-        elf.isNative = face.nativeObject == None
-
-        self.face = (
-            face if face.isValid else design.findEntityByToken(self._entityToken)[0]
-        )
+        self.isNative = face.nativeObject == None
 
         self._faceId = hash(self._entityToken)
         DbFace.logger.debug(f'FaceCreated: {self._faceId}')
