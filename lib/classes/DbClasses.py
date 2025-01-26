@@ -42,10 +42,16 @@ class DbFace:
         design: adsk.fusion.Design = app.activeProduct
         self.rootComp = design.rootComponent
         self.ui = app.userInterface
+        self.face = (
+            face if face.isValid else design.findEntityByToken(self._entityToken)[0]
+        )
+
+        self._native = face.nativeObject if face.nativeObject else self.face
 
         self._params = params
         self.selection = selection
         self._entityToken = face.entityToken
+<<<<<<< HEAD
 
         self.face = face = (
             face if face.isValid else design.findEntityByToken(self._entityToken)[0]
@@ -62,6 +68,18 @@ class DbFace:
         self._selected = True
         self._body = self.face.body.nativeObject if self.face.nativeObject else self.face.body
 
+=======
+        self.isNative = face.nativeObject == None
+
+        self._faceId = hash(self._entityToken)
+        DbFace.logger.debug(f'FaceCreated: {self._faceId}')
+        self.faceNormal = getFaceNormal(self.face)
+        self._refPoint = face.pointOnFace
+        self._component = face.body.parentComponent
+        self.commandInputsEdgeSelect = commandInputsEdgeSelect
+        self._selected = True
+        self._body = self.face.body
+>>>>>>> f549e4493b22eddd26257a0b8df31feba1d91148
         self._associatedEdgesDict = {}  # Keyed with edge
         self.processedEdges = (
             []
@@ -328,11 +346,15 @@ class DbEdge:
     def __init__(self, edge: adsk.fusion.BRepEdge, parentFace: DbFace):
 
 
+<<<<<<< HEAD
         self._refPoint = (
             edge.nativeObject.pointOnEdge if edge.nativeObject else edge.pointOnEdge
         )
+=======
+        self._refPoint = edge.pointOnEdge
+>>>>>>> f549e4493b22eddd26257a0b8df31feba1d91148
 
-        self.edge = edge = (
+        self.edge = (
             edge
             if edge.isValid
             else self.component.findBRepUsingPoint(
@@ -351,7 +373,7 @@ class DbEdge:
         self._component = edge.body.parentComponent
         self._params = self._parentFace._params
 
-        face1, face2 = (face for face in self._native.faces)
+        face1, face2 = (face for face in self.edge.faces)
         _, face1normal = face1.evaluator.getNormalAtPoint(face1.pointOnFace)
         _, face2normal = face2.evaluator.getNormalAtPoint(face2.pointOnFace)
         face1normal.add(face2normal)
@@ -361,16 +383,17 @@ class DbEdge:
         self._cornerAngle = getAngleBetweenFaces(edge)
         self._customGraphicGroup = None
 
+# Everything from now on should be in the nativeObject context
         self._dogboneCentre = (
-            self._native.startVertex.geometry
-            if self._native.startVertex in self._parentFace.native.vertices
-            else self._native.endVertex.geometry
+            self.native.startVertex.geometry
+            if self.native.startVertex in self._parentFace.native.vertices
+            else self.native.endVertex.geometry
         )
 
         self._nativeEndPoints = (
-            (self._native.startVertex.geometry, self._native.endVertex.geometry)
-            if self._native.startVertex in self._parentFace.native.vertices
-            else (self._native.endVertex.geometry, self._native.startVertex.geometry)
+            (self.native.startVertex.geometry, self.native.endVertex.geometry)
+            if self.native.startVertex in self._parentFace.native.vertices
+            else (self.native.endVertex.geometry, self.native.startVertex.geometry)
         )
 
         startPoint, endPoint = self._nativeEndPoints
@@ -426,7 +449,7 @@ class DbEdge:
         
     @property
     def component(self) -> adsk.fusion.Component:
-        return self._component
+        return self._parentFace.component
 
     @property
     def cornerAngle(self):
@@ -441,6 +464,7 @@ class DbEdge:
 
     @property
     def native(self):
+        "returns the edge in the nativeObject context (occurrence returns nativeOject, non-occurrence edge returns edge )"
         return self._native
 
     @property
@@ -506,6 +530,8 @@ class DbEdge:
     def __getToolBody(cls,
                       self,
                       topFace: adsk.fusion.BRepFace = None):
+        """Creates dogbone tool bodies in the nativeObject space"""
+
 
         box = None
         topFace = topFace if topFace else getTopFace(self._parentFace.face)
