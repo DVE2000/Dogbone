@@ -105,9 +105,9 @@ def isEdgeAssociatedWithFace(face: adsk.fusion.BRepFace, edge: adsk.fusion.BRepE
 
 def getCornerEdgesAtFace(face: adsk.fusion.BRepFace, edge: adsk.fusion.BRepEdge):
     """
-    Gets 
+    Gets the 2 edges from the associated face that isn't the dogbone edge 
     """
-    # not sure which end is which - so test edge ends for inclusion in face
+    # start and end vertices are in no particular orientation - so find which vertex is corresponds to a vertex in the face
     startVertex = (
         edge.startVertex if edge.startVertex in face.vertices else edge.endVertex
     )
@@ -120,9 +120,7 @@ def getCornerEdgesAtFace(face: adsk.fusion.BRepFace, edge: adsk.fusion.BRepEdge)
         raise NameError("returnVal len != 2")
     return (faceEdges[token] for token in commonEdges)
 
-    
-
-
+   
 def getVertexAtFace(face: adsk.fusion.BRepFace, edge: adsk.fusion.BRepEdge):
     if edge.startVertex in face.vertices:
         return edge.startVertex

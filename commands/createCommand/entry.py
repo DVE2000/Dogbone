@@ -87,7 +87,6 @@ def stop():
     command_definition = ui.commandDefinitions.itemById(CMD_ID)
     params.isPromotedCreate = command_control.isPromoted
 
-
     # Delete the button command control
     if command_control:
         command_control.deleteMe()
@@ -96,7 +95,7 @@ def stop():
     if command_definition:
         command_definition.deleteMe()
 
-        stopLogger()
+    stopLogger()
 
 
 @eventHandler(handler_cls=adsk.core.CommandCreatedEventHandler)
@@ -121,7 +120,6 @@ def onCreate( args: adsk.core.CommandCreatedEventArgs):
     cmd: adsk.core.Command = args.command
     # startLogger()
     ui = DogboneUi(params, cmd, createDogbones)
-
 
 def createDogbones( params: DbParams, selection: Selection):
     logger = logging.getLogger('dogbone.createDogbones')
