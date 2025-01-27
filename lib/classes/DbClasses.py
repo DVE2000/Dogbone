@@ -11,7 +11,7 @@ import adsk.fusion
 from .DbData import DbParams
 from ..common.errors import FaceInvalidError, EdgeInvalidError
 from ...constants import DB_GROUP
-from ..utils import getFaceNormal, getEdgeVector, getAngleBetweenFaces, messageBox, getCornerEdgesAtFace, getTranslateVectorBetweenFaces, correctedEdgeVector
+from ..utils import getFaceNormal, getEdgeVector, getAngleBetweenFaces, messageBox, getCornerEdgesAtFace, getTranslateVectorBetweenFaces, correctedEdgeVector, getTopFace
 # logger = logging.getLogger("dogbone.DbClasses")
 
 class Selection:
@@ -59,19 +59,19 @@ class DbFace:
         self._faceId = hash(self._entityToken)
         DbFace.logger.debug(f'FaceCreated: {self._faceId}')
         self.faceNormal = getFaceNormal(face)
-        self._refPoint = (
-            face.nativeObject.pointOnFace if face.nativeObject else face.pointOnFace
-        )
+        self._refPoint = self._native.pointOnFace
+        #     face.nativeObject.pointOnFace if face.nativeObject else face.pointOnFace
+        # )
         self._component = face.body.parentComponent
         self.commandInputsEdgeSelect = commandInputsEdgeSelect
         self._selected = True
-        self._body = self.face.body.nativeObject if self.face.nativeObject else self.face.body
+        self._body = self._native.body #self.face.body.nativeObject if self.face.nativeObject else self.face.body
 
         self._associatedEdgesDict = {}  # Keyed with edge
         self.processedEdges = (
             []
         )  # used for quick checking if an edge is already included (below)
-        self._customGraphicGroup = None  #
+        self._customGraphicGroup = None  #for future use
 
         self._restoreState = restoreState
 
@@ -319,7 +319,7 @@ class DbFace:
 
     @property
     def native(self):
-        return self.face.nativeObject if self.face.nativeObject else self.face
+        return self._native
 
     def revalidate(self) -> adsk.fusion.BRepFace:
         return cast(adsk.fusion.BRepFace, self.component.findBRepUsingPoint(
@@ -354,7 +354,7 @@ class DbEdge:
         self._component = edge.body.parentComponent
         self._params = self._parentFace._params
 
-        face1, face2 = (face for face in self.edge.faces)
+        face1, face2 = (face for face in self.native.faces)
         _, face1normal = face1.evaluator.getNormalAtPoint(face1.pointOnFace)
         _, face2normal = face2.evaluator.getNormalAtPoint(face2.pointOnFace)
         face1normal.add(face2normal)
@@ -382,11 +382,11 @@ class DbEdge:
         self._nativeEdgeVector: adsk.core.Vector3D = startPoint.vectorTo(endPoint)
         self._nativeEdgeVector.normalize()
 
-        self._endPoints = (
-            (self.edge.startVertex.geometry, self.edge.endVertex.geometry)
-            if self.edge.startVertex in self._parentFace.face.vertices
-            else (self.edge.endVertex.geometry, self.edge.startVertex.geometry)
-        )
+        # self._endPoints = (
+        #     (self.edge.startVertex.geometry, self.edge.endVertex.geometry)
+        #     if self.edge.startVertex in self._parentFace.face.vertices
+        #     else (self.edge.endVertex.geometry, self.edge.startVertex.geometry)
+        # )
 
         sx,sy,sz = self._nativeEndPoints[0].asArray()
         ex,ey,ez = self._nativeEndPoints[1].asArray()
@@ -462,12 +462,12 @@ class DbEdge:
         """
         return self._nativeEndPoints
 
-    @property
-    def endPoints(self) -> tuple[adsk.core.Point3D, adsk.core.Point3D]:
-        """
-        returns occurrence Edge Point associated with parent Face - initial centre of the dogbone
-        """
-        return self._endPoints
+    # @property
+    # def endPoints(self) -> tuple[adsk.core.Point3D, adsk.core.Point3D]:
+    #     """
+    #     returns occurrence Edge Point associated with parent Face - initial centre of the dogbone
+    #     """
+    #     return self._endPoints
 
     @property
     def cornerEdges(self):
@@ -515,7 +515,6 @@ class DbEdge:
 
 
         box = None
-        topFace = topFace if topFace else getTopFace(self._parentFace.face)
 
         tempBrepMgr = adsk.fusion.TemporaryBRepManager.get()
         startPoint, endPoint = self.nativeEndPoints
@@ -542,7 +541,7 @@ class DbEdge:
         if topFace:
             translateVector = getTranslateVectorBetweenFaces(
                 self._parentFace.native, topFace
-            )
+                )
             startPoint.translateBy(translateVector)
 
         if params.dbType == "Mortise Dogbone":

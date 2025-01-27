@@ -163,7 +163,7 @@ def getTopFace(selectedFace: adsk.fusion.BRepFace) -> [adsk.fusion.BRepFace, ads
     )
     refPoint = refPlane.intersectWithLine(refLine)
     faceList = []
-    body = adsk.fusion.BRepBody.cast(selectedFace.body)
+    body: adsk.fusion.BRepBody = selectedFace.body
     for face in body.faces:
         if not normal.isParallelTo(getFaceNormal(face)):
             continue
