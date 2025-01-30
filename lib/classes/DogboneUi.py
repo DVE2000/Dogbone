@@ -74,6 +74,7 @@ class DogboneUi:
         self.executeHandler = executeHandler
 
         self.selection = Selection()
+        self.previewDisabled = False
 
         self.inputs = command.commandInputs
 
@@ -87,6 +88,9 @@ class DogboneUi:
         self.onValidate(event=command.validateInputs)
         self.onFaceSelect(event=command.selectionEvent)
         self.onExecute(event=command.execute)
+        self.onExecutePreview(event=command.executePreview)
+        self.onKeyDown(event=command.keyDown)
+        self.onKeyUp(event=command.keyUp)
 
     def create_ui(self):
         self.face_select()
@@ -155,8 +159,28 @@ class DogboneUi:
         )
 
     @eventHandler(handler_cls=adsk.core.CommandEventHandler)
+    def onExecutePreview(self, args:adsk.core.CommandEventArgs):
+        if not self.previewDisabled:
+            self.executeHandler(self.param, self.selection)
+
+    @eventHandler(handler_cls=adsk.core.CommandEventHandler)
     def onExecute(self, args):
         self.executeHandler(self.param, self.selection)
+
+    @eventHandler(handler_cls=adsk.core.KeyboardEventHandler)
+    def onKeyDown(self, args:adsk.core.KeyboardEventArgs):
+        keyCode = args.keyCode
+        modifier = args.modifierMask  
+        self.previewDisabled = keyCode == adsk.core.KeyCodes.ControlKeyCode
+        self.command.doExecutePreview()
+
+    @eventHandler(handler_cls=adsk.core.KeyboardEventHandler)
+    def onKeyUp(self, args):
+        keyCode = args.keyCode
+        modifier = args.modifierMask  
+        self.previewDisabled = not keyCode == adsk.core.KeyCodes.ControlKeyCode  
+        self.command.doExecutePreview()
+  
 
     @eventHandler(handler_cls=adsk.core.SelectionEventHandler)
     def onFaceSelect(self, args):
@@ -416,6 +440,8 @@ class DogboneUi:
                     self.selection.selectedFaces.pop(missingFace)
 
                 input.commandInputs.itemById(FACE_SELECT).hasFocus = True
+                self.command.doExecutePreview()
+
                 return
 
             # ==============================================================================
@@ -468,6 +494,8 @@ class DogboneUi:
                     self.selection.selectedFaces[face_id].selectAll()
 
                 input.commandInputs.itemById(FACE_SELECT).hasFocus = True
+                self.command.doExecutePreview()
+
             return
             # end of processing faces
         # ==============================================================================
