@@ -269,7 +269,8 @@ class DbFace:
     
     @property
     def vertices(self):
-        return [vertex for vertex in self.face.vertices]
+        '''Returns native vertices'''
+        return [vertex for vertex in self.native.vertices]
 
     def deleteEdges(self):
         [
