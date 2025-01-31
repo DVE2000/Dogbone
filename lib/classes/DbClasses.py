@@ -382,12 +382,6 @@ class DbEdge:
         self._nativeEdgeVector: adsk.core.Vector3D = startPoint.vectorTo(endPoint)
         self._nativeEdgeVector.normalize()
 
-        # self._endPoints = (
-        #     (self.edge.startVertex.geometry, self.edge.endVertex.geometry)
-        #     if self.edge.startVertex in self._parentFace.face.vertices
-        #     else (self.edge.endVertex.geometry, self.edge.startVertex.geometry)
-        # )
-
         sx,sy,sz = self._nativeEndPoints[0].asArray()
         ex,ey,ez = self._nativeEndPoints[1].asArray()
 

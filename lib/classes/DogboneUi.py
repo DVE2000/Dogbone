@@ -494,8 +494,8 @@ class DogboneUi:
                     self.selection.selectedFaces[face_id].selectAll()
 
                 input.commandInputs.itemById(FACE_SELECT).hasFocus = True
-                self.command.doExecutePreview()
 
+            self.command.doExecutePreview()
             return
             # end of processing faces
         # ==============================================================================
