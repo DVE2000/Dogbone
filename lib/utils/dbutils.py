@@ -88,10 +88,10 @@ def correctedEdgeVector(
     return edge.endVertex.geometry.vectorTo(edge.startVertex.geometry)
 
 
-def correctedSketchEdgeVector(edge, refPoint):
-    if edge.startSketchPoint.geometry.isEqualTo(refPoint.geometry):
-        return edge.startSketchPoint.geometry.vectorTo(edge.endSketchPoint.geometry)
-    return edge.endSketchPoint.geometry.vectorTo(edge.startSketchPoint.geometry)
+# def correctedSketchEdgeVector(edge, refPoint):
+#     if edge.startSketchPoint.geometry.isEqualTo(refPoint.geometry):
+#         return edge.startSketchPoint.geometry.vectorTo(edge.endSketchPoint.geometry)
+#     return edge.endSketchPoint.geometry.vectorTo(edge.startSketchPoint.geometry)
 
 
 def isEdgeAssociatedWithFace(face: adsk.fusion.BRepFace, edge: adsk.fusion.BRepEdge) -> bool:

@@ -269,7 +269,8 @@ class DbFace:
     
     @property
     def vertices(self):
-        return [vertex for vertex in self.face.vertices]
+        '''Returns native vertices'''
+        return [vertex for vertex in self.native.vertices]
 
     def deleteEdges(self):
         [
@@ -519,8 +520,8 @@ class DbEdge:
         params = self._params
 
         DbEdge.logger.debug(f'\nGet Tool Body:++++++++++++++++'
-                f'\n native: {self.edge.nativeObject != None}'
-                f'\n edge: {self.edge.tempId}'
+                f'\n native: {selfnative != None}'
+                f'\n edge: {self._edgeId}'
                 f'\n startPoint: ({sx:.2f},{sy:.2f},{sz:.2f}),({ex:.2f},{ey:.2f},{ez:.2f})'
                 f'\n edgeLength: {startPoint.distanceTo(endPoint): .2f}')
                 # f'\n parentFace: {self._parentFace.face.tempId}')
