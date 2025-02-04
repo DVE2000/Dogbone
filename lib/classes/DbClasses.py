@@ -10,9 +10,9 @@ import adsk.fusion
 
 from .DbData import DbParams
 from ..common.errors import FaceInvalidError, EdgeInvalidError
-from ...constants import DB_GROUP
+from ...constants import DB_GROUP, MORTISE_DOGBONE, MINIMAL_DOGBONE
 from ..utils import getFaceNormal, getEdgeVector, getAngleBetweenFaces, messageBox, getCornerEdgesAtFace, getTranslateVectorBetweenFaces, correctedEdgeVector, getTopFace
-# logger = logging.getLogger("dogbone.DbClasses")
+logger = logging.getLogger("dogbone.DbClasses")
 
 class Selection:
     def __init__(self) -> None:
@@ -386,11 +386,11 @@ class DbEdge:
         sx,sy,sz = self._nativeEndPoints[0].asArray()
         ex,ey,ez = self._nativeEndPoints[1].asArray()
 
-        DbEdge.logger.debug(f'\nedge: {self.edge.tempId}'
-                    f'\n native: {self.edge.nativeObject != None}'
+        DbEdge.logger.debug(f'\nedge: {self._edgeId}'
+                    f'\n native: {self.native != None}'
                     f'\n startPoint: ({sx:.2f},{sy:.2f},{sz:.2f}),({ex:.2f},{ey:.2f},{ez:.2f})'
                     f'\n edgeLength: {startPoint.distanceTo(endPoint):.2f}'
-                    f'\n parentFace: {self._parentFace.face.tempId}')
+                    f'\n parentFace: {self._parentFace._faceId}')
         
         if self._parentFace._restoreState:
             self.restore()
@@ -469,7 +469,7 @@ class DbEdge:
         """
         returns the two face edges associated with dogbone edge that is orthogonal to the face edges 
         """
-        return getCornerEdgesAtFace(face=self._parentFace, edge=self.native)
+        return getCornerEdgesAtFace(face=self._parentFace.native, edge=self.native)
 
     @property
     def cornerVector(self) -> adsk.core.Vector3D:
@@ -515,21 +515,21 @@ class DbEdge:
         startPoint, endPoint = self.nativeEndPoints
         startPoint, endPoint = startPoint.copy(), endPoint.copy()
 
-        sx,sy,sz = self._nativeEndPoints[0].asArray()
-        ex,ey,ez = self._nativeEndPoints[1].asArray()
+        # sx,sy,sz = self.nativeEndPoints[0].asArray()
+        # ex,ey,ez = self.nativeEndPoints[1].asArray()
         params = self._params
 
-        DbEdge.logger.debug(f'\nGet Tool Body:++++++++++++++++'
-                f'\n native: {selfnative != None}'
-                f'\n edge: {self._edgeId}'
-                f'\n startPoint: ({sx:.2f},{sy:.2f},{sz:.2f}),({ex:.2f},{ey:.2f},{ez:.2f})'
-                f'\n edgeLength: {startPoint.distanceTo(endPoint): .2f}')
+        # DbEdge.logger.debug(f'\nGet Tool Body:++++++++++++++++'
+        #         f'\n native: {self.native != None}'
+        #         f'\n edge: {self._edgeId}'
+        #         f'\n startPoint: ({sx:.2f},{sy:.2f},{sz:.2f}),({ex:.2f},{ey:.2f},{ez:.2f})'
+        #         f'\n edgeLength: {startPoint.distanceTo(endPoint): .2f}')
                 # f'\n parentFace: {self._parentFace.face.tempId}')
         
         effectiveRadius = (params.toolDia + params.toolDiaOffset) / 2
         centreDistance = effectiveRadius * (
             (1 + params.minimalPercent / 100)
-            if params.dbType == "Minimal Dogbone"
+            if params.dbType == MINIMAL_DOGBONE
             else 1
         )
 
@@ -539,10 +539,11 @@ class DbEdge:
                 )
             startPoint.translateBy(translateVector)
 
-        if params.dbType == "Mortise Dogbone":
+        if params.dbType == MORTISE_DOGBONE:
             (edge0, edge1) = self.cornerEdges
             direction0 = correctedEdgeVector(edge0, startPoint)
             direction1 = correctedEdgeVector(edge1, startPoint)
+            # direction1, direction0 = (direction0, direction1) if direction0.crossProduct(direction1).isEqualTo(self._parentFace.faceNormal) else (direction1, direction0)
             if params.longSide:
                 if edge0.length > edge1.length:
                     dirVect = direction0
@@ -561,6 +562,17 @@ class DbEdge:
         dirVect.scaleBy(centreDistance)
         startPoint.translateBy(dirVect)
         endPoint.translateBy(dirVect)
+        s, e = self.nativeEndPoints
+        DbEdge.logger.debug(f'\nGet Tool Body:++++++++++++++++'
+            f'\n mode: {params.dbType}'
+            f'\n native: {self.native.assemblyContext == None}'
+            f'\n edge: {self._edgeId}'
+            f'\n startPoint: {s.asArray()}'
+            f'\n calculatedStartPoint: {startPoint.asArray()}'
+            f'\n direction0: {direction0.asArray()}'
+            f'\n direction1: {direction1.asArray()}'
+            f'\n dirVect(normalized): {dirVect.asArray()}'
+            f'\n edgeLength: {startPoint.distanceTo(endPoint): .2f}')
 
         toolbody = tempBrepMgr.createCylinderOrCone(
             endPoint, effectiveRadius, startPoint, effectiveRadius

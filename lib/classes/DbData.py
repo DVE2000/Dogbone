@@ -47,6 +47,8 @@ class DbParams:
     isPromotedCreateMfg: bool = True
     isPromotedRefreshMfg: bool = True
 
+    previewEnabled: bool = True
+
     @classmethod
     def read_file(cls,  path: str) -> str:
         with open(path, "r", encoding="UTF-8") as file:

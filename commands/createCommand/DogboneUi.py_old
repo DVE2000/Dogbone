@@ -11,41 +11,46 @@ from . import DbParams, Selection, DbFace
 from ..utils.decorators import eventHandler, parseDecorator
 from ..common.log import LEVELS, startLogger, stopLogger
 from ..utils.util import calcId
-from ...constants import (
-    ACUTE_ANGLE,
-    ANGLE_DETECTION_GROUP,
-    BENCHMARK,
-    DEPTH_EXTENT,
-    DOGBONE_TYPE,
-    EDGE_SELECT,
-    FACE_SELECT,
-    FROM_SELECTED_FACE,
-    FROM_TOP_FACE,
-    LOGGING,
-    MAX_SLIDER,
-    MINIMAL_DOGBONE,
-    MINIMAL_PERCENT,
-    MIN_SLIDER,
-    MODE_GROUP,
-    MODE_ROW,
-    MORTISE_DOGBONE,
-    MORTISE_TYPE,
-    NORMAL_DOGBONE,
-    OBTUSE_ANGLE,
-    ON_LONG_SIDE,
-    ON_SHORT_SIDE,
-    PARAMETRIC,
-    PREVIEW_ENABLE,
-    SETTINGS_GROUP,
-    STATIC,
-    TOOL_DIAMETER,
-    TOOL_DIAMETER_OFFSET,
-    EDGE_TOOLTIP,
-    FACE_TOOLTIP,
-    EDGE_TOOLTIP_PREVIEW,
-    FACE_TOOLTIP_PREVIEW,
-    EDGE_TOOLTIP_DESCRIPTION,
-    FACE_TOOLTIP_DESCRIPTION)
+
+
+ACUTE_ANGLE = "acuteAngle"
+ANGLE_DETECTION_GROUP = "angleDetectionGroup"
+BENCHMARK = "benchmark"
+DEPTH_EXTENT = "depthExtent"
+DOGBONE_TYPE = "dogboneType"
+EDGE_SELECT = "edgeSelect"
+FACE_SELECT = "faceSelect"
+FROM_SELECTED_FACE = "From Selected Face"
+FROM_TOP_FACE = "From Top Face"
+LOGGING = "logging"
+MAX_SLIDER = "maxSlider"
+MINIMAL_DOGBONE = "Minimal Dogbone"
+MINIMAL_PERCENT = "minimalPercent"
+MIN_SLIDER = "minSlider"
+MODE_GROUP = "modeGroup"
+MODE_ROW = "modeRow"
+MORTISE_DOGBONE = "Mortise Dogbone"
+MORTISE_TYPE = "mortiseType"
+NORMAL_DOGBONE = "Normal Dogbone"
+OBTUSE_ANGLE = "obtuseAngle"
+ON_LONG_SIDE = "On Long Side"
+ON_SHORT_SIDE = "On Short Side"
+PARAMETRIC = "Parametric"
+PREVIEW_ENABLE = "PreviewEnable"
+SETTINGS_GROUP = "settingsGroup"
+STATIC = "Static"
+TOOL_DIAMETER = "toolDia"
+TOOL_DIAMETER_OFFSET = "toolDiaOffset"
+
+EDGE_TOOLTIP = "click to SELECT OR de-SELECT an internal edge"
+FACE_TOOLTIP = "click a face to select"
+
+EDGE_TOOLTIP_PREVIEW = "ctrl-click to SELECT OR de-SELECT an internal edge"
+FACE_TOOLTIP_PREVIEW = "Ctrl-click to select a face "
+
+EDGE_TOOLTIP_DESCRIPTION = "Only valid dogbone edges can be selected"
+FACE_TOOLTIP_DESCRIPTION = ("applies dogbones to all corner edges dropping from face"
+                                    "\n*** Select faces by clicking on them. DO NOT DRAG SELECT! ***")
 
 _appPath = os.path.dirname(os.path.abspath(__file__))
 logger = logging.getLogger('dogbone.ui')
@@ -736,7 +741,7 @@ class DogboneUi:
             self.design.unitsManager.defaultLengthUnits,
             adsk.core.ValueInput.createByString(self.param.toolDiaStr),
         )
-        ui.tooltip = "Diameter of the tool with which you'll cut the dogbone."
+        ui.tooltip = "Size of the tool with which you'll cut the dogbone."
 
     def edge_select(self):
         
