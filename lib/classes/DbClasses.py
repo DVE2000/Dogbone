@@ -354,18 +354,25 @@ class DbEdge:
         self._native = self.edge.nativeObject if self.edge.nativeObject else self.edge
         self._component = edge.body.parentComponent
         self._params = self._parentFace._params
+        
+# Everything from now on should be in the nativeObject context
 
-        face1, face2 = (face for face in self.native.faces)
-        _, face1normal = face1.evaluator.getNormalAtPoint(face1.pointOnFace)
-        _, face2normal = face2.evaluator.getNormalAtPoint(face2.pointOnFace)
-        face1normal.add(face2normal)
-        face1normal.normalize()
-        self._cornerVector = face1normal
+        edge0, edge1 = getCornerEdgesAtFace(face=self._parentFace.native, edge=self._native)
+
+        shortEdge, longEdge = (edge0, edge1) if edge0.length < edge1.length else (edge1, edge0)  
+
+        face0, face1 = (face for face in self.native.faces) #get the 2 adjacent faces of the dogbone edge
+
+        self.shortFace, self.longFace = (face0, face1) if shortEdge in face0.edges else (face1, face0)
+
+        _, self.shortFaceNormal = self.shortFace.evaluator.getNormalAtPoint(self.shortFace.pointOnFace)#get their normal vectors
+        _, self.longFaceNormal = self.longFace.evaluator.getNormalAtPoint(self.longFace.pointOnFace)
+
+        # self._cornerVector = face1normal
 
         self._cornerAngle = getAngleBetweenFaces(edge)
         self._customGraphicGroup = None
 
-# Everything from now on should be in the nativeObject context
         self._dogboneCentre = (
             self.native.startVertex.geometry
             if self.native.startVertex in self._parentFace.native.vertices
@@ -457,17 +464,10 @@ class DbEdge:
         """
         return self._nativeEndPoints
 
-    # @property
-    # def endPoints(self) -> tuple[adsk.core.Point3D, adsk.core.Point3D]:
-    #     """
-    #     returns occurrence Edge Point associated with parent Face - initial centre of the dogbone
-    #     """
-    #     return self._endPoints
-
     @property
     def cornerEdges(self):
         """
-        returns the two face edges associated with dogbone edge that is orthogonal to the face edges 
+        returns the two parent face edges associated with dogbone edge 
         """
         return getCornerEdgesAtFace(face=self._parentFace.native, edge=self.native)
 
@@ -515,9 +515,10 @@ class DbEdge:
         startPoint, endPoint = self.nativeEndPoints
         startPoint, endPoint = startPoint.copy(), endPoint.copy()
 
+        params = self._params
+        
         # sx,sy,sz = self.nativeEndPoints[0].asArray()
         # ex,ey,ez = self.nativeEndPoints[1].asArray()
-        params = self._params
 
         # DbEdge.logger.debug(f'\nGet Tool Body:++++++++++++++++'
         #         f'\n native: {self.native != None}'
@@ -540,25 +541,12 @@ class DbEdge:
             startPoint.translateBy(translateVector)
 
         if params.dbType == MORTISE_DOGBONE:
-            (edge0, edge1) = self.cornerEdges
-            direction0 = correctedEdgeVector(edge0, startPoint)
-            direction1 = correctedEdgeVector(edge1, startPoint)
-            # direction1, direction0 = (direction0, direction1) if direction0.crossProduct(direction1).isEqualTo(self._parentFace.faceNormal) else (direction1, direction0)
-            if params.longSide:
-                if edge0.length > edge1.length:
-                    dirVect = direction0
-                else:
-                    dirVect = direction1
-            else:
-                if edge0.length > edge1.length:
-                    dirVect = direction1
-                else:
-                    dirVect = direction0
-            dirVect.normalize()
+            dirVect = self.shortFaceNormal.copy() if params.longSide else self.longFaceNormal.copy()
         else:
-            dirVect = self.cornerVector.copy()
-            dirVect.normalize()
+            dirVect = self.shortFaceNormal.copy()
+            dirVect.add(self.longFaceNormal) #adding the 2 face normal vectors results in a vector that bisects the corner angle
 
+        dirVect.normalize()
         dirVect.scaleBy(centreDistance)
         startPoint.translateBy(dirVect)
         endPoint.translateBy(dirVect)
@@ -569,8 +557,8 @@ class DbEdge:
             f'\n edge: {self._edgeId}'
             f'\n startPoint: {s.asArray()}'
             f'\n calculatedStartPoint: {startPoint.asArray()}'
-            f'\n direction0: {direction0.asArray()}'
-            f'\n direction1: {direction1.asArray()}'
+            # f'\n direction0: {direction0.asArray()}'
+            # f'\n direction1: {direction1.asArray()}'
             f'\n dirVect(normalized): {dirVect.asArray()}'
             f'\n edgeLength: {startPoint.distanceTo(endPoint): .2f}')
 

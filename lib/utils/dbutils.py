@@ -104,7 +104,6 @@ def getCornerEdgesAtFace(face: adsk.fusion.BRepFace, edge: adsk.fusion.BRepEdge)
     startVertex = (
         edge.startVertex if edge.startVertex in face.vertices else edge.endVertex
     )
-    # edge has 2 adjacent faces - therefore the face that isn't from the 3 faces of startVertex, has to be the top face edges
 
     vertexEdges = {hash(edge.entityToken): edge for edge in startVertex.edges} #get a set of edges associated with the vertex
     faceEdges = {hash(edge.entityToken): edge for edge in face.edges} #get a set of edges associated with the face
@@ -157,18 +156,17 @@ def getTopFace(selectedFace: adsk.fusion.BRepFace) -> [adsk.fusion.BRepFace, ads
     refPoint = refPlane.intersectWithLine(refLine)
     faceList = []
     body: adsk.fusion.BRepBody = selectedFace.body
+    #Create a list of parallel faces
     for face in body.faces:
         if not normal.isParallelTo(getFaceNormal(face)):
-            continue
+            continue #eliminate faces that aren't parallel to selectedFace
         facePlane = adsk.core.Plane.create(face.vertices.item(0).geometry, normal)
         intersectionPoint = facePlane.intersectWithLine(refLine)
-        #        distanceToRefPoint = refPoint.distanceTo(intersectionPoint)
         directionVector = refPoint.vectorTo(intersectionPoint)
         distance = directionVector.dotProduct(normal)
-        #       distanceToRefPoint = distanceToRefPoint* (-1 if direction <0 else 1)
         faceList.append([face, distance])
-    sortedFaceList = sorted(faceList, key=lambda x: x[1])
-    top = sortedFaceList[-1]
+    sortedFaceList = sorted(faceList, key=lambda x: x[1]) #sort face list by ascending order of distance
+    top = sortedFaceList[-1] #top face is the face that is furthest from the selectedFace
     refPoint = (
         top[0].nativeObject.pointOnFace
         if top[0].assemblyContext
@@ -177,10 +175,8 @@ def getTopFace(selectedFace: adsk.fusion.BRepFace) -> [adsk.fusion.BRepFace, ads
 
     return top[0], refPoint
 
-
-# TODO: strange contract, boolean or Vector3D
 def getTranslateVectorBetweenFaces(fromFace: adsk.fusion.BRepFace, toFace: adsk.fusion.BRepFace) -> adsk.core.Vector3D or bool:
-    #   returns absolute distance
+    '''returns absolute distance or false if failed'''
 
     normal = getFaceNormal(fromFace)
     if not normal.isParallelTo(getFaceNormal(fromFace)):
