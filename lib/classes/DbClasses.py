@@ -354,7 +354,8 @@ class DbEdge:
         self._native = self.edge.nativeObject if self.edge.nativeObject else self.edge
         self._component = edge.body.parentComponent
         self._params = self._parentFace._params
-        
+        self._cornerAngle = getAngleBetweenFaces(edge)
+
 # Everything from now on should be in the nativeObject context
 
         edge0, edge1 = getCornerEdgesAtFace(face=self._parentFace.native, edge=self._native)
@@ -368,9 +369,6 @@ class DbEdge:
         _, self.shortFaceNormal = self.shortFace.evaluator.getNormalAtPoint(self.shortFace.pointOnFace)#get their normal vectors
         _, self.longFaceNormal = self.longFace.evaluator.getNormalAtPoint(self.longFace.pointOnFace)
 
-        # self._cornerVector = face1normal
-
-        self._cornerAngle = getAngleBetweenFaces(edge)
         self._customGraphicGroup = None
 
         self._dogboneCentre = (
@@ -583,7 +581,8 @@ class DbEdge:
         boxLength = effectiveRadius / cornerTan - centreDistance
         boxWidth = effectiveRadius * 2
 
-        lengthDirectionVector = self.cornerVector.copy()
+        lengthDirectionVector = self.shortFaceNormal.copy()
+        lengthDirectionVector.add(self.longFaceNormal)
         lengthDirectionVector.normalize()
         lengthDirectionVector.scaleBy(boxLength / 2)
 
@@ -600,11 +599,14 @@ class DbEdge:
 
         boxCentrePoint.translateBy(heightDirectionVector)
 
+        cornerVector = self.shortFaceNormal.copy()
+        cornerVector.add(self.longFaceNormal)
+
         #   rotate centreLine Vector (cornerVector) by 90deg to get width direction vector
         orthogonalMatrix = adsk.core.Matrix3D.create()
         orthogonalMatrix.setToRotation(pi / 2, self.edgeVector, boxCentrePoint)
 
-        widthDirectionVector = self.cornerVector.copy()
+        widthDirectionVector = cornerVector.copy()
         widthDirectionVector.transformBy(orthogonalMatrix)
 
         boxLength = 0.001 if (boxLength < 0.001) else boxLength

@@ -392,9 +392,9 @@ class DogboneUi:
             self.param.acuteAngle = b.value
 
         if input.id == MIN_SLIDER:
-            self.param.minAngleLimit = cast(adsk.core.FloatSliderCommandInput, input.commandInputs.itemById(
+            self.param.minAngleLimit: adsk.core.FloatSliderCommandInput = input.commandInputs.itemById(
                 MIN_SLIDER
-            )).valueOne
+            ).valueOne
 
         if input.id == OBTUSE_ANGLE:
             b = cast(adsk.core.BoolValueCommandInput, input)
@@ -404,9 +404,9 @@ class DogboneUi:
             self.param.obtuseAngle = b.value
 
         if input.id == MAX_SLIDER:
-            self.param.maxAngleLimit = cast(adsk.core.FloatSliderCommandInput, input.commandInputs.itemById(
+            self.param.maxAngleLimit: adsk.core.FloatSliderCommandInput = input.commandInputs.itemById(
                 MAX_SLIDER
-            )).valueOne
+            ).valueOne
 
         #
         if (
@@ -416,14 +416,13 @@ class DogboneUi:
                 or input.id == MAX_SLIDER
                 or input.id == MODE_ROW
         ):  # refresh edges after specific input changes
-            edgeSelectCommand = input.parentCommand.commandInputs.itemById(
-                EDGE_SELECT
-            )
+            previewState = self.previewActive #need to disable preview, otherwise the wrong entities are displayed/Selected 
+            self.previewActive = False
+            self.command.doExecutePreview()
+            edgeSelectCommand = input.parentCommand.commandInputs.itemById(EDGE_SELECT)
             if not edgeSelectCommand.isVisible:
                 return
-            focusState = cast(adsk.core.SelectionCommandInput, input.parentCommand.commandInputs.itemById(
-                FACE_SELECT
-            )).hasFocus
+            focusState:adsk.core.SelectionCommandInput = input.parentCommand.commandInputs.itemById(FACE_SELECT).hasFocus
             edgeSelectCommand.hasFocus = True
 
             for edgeObj in self.selection.selectedEdges.values():
@@ -433,6 +432,10 @@ class DogboneUi:
                 faceObj.reSelectEdges()
 
             input.parentCommand.commandInputs.itemById(FACE_SELECT).hasFocus = focusState
+            
+            self.previewActive = previewState
+            self.command.doExecutePreview()
+
             return
 
         if input.id != FACE_SELECT and input.id != EDGE_SELECT:
@@ -475,7 +478,6 @@ class DogboneUi:
                     self.selection.selectedFaces.pop(missingFace)
 
                 input.commandInputs.itemById(FACE_SELECT).hasFocus = True
-                # self.command.doExecutePreview()
 
                 return
 
@@ -530,7 +532,6 @@ class DogboneUi:
 
                 input.commandInputs.itemById(FACE_SELECT).hasFocus = True
 
-            # self.command.doExecutePreview()
             return
             # end of processing faces
         # ==============================================================================

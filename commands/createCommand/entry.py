@@ -129,7 +129,6 @@ def createDogbones( params: DbParams, selection: Selection):
 
     start = time.time()
 
-    # params.write_defaults()
     createStaticDogbones(params, selection)
 
     #Remove check after F360 fixes their baseFeature/UI refresh issue  
@@ -144,4 +143,3 @@ def createDogbones( params: DbParams, selection: Selection):
         messageBox(
             f"Benchmark: {time.time() - start:.02f} sec processing {len(selection.edges)} edges"
         )
-    # stopLogger()
