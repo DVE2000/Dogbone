@@ -29,12 +29,12 @@ def createStaticDogbones(param: DbParams, selection: Selection):
                 logger.info(f"Processing holes from top face - {topFace.tempId}")
                 debugFace(topFace)
 
-            for selectedFace in occurrenceFaces:
-                component = selectedFace.component
-                selectedFace.save()
+            for occurrenceFace in occurrenceFaces:
+                component = occurrenceFace.component
+                occurrenceFace.save()
                 toolCollection = adsk.core.ObjectCollection.create()
 
-                for edgeObj in selectedFace.selectedEdges:
+                for edgeObj in occurrenceFace.selectedEdges:
                     edgeObj.save()
                     if not toolBodies:
                         toolBodies = edgeObj.getToolBody(
@@ -48,7 +48,7 @@ def createStaticDogbones(param: DbParams, selection: Selection):
                             adsk.fusion.BooleanTypes.UnionBooleanType,
                         )
 
-            targetBody: adsk.fusion.BRepBody = selectedFace.body
+            targetBody: adsk.fusion.BRepBody = occurrenceFace.body
             baseFeatures: adsk.fusion.BaseFeature = component.features.baseFeatures
             baseFeature = baseFeatures.add()
             baseFeature.name = DB_NAME
@@ -60,25 +60,30 @@ def createStaticDogbones(param: DbParams, selection: Selection):
 
             baseFeature.finishEdit()
 
+            #multiple bodies in the same occurrrence should normally be an outside use case, but I've added the slightly more compilicated handling just in case
+
             faces = [f.faceId for f in occurrenceFaces]
 
-            baseFeature.attributes.add(groupName=DB_GROUP,
-                                name="basefeature:",
-                                value=json.dumps(faces))
+            bodies = {face.body.name:face.body for face in occurrenceFaces} #This is just a quickish way of creating of unique set of bodies - body names within the same component are unique!
 
-            [toolCollection.add(body) for body in baseFeature.bodies]  #add baseFeature bodies into toolCollection
+            for val, targetBody in enumerate(bodies.values()):
+                baseFeature.attributes.add(groupName=DB_GROUP,
+                                    name="basefeature:",
+                                    value=json.dumps(faces))
 
-            combineFeatureInput = component.features.combineFeatures.createInput(
-                targetBody=targetBody,
-                toolBodies=toolCollection
-            )
+                [toolCollection.add(body) for body in baseFeature.bodies]  #add baseFeature bodies into toolCollection
 
-            combineFeatureInput.isKeepToolBodies = False
-            combineFeatureInput.isNewComponent = False
-            combineFeatureInput.operation = (
-                adsk.fusion.FeatureOperations.CutFeatureOperation
-            )
-            combine:adsk.fusion.CombineFeature = component.features.combineFeatures.add(combineFeatureInput)
+                combineFeatureInput = component.features.combineFeatures.createInput(
+                    targetBody=targetBody,
+                    toolBodies=toolCollection
+                )
+
+                combineFeatureInput.isKeepToolBodies = val != len(bodies)-1  #This is a bit of a work around - you want to keep tool bodies = True until the last body is processed.
+                combineFeatureInput.isNewComponent = False
+                combineFeatureInput.operation = (
+                    adsk.fusion.FeatureOperations.CutFeatureOperation
+                )
+                combine:adsk.fusion.CombineFeature = component.features.combineFeatures.add(combineFeatureInput)
 
             logger.debug(f"combine: {combine.name}")
 
