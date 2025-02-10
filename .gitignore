@@ -24,6 +24,10 @@ dogbone.log
 defaults.dat
 __pycache__
 install
+.vscode
+
+#py packages
+*.pyc
 
 # Vim files
 .*.swp

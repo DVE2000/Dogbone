@@ -5,6 +5,10 @@ The easiest way to install is to use Jerome Briot's installer, which you can get
 Install scripts or addins from GitHub or GitLab](https://apps.autodesk.com/FUSION/en/Detail/Index?id=789800822168335025&appLang=en&os=Mac)) from the top menu in F360.
 If you want to install manually, ensure that the folder name does include anything other than a-zA-Z0-9 (ie make sure "Dogbone" doesn't have a prefix or suffix)
 # Version History
+## Version 2.4
+* added preview mode
+* fixed issue with mortise mode not working
+* fixed issue with multiple bodies in same component not generating dogbones 
 ## Version 2.3
 * refactored folder and file structure to F360's python Add-in template
 * fixed issue where an import error prevented add-in from loading at start-up
