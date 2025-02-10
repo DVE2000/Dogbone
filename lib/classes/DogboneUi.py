@@ -689,6 +689,15 @@ class DogboneUi:
             PREVIEW_ENABLE, "Enable Preview Mode", True, "", self.param.previewEnabled            
         )
 
+        previewEnabled.tooltip = "Activates live preview"
+        previewEnabled.tooltipDescription =(
+                                            "<br>Use ctrl-click when preview is active"
+                                            "<br><br>Warning:"
+                                            "<br>the number of edges selected,"
+                                            "<br>along with the power of your computer and"
+                                            "<br>graphics card may result in a delay in showing the preview"
+        )
+
         benchMark = group.children.addBoolValueInput(
             BENCHMARK, "Benchmark time", True, "", self.param.benchmark
         )
