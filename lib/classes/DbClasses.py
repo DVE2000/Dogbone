@@ -10,9 +10,9 @@ import adsk.fusion
 
 from .DbData import DbParams
 from ..common.errors import FaceInvalidError, EdgeInvalidError
-from ...constants import DB_GROUP
+from ...constants import DB_GROUP, MORTISE_DOGBONE, MINIMAL_DOGBONE
 from ..utils import getFaceNormal, getEdgeVector, getAngleBetweenFaces, messageBox, getCornerEdgesAtFace, getTranslateVectorBetweenFaces, correctedEdgeVector, getTopFace
-# logger = logging.getLogger("dogbone.DbClasses")
+logger = logging.getLogger("dogbone.DbClasses")
 
 class Selection:
     def __init__(self) -> None:
@@ -354,18 +354,23 @@ class DbEdge:
         self._native = self.edge.nativeObject if self.edge.nativeObject else self.edge
         self._component = edge.body.parentComponent
         self._params = self._parentFace._params
-
-        face1, face2 = (face for face in self.native.faces)
-        _, face1normal = face1.evaluator.getNormalAtPoint(face1.pointOnFace)
-        _, face2normal = face2.evaluator.getNormalAtPoint(face2.pointOnFace)
-        face1normal.add(face2normal)
-        face1normal.normalize()
-        self._cornerVector = face1normal
-
         self._cornerAngle = getAngleBetweenFaces(edge)
-        self._customGraphicGroup = None
 
 # Everything from now on should be in the nativeObject context
+
+        edge0, edge1 = getCornerEdgesAtFace(face=self._parentFace.native, edge=self._native)
+
+        shortEdge, longEdge = (edge0, edge1) if edge0.length < edge1.length else (edge1, edge0)  
+
+        face0, face1 = (face for face in self.native.faces) #get the 2 adjacent faces of the dogbone edge
+
+        self.shortFace, self.longFace = (face0, face1) if shortEdge in face0.edges else (face1, face0)
+
+        _, self.shortFaceNormal = self.shortFace.evaluator.getNormalAtPoint(self.shortFace.pointOnFace)#get their normal vectors
+        _, self.longFaceNormal = self.longFace.evaluator.getNormalAtPoint(self.longFace.pointOnFace)
+
+        self._customGraphicGroup = None
+
         self._dogboneCentre = (
             self.native.startVertex.geometry
             if self.native.startVertex in self._parentFace.native.vertices
@@ -383,20 +388,14 @@ class DbEdge:
         self._nativeEdgeVector: adsk.core.Vector3D = startPoint.vectorTo(endPoint)
         self._nativeEdgeVector.normalize()
 
-        # self._endPoints = (
-        #     (self.edge.startVertex.geometry, self.edge.endVertex.geometry)
-        #     if self.edge.startVertex in self._parentFace.face.vertices
-        #     else (self.edge.endVertex.geometry, self.edge.startVertex.geometry)
-        # )
-
         sx,sy,sz = self._nativeEndPoints[0].asArray()
         ex,ey,ez = self._nativeEndPoints[1].asArray()
 
-        DbEdge.logger.debug(f'\nedge: {self.edge.tempId}'
-                    f'\n native: {self.edge.nativeObject != None}'
+        DbEdge.logger.debug(f'\nedge: {self._edgeId}'
+                    f'\n native: {self.native != None}'
                     f'\n startPoint: ({sx:.2f},{sy:.2f},{sz:.2f}),({ex:.2f},{ey:.2f},{ez:.2f})'
                     f'\n edgeLength: {startPoint.distanceTo(endPoint):.2f}'
-                    f'\n parentFace: {self._parentFace.face.tempId}')
+                    f'\n parentFace: {self._parentFace._faceId}')
         
         if self._parentFace._restoreState:
             self.restore()
@@ -463,19 +462,12 @@ class DbEdge:
         """
         return self._nativeEndPoints
 
-    # @property
-    # def endPoints(self) -> tuple[adsk.core.Point3D, adsk.core.Point3D]:
-    #     """
-    #     returns occurrence Edge Point associated with parent Face - initial centre of the dogbone
-    #     """
-    #     return self._endPoints
-
     @property
     def cornerEdges(self):
         """
-        returns the two face edges associated with dogbone edge that is orthogonal to the face edges 
+        returns the two parent face edges associated with dogbone edge 
         """
-        return getCornerEdgesAtFace(face=self._parentFace, edge=self.native)
+        return getCornerEdgesAtFace(face=self._parentFace.native, edge=self.native)
 
     @property
     def cornerVector(self) -> adsk.core.Vector3D:
@@ -521,21 +513,22 @@ class DbEdge:
         startPoint, endPoint = self.nativeEndPoints
         startPoint, endPoint = startPoint.copy(), endPoint.copy()
 
-        sx,sy,sz = self._nativeEndPoints[0].asArray()
-        ex,ey,ez = self._nativeEndPoints[1].asArray()
         params = self._params
+        
+        # sx,sy,sz = self.nativeEndPoints[0].asArray()
+        # ex,ey,ez = self.nativeEndPoints[1].asArray()
 
-        DbEdge.logger.debug(f'\nGet Tool Body:++++++++++++++++'
-                f'\n native: {self.edge.nativeObject != None}'
-                f'\n edge: {self.edge.tempId}'
-                f'\n startPoint: ({sx:.2f},{sy:.2f},{sz:.2f}),({ex:.2f},{ey:.2f},{ez:.2f})'
-                f'\n edgeLength: {startPoint.distanceTo(endPoint): .2f}')
+        # DbEdge.logger.debug(f'\nGet Tool Body:++++++++++++++++'
+        #         f'\n native: {self.native != None}'
+        #         f'\n edge: {self._edgeId}'
+        #         f'\n startPoint: ({sx:.2f},{sy:.2f},{sz:.2f}),({ex:.2f},{ey:.2f},{ez:.2f})'
+        #         f'\n edgeLength: {startPoint.distanceTo(endPoint): .2f}')
                 # f'\n parentFace: {self._parentFace.face.tempId}')
         
         effectiveRadius = (params.toolDia + params.toolDiaOffset) / 2
         centreDistance = effectiveRadius * (
             (1 + params.minimalPercent / 100)
-            if params.dbType == "Minimal Dogbone"
+            if params.dbType == MINIMAL_DOGBONE
             else 1
         )
 
@@ -545,28 +538,27 @@ class DbEdge:
                 )
             startPoint.translateBy(translateVector)
 
-        if params.dbType == "Mortise Dogbone":
-            (edge0, edge1) = self.cornerEdges
-            direction0 = correctedEdgeVector(edge0, startPoint)
-            direction1 = correctedEdgeVector(edge1, startPoint)
-            if params.longSide:
-                if edge0.length > edge1.length:
-                    dirVect = direction0
-                else:
-                    dirVect = direction1
-            else:
-                if edge0.length > edge1.length:
-                    dirVect = direction1
-                else:
-                    dirVect = direction0
-            dirVect.normalize()
+        if params.dbType == MORTISE_DOGBONE:
+            dirVect = self.shortFaceNormal.copy() if params.longSide else self.longFaceNormal.copy()
         else:
-            dirVect = self.cornerVector.copy()
-            dirVect.normalize()
+            dirVect = self.shortFaceNormal.copy()
+            dirVect.add(self.longFaceNormal) #adding the 2 face normal vectors results in a vector that bisects the corner angle
 
+        dirVect.normalize()
         dirVect.scaleBy(centreDistance)
         startPoint.translateBy(dirVect)
         endPoint.translateBy(dirVect)
+        s, e = self.nativeEndPoints
+        DbEdge.logger.debug(f'\nGet Tool Body:++++++++++++++++'
+            f'\n mode: {params.dbType}'
+            f'\n native: {self.native.assemblyContext == None}'
+            f'\n edge: {self._edgeId}'
+            f'\n startPoint: {s.asArray()}'
+            f'\n calculatedStartPoint: {startPoint.asArray()}'
+            # f'\n direction0: {direction0.asArray()}'
+            # f'\n direction1: {direction1.asArray()}'
+            f'\n dirVect(normalized): {dirVect.asArray()}'
+            f'\n edgeLength: {startPoint.distanceTo(endPoint): .2f}')
 
         toolbody = tempBrepMgr.createCylinderOrCone(
             endPoint, effectiveRadius, startPoint, effectiveRadius
@@ -589,7 +581,8 @@ class DbEdge:
         boxLength = effectiveRadius / cornerTan - centreDistance
         boxWidth = effectiveRadius * 2
 
-        lengthDirectionVector = self.cornerVector.copy()
+        lengthDirectionVector = self.shortFaceNormal.copy()
+        lengthDirectionVector.add(self.longFaceNormal)
         lengthDirectionVector.normalize()
         lengthDirectionVector.scaleBy(boxLength / 2)
 
@@ -606,11 +599,14 @@ class DbEdge:
 
         boxCentrePoint.translateBy(heightDirectionVector)
 
+        cornerVector = self.shortFaceNormal.copy()
+        cornerVector.add(self.longFaceNormal)
+
         #   rotate centreLine Vector (cornerVector) by 90deg to get width direction vector
         orthogonalMatrix = adsk.core.Matrix3D.create()
         orthogonalMatrix.setToRotation(pi / 2, self.edgeVector, boxCentrePoint)
 
-        widthDirectionVector = self.cornerVector.copy()
+        widthDirectionVector = cornerVector.copy()
         widthDirectionVector.transformBy(orthogonalMatrix)
 
         boxLength = 0.001 if (boxLength < 0.001) else boxLength

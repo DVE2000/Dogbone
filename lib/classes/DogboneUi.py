@@ -11,36 +11,41 @@ from . import DbParams, Selection, DbFace
 from ..utils.decorators import eventHandler, parseDecorator
 from ..common.log import LEVELS, startLogger, stopLogger
 from ..utils.util import calcId
-
-
-ACUTE_ANGLE = "acuteAngle"
-ANGLE_DETECTION_GROUP = "angleDetectionGroup"
-BENCHMARK = "benchmark"
-DEPTH_EXTENT = "depthExtent"
-DOGBONE_TYPE = "dogboneType"
-EDGE_SELECT = "edgeSelect"
-FACE_SELECT = "faceSelect"
-FROM_SELECTED_FACE = "From Selected Face"
-FROM_TOP_FACE = "From Top Face"
-LOGGING = "logging"
-MAX_SLIDER = "maxSlider"
-MINIMAL_DOGBONE = "Minimal Dogbone"
-MINIMAL_PERCENT = "minimalPercent"
-MIN_SLIDER = "minSlider"
-MODE_GROUP = "modeGroup"
-MODE_ROW = "modeRow"
-MORTISE_DOGBONE = "Mortise Dogbone"
-MORTISE_TYPE = "mortiseType"
-NORMAL_DOGBONE = "Normal Dogbone"
-OBTUSE_ANGLE = "obtuseAngle"
-ON_LONG_SIDE = "On Long Side"
-ON_SHORT_SIDE = "On Short Side"
-PARAMETRIC = "Parametric"
-SETTINGS_GROUP = "settingsGroup"
-STATIC = "Static"
-TOOL_DIAMETER = "toolDia"
-TOOL_DIAMETER_OFFSET = "toolDiaOffset"
-
+from ...constants import (
+    ACUTE_ANGLE,
+    ANGLE_DETECTION_GROUP,
+    BENCHMARK,
+    DEPTH_EXTENT,
+    DOGBONE_TYPE,
+    EDGE_SELECT,
+    FACE_SELECT,
+    FROM_SELECTED_FACE,
+    FROM_TOP_FACE,
+    LOGGING,
+    MAX_SLIDER,
+    MINIMAL_DOGBONE,
+    MINIMAL_PERCENT,
+    MIN_SLIDER,
+    MODE_GROUP,
+    MODE_ROW,
+    MORTISE_DOGBONE,
+    MORTISE_TYPE,
+    NORMAL_DOGBONE,
+    OBTUSE_ANGLE,
+    ON_LONG_SIDE,
+    ON_SHORT_SIDE,
+    PARAMETRIC,
+    PREVIEW_ENABLE,
+    SETTINGS_GROUP,
+    STATIC,
+    TOOL_DIAMETER,
+    TOOL_DIAMETER_OFFSET,
+    EDGE_TOOLTIP,
+    FACE_TOOLTIP,
+    EDGE_TOOLTIP_PREVIEW,
+    FACE_TOOLTIP_PREVIEW,
+    EDGE_TOOLTIP_DESCRIPTION,
+    FACE_TOOLTIP_DESCRIPTION)
 
 _appPath = os.path.dirname(os.path.abspath(__file__))
 logger = logging.getLogger('dogbone.ui')
@@ -74,6 +79,7 @@ class DogboneUi:
         self.executeHandler = executeHandler
 
         self.selection = Selection()
+        self.previewActive = True
 
         self.inputs = command.commandInputs
 
@@ -87,6 +93,9 @@ class DogboneUi:
         self.onValidate(event=command.validateInputs)
         self.onFaceSelect(event=command.selectionEvent)
         self.onExecute(event=command.execute)
+        self.onExecutePreview(event=command.executePreview)
+        self.onKeyDown(event=command.keyDown)
+        self.onKeyUp(event=command.keyUp)
 
     def create_ui(self):
         self.face_select()
@@ -122,8 +131,11 @@ class DogboneUi:
         self.param.maxAngleLimit = inputs[MAX_SLIDER].valueOne
         self.param.expandModeGroup = (inputs[MODE_GROUP]).isExpanded
         self.param.expandSettingsGroup = (inputs[SETTINGS_GROUP]).isExpanded
+        self.param.previewEnabled = inputs[PREVIEW_ENABLE].value
 
-        logger.setLevel(self.param.logging)
+        mainlogger = logging.getLogger("dogbone")
+
+        mainlogger.setLevel(self.param.logging)
 
         self.logParams()
 
@@ -155,8 +167,28 @@ class DogboneUi:
         )
 
     @eventHandler(handler_cls=adsk.core.CommandEventHandler)
+    def onExecutePreview(self, args:adsk.core.CommandEventArgs):
+        if self.previewActive and self.param.previewEnabled:
+            self.executeHandler(self.param, self.selection)
+
+    @eventHandler(handler_cls=adsk.core.CommandEventHandler)
     def onExecute(self, args):
         self.executeHandler(self.param, self.selection)
+
+    @eventHandler(handler_cls=adsk.core.KeyboardEventHandler)
+    def onKeyDown(self, args:adsk.core.KeyboardEventArgs):
+        keyCode = args.keyCode
+        modifier = args.modifierMask  
+        self.previewActive = not keyCode == adsk.core.KeyCodes.ControlKeyCode
+        self.command.doExecutePreview()
+
+    @eventHandler(handler_cls=adsk.core.KeyboardEventHandler)
+    def onKeyUp(self, args):
+        keyCode = args.keyCode
+        modifier = args.modifierMask  
+        self.previewActive = keyCode == adsk.core.KeyCodes.ControlKeyCode  
+        self.command.doExecutePreview()
+  
 
     @eventHandler(handler_cls=adsk.core.SelectionEventHandler)
     def onFaceSelect(self, args):
@@ -170,12 +202,17 @@ class DogboneUi:
         if activeIn.id != FACE_SELECT and activeIn.id != EDGE_SELECT:
             return  # jump out if not dealing with either of the two selection boxes
 
+        if self.previewActive and self.param.previewEnabled:
+            eventArgs.isSelectable = False
+            return
+
         if activeIn.id == FACE_SELECT:
             # ==============================================================================
             # processing activities when faces are being selected
             #        selection filter is limited to planar faces
             #        makes sure only valid occurrences and components are selectable
             # ==============================================================================
+
 
             if not len(
                     self.selection.selectedOccurrences
@@ -315,15 +352,37 @@ class DogboneUi:
             )
             return
 
-        if input.id == "toolDia":
-            self.param.toolDiaStr = cast(adsk.core.ValueCommandInput, input).expression
+        if input.id == TOOL_DIAMETER:
+            self.param.toolDiaStr:adsk.core.ValueCommandInput = input.expression
+            return
+
+        if input.id == PREVIEW_ENABLE:
+            self.previewActive = self.param.previewEnabled = input.value
+            
+
+            edgeSelectInput = input.parentCommand.commandInputs.itemById(EDGE_SELECT)
+            faceSelectInput = input.parentCommand.commandInputs.itemById(FACE_SELECT)
+
+            edgeSelectInput.tooltipDescription = EDGE_TOOLTIP_DESCRIPTION
+            faceSelectInput.tooltipDescription = FACE_TOOLTIP_DESCRIPTION
+
+            if self.param.previewEnabled:
+                edgeSelectInput.commandPrompt = edgeSelectInput.tooltip = EDGE_TOOLTIP_PREVIEW
+                faceSelectInput.commandPrompt = faceSelectInput.tooltip = FACE_TOOLTIP_PREVIEW
+
+            else:
+                edgeSelectInput.commandPrompt = edgeSelectInput.tooltip = EDGE_TOOLTIP
+                faceSelectInput.commandPrompt = faceSelectInput.tooltip = FACE_TOOLTIP
+
+            self.command.doExecutePreview()
+
             return
 
         if input.id == MODE_ROW:
             input.parentCommand.commandInputs.itemById(
                 ANGLE_DETECTION_GROUP
             ).isVisible = (cast(adsk.core.ButtonRowCommandInput, input).selectedItem.name == STATIC)
-            self.param.parametric = cast(adsk.core.ButtonRowCommandInput, input).selectedItem.name == PARAMETRIC  #
+            self.param.parametric:adsk.core.ButtonRowCommandInput = input.selectedItem.name == PARAMETRIC  #
 
         if input.id == ACUTE_ANGLE:
             b = cast(adsk.core.BoolValueCommandInput, input)
@@ -333,9 +392,9 @@ class DogboneUi:
             self.param.acuteAngle = b.value
 
         if input.id == MIN_SLIDER:
-            self.param.minAngleLimit = cast(adsk.core.FloatSliderCommandInput, input.commandInputs.itemById(
+            self.param.minAngleLimit: adsk.core.FloatSliderCommandInput = input.commandInputs.itemById(
                 MIN_SLIDER
-            )).valueOne
+            ).valueOne
 
         if input.id == OBTUSE_ANGLE:
             b = cast(adsk.core.BoolValueCommandInput, input)
@@ -345,9 +404,9 @@ class DogboneUi:
             self.param.obtuseAngle = b.value
 
         if input.id == MAX_SLIDER:
-            self.param.maxAngleLimit = cast(adsk.core.FloatSliderCommandInput, input.commandInputs.itemById(
+            self.param.maxAngleLimit: adsk.core.FloatSliderCommandInput = input.commandInputs.itemById(
                 MAX_SLIDER
-            )).valueOne
+            ).valueOne
 
         #
         if (
@@ -357,14 +416,13 @@ class DogboneUi:
                 or input.id == MAX_SLIDER
                 or input.id == MODE_ROW
         ):  # refresh edges after specific input changes
-            edgeSelectCommand = input.parentCommand.commandInputs.itemById(
-                EDGE_SELECT
-            )
+            previewState = self.previewActive #need to disable preview, otherwise the wrong entities are displayed/Selected 
+            self.previewActive = False
+            self.command.doExecutePreview()
+            edgeSelectCommand = input.parentCommand.commandInputs.itemById(EDGE_SELECT)
             if not edgeSelectCommand.isVisible:
                 return
-            focusState = cast(adsk.core.SelectionCommandInput, input.parentCommand.commandInputs.itemById(
-                FACE_SELECT
-            )).hasFocus
+            focusState:adsk.core.SelectionCommandInput = input.parentCommand.commandInputs.itemById(FACE_SELECT).hasFocus
             edgeSelectCommand.hasFocus = True
 
             for edgeObj in self.selection.selectedEdges.values():
@@ -374,6 +432,10 @@ class DogboneUi:
                 faceObj.reSelectEdges()
 
             input.parentCommand.commandInputs.itemById(FACE_SELECT).hasFocus = focusState
+            
+            self.previewActive = previewState
+            self.command.doExecutePreview()
+
             return
 
         if input.id != FACE_SELECT and input.id != EDGE_SELECT:
@@ -416,6 +478,7 @@ class DogboneUi:
                     self.selection.selectedFaces.pop(missingFace)
 
                 input.commandInputs.itemById(FACE_SELECT).hasFocus = True
+
                 return
 
             # ==============================================================================
@@ -448,7 +511,7 @@ class DogboneUi:
                 faces = self.selection.selectedOccurrences.get(activeOccurrenceId, [])
 
                 faces += (
-                    t := [
+                    createdFace := [
                         DbFace(
                             face=changedEntity,
                             selection=self.selection,
@@ -462,12 +525,13 @@ class DogboneUi:
                 self.selection.selectedOccurrences[
                     activeOccurrenceId
                 ] = faces  # adds a face to a list of faces associated with this occurrence
-                self.selection.selectedFaces.update({faceObj.faceId: faceObj for faceObj in t})
+                self.selection.selectedFaces.update({faceObj.faceId: faceObj for faceObj in createdFace})
 
                 for face_id in addedFaces:
                     self.selection.selectedFaces[face_id].selectAll()
 
                 input.commandInputs.itemById(FACE_SELECT).hasFocus = True
+
             return
             # end of processing faces
         # ==============================================================================
@@ -621,6 +685,19 @@ class DogboneUi:
         )
         group.isExpanded = self.param.expandSettingsGroup
 
+        previewEnabled = group.children.addBoolValueInput(
+            PREVIEW_ENABLE, "Enable Preview Mode", True, "", self.param.previewEnabled            
+        )
+
+        previewEnabled.tooltip = "Activates live preview"
+        previewEnabled.tooltipDescription =(
+                                            "<br>Use ctrl-click when preview is active"
+                                            "<br><br>Warning:"
+                                            "<br>the number of edges selected,"
+                                            "<br>along with the power of your computer and"
+                                            "<br>graphics card may result in a delay in showing the preview"
+        )
+
         benchMark = group.children.addBoolValueInput(
             BENCHMARK, "Benchmark time", True, "", self.param.benchmark
         )
@@ -669,25 +746,42 @@ class DogboneUi:
             self.design.unitsManager.defaultLengthUnits,
             adsk.core.ValueInput.createByString(self.param.toolDiaStr),
         )
-        ui.tooltip = "Size of the tool with which you'll cut the dogbone."
+        ui.tooltip = "Diameter of the tool with which you'll cut the dogbone."
 
     def edge_select(self):
+        
+        tooltipDesc = EDGE_TOOLTIP_DESCRIPTION
+        if self.param.previewEnabled:
+            msg = EDGE_TOOLTIP_PREVIEW
+        else:
+            msg = EDGE_TOOLTIP
+            
         ui = self.inputs.addSelectionInput(
             EDGE_SELECT,
             "DogBone Edges",
-            "SELECT OR de-SELECT ANY internal edges dropping down FROM a selected face (TO apply dogbones TO",
+            "",
         )
-        ui.tooltip = "SELECT OR de-SELECT ANY internal edges dropping down FROM a selected face (TO apply dogbones TO)"
+        ui.commandPrompt = ui.tooltip = msg
+        ui.tooltipDescription = tooltipDesc
         ui.addSelectionFilter("LinearEdges")
         ui.setSelectionLimits(1, 0)
         ui.isVisible = False
 
-    def face_select(self, ):
+    def face_select(self):
+
+        tooltipDesc = FACE_TOOLTIP_DESCRIPTION
+
+        if self.param.previewEnabled:
+            msg = FACE_TOOLTIP_PREVIEW
+        else:
+            msg = FACE_TOOLTIP
+            
         ui = self.inputs.addSelectionInput(
             FACE_SELECT,
             "Face",
-            "Select a face to apply dogbones to all internal corner edges",
+            "",
         )
-        ui.tooltip = "Select a face to apply dogbones to all internal corner edges\n*** Select faces by clicking on them. DO NOT DRAG SELECT! ***"
+        ui.commandPrompt = ui.tooltip = msg
+        ui.tooltipDescription = tooltipDesc
         ui.addSelectionFilter("PlanarFaces")
         ui.setSelectionLimits(1, 0)
