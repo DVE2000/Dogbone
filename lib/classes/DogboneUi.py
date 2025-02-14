@@ -169,6 +169,7 @@ class DogboneUi:
     @eventHandler(handler_cls=adsk.core.CommandEventHandler)
     def onExecutePreview(self, args:adsk.core.CommandEventArgs):
         if self.previewActive and self.param.previewEnabled:
+            args.isValidResult = True
             self.executeHandler(self.param, self.selection)
 
     @eventHandler(handler_cls=adsk.core.CommandEventHandler)

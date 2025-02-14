@@ -25,6 +25,7 @@ defaults.dat
 __pycache__
 install
 .vscode
+.env
 
 #py packages
 *.pyc
