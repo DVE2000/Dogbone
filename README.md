@@ -4,6 +4,11 @@ Dogbone addin for fusion 360
 The easiest way to install is to use Jerome Briot's installer, which you can get from the Fusion App store (utilities/add-ins/fusion App Store - [
 Install scripts or addins from GitHub or GitLab](https://apps.autodesk.com/FUSION/en/Detail/Index?id=789800822168335025&appLang=en&os=Mac)) from the top menu in F360.
 If you want to install manually, ensure that the folder name does not include anything other than a-zA-Z0-9 (ie make sure "Dogbone" doesn't have a prefix or suffix)
+For releases with an attached `Dogbone-<tag>.zip`, extract the archive and register the enclosed `Dogbone` folder in Fusion.
+
+## Packaging a release
+Run `python3 scripts/package_release.py v2.4` with the intended local release tag. Attach the generated ZIP from `dist/` under **Assets** when drafting the corresponding GitHub Release. The package uses the files at that tag, retains the add-in ID, and sets the packaged manifest version from the tag.
+
 # Version History
 ## Version 2.4
 * added preview mode

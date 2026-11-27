@@ -62,3 +62,6 @@ Temporary Items
 
 out/
 .idea/
+
+# Built release archives
+/dist/
